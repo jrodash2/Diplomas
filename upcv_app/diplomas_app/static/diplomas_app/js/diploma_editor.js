@@ -7,72 +7,40 @@
 
   const SCALE = 0.28;
   const definition = JSON.parse(payloadNode.textContent || "{}");
-  const backgroundUrl = canvas.dataset.backgroundUrl || "";
+  const canvasWidth = Number(canvas.dataset.canvasWidth || 3508);
+  const canvasHeight = Number(canvas.dataset.canvasHeight || 2480);
+  const fallbackBackgroundUrl = canvas.dataset.backgroundUrl || "";
 
-  function hydrateElementsFromDom() {
-    const hydrated = {};
-    canvas.querySelectorAll(".diploma-editor-element").forEach(function (node) {
-      const style = window.getComputedStyle(node);
-      const key = node.dataset.key;
-      if (!key) {
-        return;
-      }
-      hydrated[key] = {
-        key,
-        label: node.dataset.label || key,
-        type: node.dataset.type || "texto",
-        visible: node.dataset.visible !== "false",
-        x: parseFloat(node.style.left || 0),
-        y: parseFloat(node.style.top || 0),
-        width: parseFloat(node.style.width || 200),
-        height: parseFloat(node.style.height || 80),
-        font_size: parseFloat(node.dataset.fontSize || node.style.fontSize || 24),
-        color: node.dataset.color || style.color || "#111827",
-        align: node.dataset.align || style.textAlign || "center",
-        z_index: parseInt(node.dataset.zIndex || style.zIndex || 1, 10),
-        token: node.dataset.token || "",
-        texto: node.dataset.texto || "",
-        image_url: node.dataset.imageUrl || "",
-      };
-    });
-    return hydrated;
-  }
+  const state = {
+    canvasWidth,
+    canvasHeight,
+    saveUrl: canvas.dataset.saveUrl,
+    elements: definition && definition.elements ? JSON.parse(JSON.stringify(definition.elements)) : {},
+    selectedKey: null,
+    drag: null,
+    pristine: {},
+  };
 
-  const initialElements = definition.elements && Object.keys(definition.elements).length
-    ? definition.elements
-    : hydrateElementsFromDom();
-
-  if (!initialElements.fondo_diploma) {
-    initialElements.fondo_diploma = {
+  if (!state.elements.fondo_diploma) {
+    state.elements.fondo_diploma = {
       key: "fondo_diploma",
       label: "Fondo diploma",
       type: "imagen",
       visible: true,
       x: 0,
       y: 0,
-      width: Number(canvas.dataset.canvasWidth || 3508),
-      height: Number(canvas.dataset.canvasHeight || 2480),
+      width: canvasWidth,
+      height: canvasHeight,
       font_size: 20,
       color: "#111827",
       align: "center",
       z_index: 0,
       token: "{{ fondo_diploma }}",
       texto: "",
-      image_url: backgroundUrl,
+      image_url: fallbackBackgroundUrl,
     };
-  } else if (!initialElements.fondo_diploma.image_url && backgroundUrl) {
-    initialElements.fondo_diploma.image_url = backgroundUrl;
   }
-
-  const state = {
-    canvasWidth: Number(canvas.dataset.canvasWidth || 3508),
-    canvasHeight: Number(canvas.dataset.canvasHeight || 2480),
-    saveUrl: canvas.dataset.saveUrl,
-    elements: initialElements,
-    selectedKey: null,
-    drag: null,
-    pristine: JSON.parse(JSON.stringify(initialElements)),
-  };
+  state.pristine = JSON.parse(JSON.stringify(state.elements));
 
   const ui = {
     emptyState: document.getElementById("editorEmptyState"),
@@ -123,17 +91,37 @@
   }
 
   function normalizeElement(element) {
-    const width = clamp(element.width, 20, state.canvasWidth);
-    const height = clamp(element.height, 20, state.canvasHeight);
-    element.width = width;
-    element.height = height;
-    element.x = clamp(element.x, 0, Math.max(state.canvasWidth - width, 0));
-    element.y = clamp(element.y, 0, Math.max(state.canvasHeight - height, 0));
-    element.font_size = clamp(element.font_size || 24, 8, 300);
-    element.z_index = clamp(element.z_index || 1, 0, 9999);
-    element.align = element.align || "center";
-    element.color = element.color || "#111827";
-    element.visible = element.visible !== false;
+    const normalized = element;
+    normalized.key = normalized.key || "";
+    normalized.label = normalized.label || normalized.key;
+    normalized.type = normalized.type || "texto";
+    normalized.visible = normalized.visible !== false;
+    normalized.width = clamp(normalized.width || 200, 20, state.canvasWidth);
+    normalized.height = clamp(normalized.height || 80, 20, state.canvasHeight);
+    normalized.x = clamp(normalized.x || 0, 0, Math.max(state.canvasWidth - normalized.width, 0));
+    normalized.y = clamp(normalized.y || 0, 0, Math.max(state.canvasHeight - normalized.height, 0));
+    normalized.font_size = clamp(normalized.font_size || 24, 8, 300);
+    normalized.z_index = clamp(normalized.z_index || 1, 0, 9999);
+    normalized.color = normalized.color || "#111827";
+    normalized.align = normalized.align || "center";
+    normalized.token = normalized.token || "";
+    normalized.texto = normalized.texto || "";
+    normalized.image_url = normalized.image_url || "";
+
+    if (normalized.key === "fondo_diploma") {
+      normalized.x = 0;
+      normalized.y = 0;
+      normalized.width = state.canvasWidth;
+      normalized.height = state.canvasHeight;
+      normalized.z_index = 0;
+    }
+    return normalized;
+  }
+
+  function normalizeState() {
+    Object.keys(state.elements).forEach(function (key) {
+      state.elements[key] = normalizeElement(state.elements[key]);
+    });
   }
 
   function previewText(element) {
@@ -153,10 +141,10 @@
   }
 
   function renderCanvas() {
+    normalizeState();
     const elements = Object.values(state.elements)
-      .sort((left, right) => left.z_index - right.z_index)
-      .map((element) => {
-        normalizeElement(element);
+      .sort(function (left, right) { return left.z_index - right.z_index; })
+      .map(function (element) {
         const typeClass = `is-${element.type === "imagen" ? "image" : element.type === "decorativo" ? "decorative" : "text"}`;
         const selectedClass = state.selectedKey === element.key ? "is-selected" : "";
         const display = element.visible ? "block" : "none";
@@ -183,10 +171,8 @@
 
     const activeBackground = state.elements.fondo_diploma && state.elements.fondo_diploma.image_url
       ? state.elements.fondo_diploma.image_url
-      : backgroundUrl;
-    canvas.style.backgroundImage = activeBackground
-      ? `url("${activeBackground}")`
-      : "none";
+      : fallbackBackgroundUrl;
+    canvas.style.backgroundImage = activeBackground ? `url("${activeBackground}")` : "none";
     canvas.innerHTML = elements;
   }
 
@@ -200,7 +186,6 @@
 
     ui.emptyState.style.display = "none";
     ui.propertyForm.classList.remove("is-hidden");
-
     ui.label.value = element.label || "";
     ui.type.value = element.type || "";
     ui.token.value = element.token || "";
@@ -252,7 +237,7 @@
       element.align = ui.align.value || element.align;
     }
 
-    normalizeElement(element);
+    state.elements[state.selectedKey] = normalizeElement(element);
     renderCanvas();
     syncSidebar();
   }
@@ -269,7 +254,7 @@
     }
     selectElement(key);
     state.drag = {
-      key,
+      key: key,
       startX: event.clientX,
       startY: event.clientY,
       originX: element.x,
@@ -291,7 +276,7 @@
     const deltaY = (event.clientY - state.drag.startY) / SCALE;
     element.x = state.drag.originX + deltaX;
     element.y = state.drag.originY + deltaY;
-    normalizeElement(element);
+    state.elements[state.drag.key] = normalizeElement(element);
     renderCanvas();
     syncSidebar();
   });
@@ -308,18 +293,7 @@
     selectElement(target.dataset.key);
   });
 
-  [
-    ui.texto,
-    ui.x,
-    ui.y,
-    ui.width,
-    ui.height,
-    ui.fontSize,
-    ui.color,
-    ui.align,
-    ui.zIndex,
-    ui.visible,
-  ].forEach(function (input) {
+  [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
     }
@@ -331,7 +305,7 @@
     state.elements = JSON.parse(JSON.stringify(state.pristine));
     const availableKey = state.selectedKey && state.elements[state.selectedKey]
       ? state.selectedKey
-      : Object.keys(state.elements)[0];
+      : Object.keys(state.elements).find(function (key) { return key !== "fondo_diploma"; }) || Object.keys(state.elements)[0];
     renderCanvas();
     if (availableKey) {
       selectElement(availableKey);
@@ -346,6 +320,7 @@
     ui.save.textContent = "Guardando...";
 
     try {
+      normalizeState();
       const token = csrfToken();
       const response = await fetch(state.saveUrl, {
         method: "POST",
@@ -355,14 +330,7 @@
           ...(token ? { "X-CSRFToken": token } : {}),
         },
         body: JSON.stringify({
-          definition: {
-            version: definition.version || 2,
-            canvas: {
-              width: state.canvasWidth,
-              height: state.canvasHeight,
-            },
-            elements: state.elements,
-          },
+          elementos: state.elements,
         }),
       });
 
@@ -372,7 +340,7 @@
         return;
       }
 
-      state.elements = payload.definition.elements || state.elements;
+      state.elements = payload.elementos ? JSON.parse(JSON.stringify(payload.elementos)) : state.elements;
       state.pristine = JSON.parse(JSON.stringify(state.elements));
       renderCanvas();
       syncSidebar();

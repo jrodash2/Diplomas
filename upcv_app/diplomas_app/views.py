@@ -86,14 +86,11 @@ def editar_diseno(request, diseno_id):
 @ensure_csrf_cookie
 def modificar_diseno_visual(request, diseno_id):
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
-    definition = ensure_design_definition(diseno)
-    editor_elements = sorted(definition["elements"].values(), key=lambda item: item["z_index"])
+    definition = build_design_definition(diseno)
     context = {
         "diseno": diseno,
-        "design_definition": definition,
-        "design_definition_json": json.dumps(definition),
-        "editor_elements": editor_elements,
-        "editor_background_url": definition["elements"]["fondo_diploma"]["image_url"],
+        "elementos_json": definition,
+        "fondo_url": definition["elements"]["fondo_diploma"]["image_url"],
         "canvas_width": CANVAS_WIDTH,
         "canvas_height": CANVAS_HEIGHT,
     }
@@ -106,18 +103,21 @@ def guardar_diseno_visual(request, diseno_id):
 
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
     try:
-        payload = json.loads(request.body)
+        payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"success": False, "error": "JSON inválido"}, status=400)
 
     incoming_elements = None
     if isinstance(payload, dict):
-        if isinstance(payload.get("elements"), dict):
-            incoming_elements = payload.get("elements")
+        if isinstance(payload.get("elementos"), dict):
+            incoming_elements = payload["elementos"]
+        elif isinstance(payload.get("elements"), dict):
+            incoming_elements = payload["elements"]
         elif isinstance(payload.get("definition"), dict) and isinstance(payload["definition"].get("elements"), dict):
             incoming_elements = payload["definition"]["elements"]
-    if not isinstance(incoming_elements, dict):
-        return JsonResponse({"success": False, "error": "Estructura de elementos inválida"}, status=400)
+
+    if not isinstance(incoming_elements, dict) or not incoming_elements:
+        return JsonResponse({"success": False, "error": "Debe enviar un mapa válido de elementos."}, status=400)
 
     try:
         normalized_definition = normalize_definition_from_elements(diseno, incoming_elements)
@@ -130,6 +130,7 @@ def guardar_diseno_visual(request, diseno_id):
     return JsonResponse({
         "success": True,
         "message": "Diseño guardado correctamente.",
+        "elementos": diseno.estilos.get("elements", {}),
         "definition": diseno.estilos,
     })
 

@@ -411,7 +411,15 @@ def build_diploma_render_context(curso_empleado):
     firmas = get_signature_pair(curso)
     firma_1 = firmas[0] if len(firmas) > 0 else None
     firma_2 = firmas[1] if len(firmas) > 1 else None
-    definition = build_design_definition(curso.diseno_diploma, curso.posiciones or {}, firmas=firmas)
+
+    if curso.diseno_diploma_id:
+        definition = build_design_definition(curso.diseno_diploma, None, firmas=firmas)
+    else:
+        definition = {
+            "version": DESIGN_VERSION,
+            "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
+            "elements": _normalize_elements_map(curso.posiciones or {}, build_base_elements(None, firmas=firmas)),
+        }
 
     context_map = {
         "{{ participante_nombre }}": f"{empleado.nombres} {empleado.apellidos}",

@@ -38,39 +38,8 @@
                 data-save-url="{% url 'diplomas:guardar_diseno_visual' diseno.id %}"
                 data-canvas-width="{{ canvas_width }}"
                 data-canvas-height="{{ canvas_height }}"
-                data-background-url="{{ editor_background_url }}"
-                style="background-image:url('{% if editor_background_url %}{{ editor_background_url }}{% endif %}');">
-                {% for item in editor_elements %}
-                  {% if item.key != 'fondo_diploma' and item.visible %}
-                  <div
-                    class="diploma-editor-element {% if item.type == 'imagen' %}is-image{% elif item.type == 'decorativo' %}is-decorative{% else %}is-text{% endif %}"
-                    data-key="{{ item.key }}"
-                    data-label="{{ item.label }}"
-                    data-type="{{ item.type }}"
-                    data-visible="{% if item.visible %}true{% else %}false{% endif %}"
-                    data-token="{{ item.token }}"
-                    data-texto="{{ item.texto }}"
-                    data-image-url="{{ item.image_url }}"
-                    data-font-size="{{ item.font_size }}"
-                    data-color="{{ item.color }}"
-                    data-align="{{ item.align }}"
-                    data-z-index="{{ item.z_index }}"
-                    style="left:{{ item.x }}px; top:{{ item.y }}px; width:{{ item.width }}px; height:{{ item.height }}px; font-size:{{ item.font_size }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index }};">
-                    {% if item.type == 'imagen' %}
-                      <div class="editor-element-content">
-                        {% if item.image_url %}
-                          <img src="{{ item.image_url }}" alt="{{ item.label }}">
-                        {% else %}
-                          <div class="editor-image-placeholder">{{ item.label }}</div>
-                        {% endif %}
-                      </div>
-                    {% else %}
-                      <div class="editor-element-content align-{{ item.align }}">{{ item.texto|default:item.token }}</div>
-                    {% endif %}
-                  </div>
-                  {% endif %}
-                {% endfor %}
-              </div>
+                data-background-url="{{ fondo_url }}"
+                style="background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');"></div>
             </div>
           </div>
         </div>
@@ -168,6 +137,6 @@
   </div>
 </div>
 
-{{ design_definition_json|json_script:"diplomaDesignDefinition" }}
+{{ elementos_json|json_script:"diplomaDesignDefinition" }}
 <script src="{% static 'diplomas_app/js/diploma_editor.js' %}"></script>
 {% endblock %}
