@@ -92,6 +92,7 @@ def modificar_diseno_visual(request, diseno_id):
         "design_definition": definition,
         "design_definition_json": json.dumps(definition),
         "editor_elements": editor_elements,
+        "editor_background_url": definition["elements"]["fondo_diploma"]["image_url"],
         "canvas_width": CANVAS_WIDTH,
         "canvas_height": CANVAS_HEIGHT,
     }

@@ -38,7 +38,8 @@
                 data-save-url="{% url 'diplomas:guardar_diseno_visual' diseno.id %}"
                 data-canvas-width="{{ canvas_width }}"
                 data-canvas-height="{{ canvas_height }}"
-                style="background-image:url('{% if design_definition.elements.fondo_diploma.image_url %}{{ design_definition.elements.fondo_diploma.image_url }}{% endif %}');">
+                data-background-url="{{ editor_background_url }}"
+                style="background-image:url('{% if editor_background_url %}{{ editor_background_url }}{% endif %}');">
                 {% for item in editor_elements %}
                   {% if item.key != 'fondo_diploma' and item.visible %}
                   <div

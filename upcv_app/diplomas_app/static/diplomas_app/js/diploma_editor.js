@@ -7,6 +7,7 @@
 
   const SCALE = 0.28;
   const definition = JSON.parse(payloadNode.textContent || "{}");
+  const backgroundUrl = canvas.dataset.backgroundUrl || "";
 
   function hydrateElementsFromDom() {
     const hydrated = {};
@@ -40,6 +41,28 @@
   const initialElements = definition.elements && Object.keys(definition.elements).length
     ? definition.elements
     : hydrateElementsFromDom();
+
+  if (!initialElements.fondo_diploma) {
+    initialElements.fondo_diploma = {
+      key: "fondo_diploma",
+      label: "Fondo diploma",
+      type: "imagen",
+      visible: true,
+      x: 0,
+      y: 0,
+      width: Number(canvas.dataset.canvasWidth || 3508),
+      height: Number(canvas.dataset.canvasHeight || 2480),
+      font_size: 20,
+      color: "#111827",
+      align: "center",
+      z_index: 0,
+      token: "{{ fondo_diploma }}",
+      texto: "",
+      image_url: backgroundUrl,
+    };
+  } else if (!initialElements.fondo_diploma.image_url && backgroundUrl) {
+    initialElements.fondo_diploma.image_url = backgroundUrl;
+  }
 
   const state = {
     canvasWidth: Number(canvas.dataset.canvasWidth || 3508),
@@ -148,8 +171,11 @@
       })
       .join("");
 
-    canvas.style.backgroundImage = state.elements.fondo_diploma && state.elements.fondo_diploma.image_url
-      ? `url("${state.elements.fondo_diploma.image_url}")`
+    const activeBackground = state.elements.fondo_diploma && state.elements.fondo_diploma.image_url
+      ? state.elements.fondo_diploma.image_url
+      : backgroundUrl;
+    canvas.style.backgroundImage = activeBackground
+      ? `url("${activeBackground}")`
       : "none";
     canvas.innerHTML = elements;
   }
