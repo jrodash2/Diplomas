@@ -30,29 +30,13 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
 
 <div class="canvas-area" id="canvasArea">
   <div class="canvas-content" id="canvasContent">
-    <div id="diploma" class="diploma-container" style="background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');">
-      {% for item in render_elements %}
-        {% if item.key != 'fondo_diploma' and item.visible %}
-        <div
-          class="diploma-item"
-          style="left:{{ item.x }}px; top:{{ item.y }}px; width:{{ item.width }}px; height:{{ item.height }}px; font-size:{{ item.font_size }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index }};">
-          {% if item.type == 'imagen' %}
-            {% if item.image_url %}
-              <img src="{{ item.image_url }}" alt="{{ item.label }}">
-            {% else %}
-              <div class="image-fallback">{{ item.label }}</div>
-            {% endif %}
-          {% else %}
-            <div class="text-block align-{{ item.align }}">{{ item.rendered_value }}</div>
-          {% endif %}
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
+    {% include 'diplomas/partials/diploma_canvas.html' with container_id='diplomaPreviewCanvas' %}
   </div>
 </div>
 
-<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:3508px;height:2480px;"></div>
+<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:3508px;height:2480px;overflow:hidden;">
+  {% include 'diplomas/partials/diploma_canvas.html' with container_id='diplomaExportCanvas' %}
+</div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 let zoom = 0.28;
@@ -74,10 +58,9 @@ document.getElementById('fullscreenBtn').onclick = () => {
 };
 
 document.getElementById('btnDescargarJPG').onclick = async () => {
-  const exportDiv = document.getElementById('diploma_export');
-  exportDiv.innerHTML = document.getElementById('diploma').outerHTML;
+  const exportCanvasNode = document.getElementById('diplomaExportCanvas');
 
-  const cloneImgs = exportDiv.querySelectorAll('img');
+  const cloneImgs = exportCanvasNode.querySelectorAll('img');
   for (const img of cloneImgs) {
     try {
       const temp = new Image();
@@ -92,7 +75,7 @@ document.getElementById('btnDescargarJPG').onclick = async () => {
     } catch (e) {}
   }
 
-  const tempCanvas = await html2canvas(exportDiv.firstElementChild, { scale: 1, useCORS: true, backgroundColor: null });
+  const tempCanvas = await html2canvas(exportCanvasNode, { scale: 1, useCORS: true, backgroundColor: null });
   const finalCanvas = document.createElement('canvas');
   finalCanvas.width = 3508;
   finalCanvas.height = 2480;
