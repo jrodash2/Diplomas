@@ -5,7 +5,7 @@ from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 
 from empleados_app.models import Empleado
 
@@ -83,6 +83,7 @@ def editar_diseno(request, diseno_id):
 
 
 
+@ensure_csrf_cookie
 def modificar_diseno_visual(request, diseno_id):
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
     definition = ensure_design_definition(diseno)

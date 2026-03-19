@@ -100,8 +100,18 @@
   };
 
   function csrfToken() {
-    const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
-    return match ? decodeURIComponent(match[2]) : "";
+    const cookieMatch = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+    if (cookieMatch) {
+      return decodeURIComponent(cookieMatch[2]);
+    }
+
+    const csrfInput = document.querySelector("input[name='csrfmiddlewaretoken']");
+    if (csrfInput && csrfInput.value) {
+      return csrfInput.value;
+    }
+
+    const csrfMeta = document.querySelector("meta[name='csrf-token']");
+    return csrfMeta ? csrfMeta.getAttribute("content") || "" : "";
   }
 
   function clamp(value, min, max) {
@@ -336,11 +346,13 @@
     ui.save.textContent = "Guardando...";
 
     try {
+      const token = csrfToken();
       const response = await fetch(state.saveUrl, {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken(),
+          ...(token ? { "X-CSRFToken": token } : {}),
         },
         body: JSON.stringify({
           definition: {
