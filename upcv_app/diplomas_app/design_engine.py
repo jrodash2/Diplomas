@@ -78,9 +78,17 @@ def _base_element(
     }
 
 
-def build_base_elements(diseno=None):
+def get_signature_pair(curso=None):
+    if curso is not None:
+        curso_firmas = list(curso.firmas.all().order_by("id")[:2])
+        if curso_firmas:
+            return curso_firmas
+    return list(Firma.objects.order_by("id")[:2])
+
+
+def build_base_elements(diseno=None, firmas=None):
     config = ConfiguracionGeneral.objects.first()
-    firmas = list(Firma.objects.order_by("id")[:2])
+    firmas = firmas if firmas is not None else get_signature_pair()
     firma_1 = firmas[0] if len(firmas) > 0 else None
     firma_2 = firmas[1] if len(firmas) > 1 else None
 
@@ -355,8 +363,8 @@ def _normalize_elements_map(raw_map, base_elements):
     return normalized
 
 
-def build_design_definition(diseno, legacy_positions=None):
-    base_elements = build_base_elements(diseno)
+def build_design_definition(diseno, legacy_positions=None, firmas=None):
+    base_elements = build_base_elements(diseno, firmas=firmas)
     current_payload = diseno.estilos if diseno and isinstance(diseno.estilos, dict) else {}
 
     raw_elements = {}
@@ -375,14 +383,14 @@ def build_design_definition(diseno, legacy_positions=None):
     }
 
 
-def normalize_definition_from_elements(diseno, raw_elements):
-    definition = build_design_definition(diseno, None)
-    definition["elements"] = _normalize_elements_map(raw_elements, build_base_elements(diseno))
+def normalize_definition_from_elements(diseno, raw_elements, firmas=None):
+    definition = build_design_definition(diseno, None, firmas=firmas)
+    definition["elements"] = _normalize_elements_map(raw_elements, build_base_elements(diseno, firmas=firmas))
     return definition
 
 
-def ensure_design_definition(diseno):
-    definition = build_design_definition(diseno, None)
+def ensure_design_definition(diseno, firmas=None):
+    definition = build_design_definition(diseno, None, firmas=firmas)
     if diseno and diseno.estilos != definition:
         diseno.estilos = definition
         diseno.save(update_fields=["estilos", "actualizado_en"])
@@ -400,10 +408,10 @@ def build_diploma_render_context(curso_empleado):
     curso = curso_empleado.curso
     empleado = curso_empleado.empleado
     config = ConfiguracionGeneral.objects.first()
-    firmas = list(Firma.objects.order_by("id")[:2])
+    firmas = get_signature_pair(curso)
     firma_1 = firmas[0] if len(firmas) > 0 else None
     firma_2 = firmas[1] if len(firmas) > 1 else None
-    definition = build_design_definition(curso.diseno_diploma, curso.posiciones or {})
+    definition = build_design_definition(curso.diseno_diploma, curso.posiciones or {}, firmas=firmas)
 
     context_map = {
         "{{ participante_nombre }}": f"{empleado.nombres} {empleado.apellidos}",
