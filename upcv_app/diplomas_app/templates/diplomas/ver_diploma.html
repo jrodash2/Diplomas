@@ -15,7 +15,9 @@ body { margin:0; padding:0; background:#f3f3f3; font-family:Arial, Helvetica, sa
 .diploma-container { width:3508px; height:2480px; position:relative; background-size:cover; background-repeat:no-repeat; background-image:url('{% if fondo_url %}{{ fondo_url }}{% else %}{% static 'assets/svg/Diploma.svg' %}{% endif %}'); box-shadow:0 10px 30px rgba(0,0,0,.15); border-radius:10px; overflow:hidden; }
 .diploma-item { position:absolute; white-space:pre-wrap; }
 .logo-block { border:1px dashed #666; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; }
-.firmas-row { display:flex; gap:60px; justify-content:center; }
+.text-block { width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:4px 8px; }
+.text-block.align-left { justify-content:flex-start; }
+.text-block.align-right { justify-content:flex-end; }
 </style>
 </head>
 <body>
@@ -31,30 +33,22 @@ body { margin:0; padding:0; background:#f3f3f3; font-family:Arial, Helvetica, sa
   <div class="canvas-content" id="canvasContent">
     <div id="diploma" class="diploma-container">
       {% for id, item in elementos.items %}
+      {% if item.visible and id != 'fondo_diploma' %}
       <div class="diploma-item"
            style="left:{{ item.x }}px; top:{{ item.y }}px; width:{{ item.width }}px; height:{{ item.height }}px; font-size:{{ item.font_size }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|default:1 }};">
-        {% if item.type == 'logo' %}
-          {% if id == 'logo1' and config.logotipo %}
-            <img src="{{ config.logotipo.url }}" style="width:100%;height:100%;object-fit:contain;">
-          {% elif id == 'logo2' and config.logotipo2 %}
-            <img src="{{ config.logotipo2.url }}" style="width:100%;height:100%;object-fit:contain;">
+        {% if item.type == 'imagen' %}
+          {% if item.image_url %}
+            <img src="{{ item.image_url }}" style="width:100%;height:100%;object-fit:contain;">
           {% else %}
-            <div class="logo-block" style="width:100%;height:100%;">{{ id|upper }}</div>
+            <div class="logo-block" style="width:100%;height:100%;">{{ item.label|default:id|upper }}</div>
           {% endif %}
-        {% elif item.type == 'firmas' %}
-          <div class="firmas-row">
-            {% for firma in curso.firmas.all %}
-              <div style="text-align:center;">
-                {% if firma.firma %}<img src="{{ firma.firma.url }}" style="max-width:260px;">{% endif %}
-                <p><strong>{{ firma.nombre }}</strong></p>
-                <p style="font-size:28px;">{{ firma.rol }}</p>
-              </div>
-            {% endfor %}
-          </div>
+        {% elif item.type == 'decorativo' %}
+          <div class="text-block align-{{ item.align|default:'center' }}">{{ item.rendered_content }}</div>
         {% else %}
-          {{ item.rendered_content }}
+          <div class="text-block align-{{ item.align|default:'center' }}">{{ item.rendered_content }}</div>
         {% endif %}
       </div>
+      {% endif %}
       {% endfor %}
     </div>
   </div>
