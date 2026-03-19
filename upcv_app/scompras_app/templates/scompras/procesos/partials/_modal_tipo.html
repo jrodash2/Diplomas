@@ -1,0 +1,31 @@
+<div class="modal fade" id="modalTipo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        {% include 'components/modal_header_upcv.html' with title='Nuevo tipo de proceso' title_id='tipoModalTitle' subtitle='Registre o actualice la información del tipo de proceso.' %}
+
+        <form id="tipoForm" data-url="">
+          {% csrf_token %}
+          <div class="alert alert-danger d-none" id="tipoFormErrors"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="tipoNombre">Nombre</label>
+            <input type="text" class="form-control" id="tipoNombre" name="nombre" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="tipoCodigo">Código</label>
+            <input type="text" class="form-control" id="tipoCodigo" name="codigo">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="tipoActivo" name="activo" checked>
+            <label class="form-check-label" for="tipoActivo">Activo</label>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="tipoForm" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,247 @@
+{% extends 'empleados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <!-- Título y Breadcrumb -->
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0"> {% if empleado.imagen %}
+                    <img src="{{ empleado.imagen.url }}" alt="Foto de {{ empleado.nombres }}" class="img-thumbnail" style="width: 70px; height: 70px; object-fit: cover; border-radius: 50%;">
+                  {% else %}
+                    <p><em>Sin foto disponible</em></p>
+                  {% endif %} {{ empleado.nombres }} {{ empleado.apellidos }}</h4>
+          
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Empleados</li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'empleados:contratos' empleado.id %}">Contratos</a>
+            </li>
+            <li class="breadcrumb-item active">Crear Contrato</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li class="message {{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+  <!-- Formulario de contrato -->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">Crear Contrato</h5>
+            </div>
+            <div class="card-body">
+
+          
+<div class="mb-3 text-end">
+  <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#modalCrearSede">
+    + Nueva Sede
+  </button>
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearPuesto">
+    + Nuevo Puesto
+  </button>
+</div>
+
+
+              <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                  {% for field in form %}
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                          <div class="text-danger">
+                            {{ field.errors }}
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-footer text-end">
+                  <button class="btn btn-primary" type="submit">Guardar Contrato</button>
+                  <a href="{% url 'empleados:contratos' empleado.id %}" class="btn" style="background-color: #0068ab; color: white; ms-2">Cancelar</a>
+                </div>
+              </form>
+
+<!-- Modal Crear Sede -->
+<div class="modal fade" id="modalCrearSede" tabindex="-1" aria-labelledby="modalCrearSedeLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nueva Sede</h5>
+          <p>Complete los campos para agregar una nueva sede.</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Imagen decorativa" />
+        </div>
+
+        <!-- Formulario -->
+        <form method="POST" action="{% url 'empleados:crear_sede' %}">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label for="id_nombre" class="form-label">Nombre de la sede</label>
+              {{ sede_form.nombre }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="id_direccion" class="form-label">Dirección</label>
+              {{ sede_form.direccion }}
+            </div>
+          </div>
+
+          <!-- Botón -->
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar Sede</button>
+<button type="button" class="btn" style="background-color: #0068ab; color: white;" data-bs-dismiss="modal">Cancelar</button>
+
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Crear Puesto -->
+<div class="modal fade" id="modalCrearPuesto" tabindex="-1" aria-labelledby="modalCrearPuestoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nuevo Puesto</h5>
+          <p>Complete los campos para registrar un nuevo puesto de trabajo.</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Imagen decorativa" />
+        </div>
+
+        <!-- Formulario -->
+        <form method="POST" action="{% url 'empleados:crear_puesto' %}">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label for="id_nombre" class="form-label">Nombre del puesto</label>
+              {{ puesto_form.nombre }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="id_descripcion" class="form-label">Descripción</label>
+              {{ puesto_form.descripcion }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="id_sede" class="form-label">Sede a la que pertenece</label>
+              {{ puesto_form.sede }}
+            </div>
+          </div>
+
+          <!-- Botón -->
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar Puesto</button>
+            <button type="button" class="btn" style="background-color: #0068ab; color: white;" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+            </div> <!-- card-body -->
+          </div> <!-- card -->
+        </div> <!-- col -->
+      </div> <!-- row -->
+    </div> <!-- edit-profile -->
+  </div> <!-- container-fluid -->
+</div> <!-- page-body -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const sedeSelect = document.getElementById('id_sede');
+  const puestoSelect = document.getElementById('id_puesto');
+
+  sedeSelect.addEventListener('change', function () {
+    const sedeId = this.value;
+
+    fetch(`/empleados/ajax/puestos/?sede_id=${sedeId}`)
+      .then(response => response.json())
+      .then(data => {
+        puestoSelect.innerHTML = ''; // Limpiar opciones anteriores
+
+        if (data.length === 0) {
+          const option = document.createElement('option');
+          option.text = 'No hay puestos disponibles';
+          option.value = '';
+          puestoSelect.appendChild(option);
+        } else {
+          const defaultOption = document.createElement('option');
+          defaultOption.text = 'Seleccione un puesto';
+          defaultOption.value = '';
+          puestoSelect.appendChild(defaultOption);
+
+          data.forEach(puesto => {
+            const option = document.createElement('option');
+            option.value = puesto.id;
+            option.text = puesto.nombre;
+            puestoSelect.appendChild(option);
+          });
+        }
+      });
+  });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sedeSelect = document.getElementById('id_sede');
+    const puestoSelect = document.getElementById('id_puesto');
+
+    function togglePuesto() {
+        if (sedeSelect.value) {
+            puestoSelect.removeAttribute('disabled');
+        } else {
+            puestoSelect.setAttribute('disabled', 'disabled');
+            puestoSelect.selectedIndex = 0; // Opcional: vuelve al primer valor
+        }
+    }
+
+    // Inicializar estado al cargar
+    togglePuesto();
+
+    // Activar al cambiar
+    sedeSelect.addEventListener('change', togglePuesto);
+});
+</script>
+
+{% endblock %}

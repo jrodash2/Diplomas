@@ -1,0 +1,31 @@
+<h2>{{ departamento.nombre }}</h2>
+<p>{{ departamento.descripcion }}</p>
+
+<hr>
+
+{% if not es_presupuesto %}
+  <h4>Crear nueva solicitud de compra</h4>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Enviar solicitud</button>
+  </form>
+{% endif %}
+
+<hr>
+
+<h4>Solicitudes anteriores</h4>
+<ul>
+  {% for solicitud in solicitudes %}
+    <li>
+      {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }} - {{ solicitud.descripcion|truncatewords:10 }} 
+      {% if solicitud.aprobada %}
+        <span class="badge bg-success">Aprobada</span>
+      {% else %}
+        <span class="badge bg-warning text-dark">Pendiente</span>
+      {% endif %}
+    </li>
+  {% empty %}
+    <p>No hay solicitudes registradas.</p>
+  {% endfor %}
+</ul>

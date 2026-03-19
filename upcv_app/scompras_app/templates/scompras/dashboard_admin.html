@@ -1,0 +1,184 @@
+{% extends 'scompras/base.html' %}
+{% load static money %}
+
+{% block title %}Dashboard Administrativo{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-8">
+          <h2 class="mb-0">Dashboard Administrativo</h2>
+          <p class="text-muted mb-0">Visión institucional de solicitudes y presupuesto</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-3 col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <p class="text-muted mb-1">Presupuesto activo</p>
+            <h5 class="fw-bold mb-0">{% if presupuesto_resumen %}{{ presupuesto_resumen.anio }}{% else %}Sin activar{% endif %}</h5>
+            <small class="text-muted">Solo se muestran cifras del presupuesto activo</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-9 col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <p class="text-muted mb-1">Ejecución presupuestaria</p>
+            <div class="row">
+              <div class="col-sm-3">
+                <p class="mb-1 text-muted">Inicial + Modificado</p>
+                <h5 class="fw-bold">
+                  {% if presupuesto_resumen %}
+                    {{ presupuesto_resumen.total_inicial|add:presupuesto_resumen.total_modificado|money_gtq }}
+                  {% else %}
+                    {{ 0|money_gtq }}
+                  {% endif %}
+                </h5>
+              </div>
+              <div class="col-sm-3">
+                <p class="mb-1 text-muted">Reservado</p>
+                <h5 class="fw-bold text-primary">
+                  {% if presupuesto_resumen %}
+                    {{ presupuesto_resumen.total_reservado|money_gtq }}
+                  {% else %}
+                    {{ 0|money_gtq }}
+                  {% endif %}
+                </h5>
+              </div>
+              <div class="col-sm-3">
+                <p class="mb-1 text-muted">Ejecutado</p>
+                <h5 class="fw-bold text-success">
+                  {% if presupuesto_resumen %}
+                    {{ presupuesto_resumen.total_ejecutado|money_gtq }}
+                  {% else %}
+                    {{ 0|money_gtq }}
+                  {% endif %}
+                </h5>
+              </div>
+              <div class="col-sm-3">
+                <p class="mb-1 text-muted">Disponible</p>
+                <h5 class="fw-bold text-warning">
+                  {% if presupuesto_resumen %}
+                    {{ presupuesto_resumen.total_disponible|money_gtq }}
+                  {% else %}
+                    {{ 0|money_gtq }}
+                  {% endif %}
+                </h5>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Solicitudes por estado</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="chartEstados" height="220" style="max-height:220px;"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Solicitudes por año</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="chartAnio" height="220" style="max-height:220px;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Solicitudes por departamento</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="chartDepartamento"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Presupuesto por renglón</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="chartRenglones"></canvas>
+            {% if not presupuesto_resumen %}
+            <p class="text-muted small mb-0 mt-2">Activa un presupuesto anual para ver el desglose.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const estados = {{ solicitudes_estado_json|safe }} || [];
+    const labelMap = { Rechazada: 'Anulada' };
+    const estadoLabels = estados.map(item => labelMap[item.estado] || item.estado);
+    const estadoValores = estados.map(item => item.total);
+
+    const anios = {{ solicitudes_anio_json|safe }} || [];
+    const anioLabels = anios.map(item => item.anio);
+    const anioValores = anios.map(item => item.total);
+
+    const departamentos = {{ solicitudes_departamento_json|safe }} || [];
+    const deptoLabels = departamentos.map(item => item['seccion__departamento__nombre'] || 'Sin departamento');
+    const deptoValores = departamentos.map(item => item.total);
+
+    const renglones = {{ renglones_resumen_json|safe }} || [];
+    const renglonLabels = renglones.map(item => item.label);
+    const renglonValores = renglones.map(item => Number(item.disponible));
+
+    const buildChart = (id, type, labels, data, color, extraOptions = {}) => {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+      new Chart(ctx, {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: color,
+            borderColor: '#e5e7eb',
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: type === 'bar' ? { y: { beginAtZero: true } } : {},
+          ...extraOptions,
+        }
+      });
+    };
+
+    buildChart('chartEstados', 'doughnut', estadoLabels, estadoValores, ['#0ea5e9', '#22c55e', '#ef4444'], {
+      maintainAspectRatio: false,
+    });
+    buildChart('chartAnio', 'bar', anioLabels, anioValores, '#0ea5e9', {
+      maintainAspectRatio: false,
+    });
+    buildChart('chartDepartamento', 'bar', deptoLabels, deptoValores, '#22c55e');
+    buildChart('chartRenglones', 'bar', renglonLabels, renglonValores, '#f59e0b');
+  });
+</script>
+{% endblock %}

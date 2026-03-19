@@ -1,0 +1,596 @@
+{% load custom_filters static %}
+<div class="pc-timeline mt-3">
+  <div class="pc-timeline-header">
+    <div>
+      <h5 class="mb-1 text-dark">Proceso de compra</h5>
+      <small class="text-muted">Seguimiento por pasos</small>
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mt-2 w-100">
+        <div class="small text-muted">
+          <div>
+            <span class="fw-semibold text-dark">Tipo de proceso:</span>
+            {% if solicitud.tipo_proceso and solicitud.tipo_proceso|stringformat:"s" != "" %}
+              {{ solicitud.tipo_proceso.nombre }}
+            {% else %}
+              <span class="text-muted">En análisis</span>
+            {% endif %}
+          </div>
+
+          {% if solicitud.subtipo_proceso %}
+            <div>
+              <span class="fw-semibold text-dark">Subtipo:</span>
+              {{ solicitud.subtipo_proceso.nombre }}
+            </div>
+          {% elif solicitud.subtipo_baja_cuantia %}
+            <div>
+              <span class="fw-semibold text-dark">Subtipo:</span>
+              {{ solicitud.get_subtipo_baja_cuantia_display }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="small text-muted text-end">
+          <div>
+            <span class="fw-semibold text-dark">Analista:</span>
+            {% if solicitud.analista_asignado %}
+              {{ solicitud.analista_asignado.get_full_name|default:solicitud.analista_asignado.username }}
+            {% else %}
+              <span class="text-muted">Sin asignar</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pc-timeline-actions d-flex gap-2">
+      {% if can_assign_proceso %}
+      <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarAnalista">
+        Asignar analista
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsignarTipo">
+        Asignar tipo de proceso
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pc-timeline-body">
+    {% if not solicitud.tipo_proceso %}
+      <div class="alert alert-info mb-0">Tipo de proceso en análisis.</div>
+    {% else %}
+      <div class="pc-stepper-wrap">
+        <div class="pc-stepper" id="pc-stepper">
+          {% for paso in pasos_catalogo %}
+            {% with estado=pasos_estado|get_item:paso.id %}
+              {% if estado and estado.completado %}
+                {% with estado_label="Completado" estado_clase="completed" estado_icono="✓" %}
+                  <div
+                    class="pc-step {{ estado_clase }}{% if not puede_editar_proceso %} pc-disabled{% endif %}"
+                    data-step-index="{{ forloop.counter0 }}"
+                    {% if puede_editar_proceso %}
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPaso"
+                    {% endif %}
+                    aria-label="Paso {{ paso.numero }} - {{ paso.titulo }}. Estado: {{ estado_label }}"
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="{% if not puede_editar_proceso %}true{% else %}false{% endif %}"
+                    data-step-id="{{ paso.id }}"
+                    data-step-numero="{{ paso.numero }}"
+                    data-step-estado="{{ estado_label }}"
+                    data-paso-id="{{ paso.id }}"
+                    data-paso-titulo="{{ paso.titulo }}"
+                    data-paso-numero="{{ paso.numero }}"
+                    data-paso-nota="{{ estado.nota|default_if_none:'' }}"
+                    data-paso-completado="{% if estado and estado.completado %}1{% else %}0{% endif %}"
+                    style="animation-delay: {{ forloop.counter|add:-1 }}0ms"
+                  >
+                    <div
+                      class="pc-dot"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      data-bs-html="true"
+                      title="<div><strong>Paso {{ paso.numero }}</strong></div><div>{{ paso.titulo }}</div>{% if paso.duracion_referencia %}<div class='text-muted'>{{ paso.duracion_referencia }}</div>{% endif %}<div>Estado: {{ estado_label }}</div>"
+                    >
+                      {{ estado_icono }}
+                    </div>
+                  </div>
+                {% endwith %}
+              {% elif paso.numero == solicitud.paso_actual %}
+                {% with estado_label="En curso" estado_clase="current" estado_icono=paso.numero %}
+                  <div
+                    class="pc-step {{ estado_clase }}{% if not puede_editar_proceso %} pc-disabled{% endif %}"
+                    data-step-index="{{ forloop.counter0 }}"
+                    {% if puede_editar_proceso %}
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPaso"
+                    {% endif %}
+                    aria-label="Paso {{ paso.numero }} - {{ paso.titulo }}. Estado: {{ estado_label }}"
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="{% if not puede_editar_proceso %}true{% else %}false{% endif %}"
+                    data-step-id="{{ paso.id }}"
+                    data-step-numero="{{ paso.numero }}"
+                    data-step-estado="{{ estado_label }}"
+                    data-paso-id="{{ paso.id }}"
+                    data-paso-titulo="{{ paso.titulo }}"
+                    data-paso-numero="{{ paso.numero }}"
+                    data-paso-nota="{{ estado.nota|default_if_none:'' }}"
+                    data-paso-completado="{% if estado and estado.completado %}1{% else %}0{% endif %}"
+                    style="animation-delay: {{ forloop.counter|add:-1 }}0ms"
+                  >
+                    <div
+                      class="pc-dot"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      data-bs-html="true"
+                      title="<div><strong>Paso {{ paso.numero }}</strong></div><div>{{ paso.titulo }}</div>{% if paso.duracion_referencia %}<div class='text-muted'>{{ paso.duracion_referencia }}</div>{% endif %}<div>Estado: {{ estado_label }}</div>"
+                    >
+                      {{ estado_icono }}
+                    </div>
+                  </div>
+                {% endwith %}
+              {% else %}
+                {% with estado_label="Pendiente" estado_clase="pending" estado_icono=paso.numero %}
+                  <div
+                    class="pc-step {{ estado_clase }}{% if not puede_editar_proceso %} pc-disabled{% endif %}"
+                    data-step-index="{{ forloop.counter0 }}"
+                    {% if puede_editar_proceso %}
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPaso"
+                    {% endif %}
+                    aria-label="Paso {{ paso.numero }} - {{ paso.titulo }}. Estado: {{ estado_label }}"
+                    role="button"
+                    tabindex="0"
+                    aria-disabled="{% if not puede_editar_proceso %}true{% else %}false{% endif %}"
+                    data-step-id="{{ paso.id }}"
+                    data-step-numero="{{ paso.numero }}"
+                    data-step-estado="{{ estado_label }}"
+                    data-paso-id="{{ paso.id }}"
+                    data-paso-titulo="{{ paso.titulo }}"
+                    data-paso-numero="{{ paso.numero }}"
+                    data-paso-nota="{{ estado.nota|default_if_none:'' }}"
+                    data-paso-completado="{% if estado and estado.completado %}1{% else %}0{% endif %}"
+                    style="animation-delay: {{ forloop.counter|add:-1 }}0ms"
+                  >
+                    <div
+                      class="pc-dot"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      data-bs-html="true"
+                      title="<div><strong>Paso {{ paso.numero }}</strong></div><div>{{ paso.titulo }}</div>{% if paso.duracion_referencia %}<div class='text-muted'>{{ paso.duracion_referencia }}</div>{% endif %}<div>Estado: {{ estado_label }}</div>"
+                    >
+                      {{ estado_icono }}
+                    </div>
+                  </div>
+                {% endwith %}
+              {% endif %}
+            {% endwith %}
+          {% empty %}
+            <div class="text-muted">No hay pasos configurados para este tipo.</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .pc-timeline {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, .06);
+    padding: 20px;
+  }
+
+  .pc-timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 12px;
+  }
+
+  .pc-timeline-actions .btn-outline-primary {
+    color: #0068ab;
+    border-color: #0068ab;
+  }
+
+  .pc-timeline-actions .btn-outline-secondary {
+    color: #064b78;
+    border-color: #064b78;
+  }
+
+  .pc-timeline-body {
+    padding-top: 16px;
+  }
+
+  .pc-stepper-wrap {
+    display: flex;
+    justify-content: center;
+  }
+
+  .pc-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .pc-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    animation: pcFadeUp .35s ease both;
+  }
+
+  .pc-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    border: 2px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #0f172a;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+
+  .pc-step:hover .pc-dot {
+    transform: scale(1.06);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .12);
+  }
+
+  .pc-step.pc-disabled {
+    opacity: .6;
+  }
+
+  .pc-step.completed .pc-dot {
+    background: #198754;
+    color: #fff;
+    border-color: #157347;
+  }
+
+  .pc-step.current .pc-dot {
+    background: #0068ab;
+    color: #fff;
+    border-color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(0, 104, 171, .20);
+  }
+
+  .pc-step.pending .pc-dot {
+    background: #e5e7eb;
+    color: #111827;
+    border-color: #cbd5e1;
+  }
+
+  .pc-step.inactive .pc-dot {
+    background: #fff;
+    border: 2px dashed #e5e7eb;
+    color: #64748b;
+  }
+
+  .pc-step:not(:last-child)::after {
+    content: "";
+    display: block;
+    width: 54px;
+    height: 6px;
+    border-radius: 999px;
+    margin: 0 10px;
+    background: #e5e7eb;
+  }
+
+  .pc-step.completed:not(:last-child)::after {
+    background: #198754;
+  }
+
+  .pc-step.current:not(:last-child)::after {
+    background: #0068ab;
+  }
+
+  .pc-stepper.pc-wrapped .pc-step::after {
+    display: none;
+  }
+
+  @keyframes pcFadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .pc-stepper .pc-step::after {
+      display: none;
+    }
+  }
+
+
+
+</style>
+
+{% if can_assign_proceso %}
+<div class="modal fade" id="modalAsignarAnalista" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Asignar - </span>Analista</h5>
+          <p>Seleccione el analista responsable para esta solicitud.</p>
+        </div>
+
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Logo" style="max-width:120px;">
+        </div>
+
+        <form id="formAsignarAnalista" data-url="{% url 'scompras:asignar_analista_solicitud' solicitud.id %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Analista</label>
+            <select name="analista_user_id" class="form-select" required>
+              <option value="">Seleccione...</option>
+              {% for analista in analistas %}
+                <option value="{{ analista.id }}" {% if solicitud.analista_asignado_id == analista.id %}selected{% endif %}>
+                  {{ analista.get_full_name|default:analista.username }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="formAsignarAnalista" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalAsignarTipo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Asignar - </span>Tipo de proceso</h5>
+          <p>Defina el tipo y subtipo del proceso de compra.</p>
+        </div>
+
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Logo" style="max-width:120px;">
+        </div>
+
+        <form id="formAsignarTipo" data-url="{% url 'scompras:asignar_tipo_proceso_solicitud' solicitud.id %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select name="tipo_id" id="tipoProcesoSelect" class="form-select" required>
+              <option value="">Seleccione...</option>
+              {% for tipo in tipos_proceso %}
+                <option value="{{ tipo.id }}" {% if solicitud.tipo_proceso_id == tipo.id %}selected{% endif %}>
+                  {{ tipo.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subtipo</label>
+            <select name="subtipo_id" id="subtipoProcesoSelect" class="form-select">
+              <option value="">Sin subtipo</option>
+              {% for subtipo in subtipos_proceso %}
+                <option value="{{ subtipo.id }}" data-tipo="{{ subtipo.tipo_id }}" {% if solicitud.subtipo_proceso_id == subtipo.id %}selected{% endif %}>
+                  {{ subtipo.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="formAsignarTipo" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="modalPaso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0" id="modalPasoTitulo"><span>Paso - </span>Actualizar estado</h5>
+          <p>Marque completado y agregue una nota para este paso.</p>
+        </div>
+
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Logo" style="max-width:120px;">
+        </div>
+
+        <form id="formPaso" data-url-template="{% url 'scompras:toggle_paso_solicitud' solicitud.id 0 %}">
+          {% csrf_token %}
+          <input type="hidden" name="paso_id" id="pasoIdInput">
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="pasoCompletadoInput">
+            <label class="form-check-label" for="pasoCompletadoInput">Marcar como completado</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nota</label>
+            <textarea name="nota" id="pasoNotaInput" class="form-control" rows="3"></textarea>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="formPaso" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  };
+
+  const handlePostForm = (form, onSuccess) => {
+    const url = form.dataset.url;
+    const formData = new FormData(form);
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        onSuccess();
+      } else {
+        alert('No fue posible guardar los cambios.');
+      }
+    })
+    .catch(() => alert('No fue posible guardar los cambios.'));
+  };
+
+  const asignarAnalistaForm = document.getElementById('formAsignarAnalista');
+  if (asignarAnalistaForm) {
+    asignarAnalistaForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      handlePostForm(asignarAnalistaForm, () => window.location.reload());
+    });
+  }
+
+  const asignarTipoForm = document.getElementById('formAsignarTipo');
+  if (asignarTipoForm) {
+    asignarTipoForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      handlePostForm(asignarTipoForm, () => window.location.reload());
+    });
+  }
+
+  const subtipoSelect = document.getElementById('subtipoProcesoSelect');
+  const tipoSelect = document.getElementById('tipoProcesoSelect');
+  const filtrarSubtipos = () => {
+    if (!subtipoSelect || !tipoSelect) return;
+    const tipoId = tipoSelect.value;
+    Array.from(subtipoSelect.options).forEach(option => {
+      if (!option.value) return;
+      option.hidden = option.dataset.tipo !== tipoId;
+      if (option.hidden && option.selected) option.selected = false;
+    });
+  };
+  if (tipoSelect) {
+    tipoSelect.addEventListener('change', filtrarSubtipos);
+    filtrarSubtipos();
+  }
+
+  const modalPaso = document.getElementById('modalPaso');
+  if (modalPaso) {
+    modalPaso.addEventListener('show.bs.modal', (event) => {
+      const button = event.relatedTarget;
+      if (!button) return;
+      const pasoId = button.getAttribute('data-paso-id');
+      const titulo = button.getAttribute('data-paso-titulo');
+      const numero = button.getAttribute('data-paso-numero');
+      const nota = button.getAttribute('data-paso-nota') || '';
+      const completado = button.getAttribute('data-paso-completado') === '1';
+
+      document.getElementById('modalPasoTitulo').textContent = `Paso ${numero}: ${titulo}`;
+      document.getElementById('pasoIdInput').value = pasoId;
+      document.getElementById('pasoNotaInput').value = nota;
+      document.getElementById('pasoCompletadoInput').checked = completado;
+    });
+  }
+
+  const formPaso = document.getElementById('formPaso');
+  if (formPaso) {
+    formPaso.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const pasoId = document.getElementById('pasoIdInput').value;
+      const urlTemplate = formPaso.dataset.urlTemplate;
+      const url = urlTemplate.replace('/0/', `/${pasoId}/`);
+      const formData = new FormData(formPaso);
+      if (!document.getElementById('pasoCompletadoInput').checked) {
+        formData.append('completado', '0');
+      }
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.reload();
+        } else {
+          alert('No fue posible actualizar el paso.');
+        }
+      })
+      .catch(() => alert('No fue posible actualizar el paso.'));
+    });
+  }
+
+  const initTooltips = () => {
+    if (typeof bootstrap !== 'undefined') {
+      const tooltipTriggerList = [].slice.call(
+        document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      );
+      tooltipTriggerList.map((el) => new bootstrap.Tooltip(el));
+    }
+  };
+
+  let resizeTimer;
+  const handleResize = () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(updateWrap, 150);
+  };
+
+  const updateWrap = () => {
+    const stepper = document.getElementById('pc-stepper');
+    if (!stepper) return;
+    const steps = Array.from(stepper.querySelectorAll('.pc-step'));
+    const tops = new Set(steps.map((step) => step.offsetTop));
+    if (tops.size > 1) {
+      stepper.classList.add('pc-wrapped');
+    } else {
+      stepper.classList.remove('pc-wrapped');
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initTooltips();
+      updateWrap();
+    });
+  } else {
+    initTooltips();
+    updateWrap();
+  }
+
+  window.addEventListener('resize', handleResize);
+</script>

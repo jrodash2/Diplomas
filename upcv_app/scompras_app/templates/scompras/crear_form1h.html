@@ -1,0 +1,309 @@
+{% extends 'scompras/base.html' %} {% load static %} {% block content %}
+
+<!-- Cargar jQuery y DataTables -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Lista de Formularios 1H</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="">
+                <svg class="stroke-icon">
+                  <use
+                    href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"
+                  ></use></svg></a>
+            </li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Formularios 1H</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts-->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-body">
+              <div class="text-end">
+                <!-- Botón para abrir el modal -->
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#crearForm1hModal"
+                >
+                  Crear Formulario 1H
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Tabla para mostrar los formularios 1H -->
+            <div class="mt-4">
+              <h5>Formularios 1H Creados</h5>
+              <div class="table-responsive custom-scrollbar">
+                <table class="display" id="basic-9">
+                  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Proveedor</th>
+    <th>Número de Factura</th>
+    <th>Número de Serie</th>
+    <th>Fecha de Factura</th>
+    <th>Estado</th>  <!-- Nueva columna -->
+    <th>Acciones</th>
+  </tr>
+</thead>
+<tbody>
+  {% for registro in form1h_list %}
+  <tr>
+    <td>{{ registro.id }}</td>
+    <td>{{ registro.proveedor }}</td>
+    <td>{{ registro.numero_factura }}</td>
+    <td>{{ registro.numero_serie_completo }}</td>
+    <td>{{ registro.fecha_factura }}</td>
+    <td>
+{% if registro.estado == 'confirmado' %}
+    ✅
+{% elif registro.estado == 'anulado' %}
+    ❌
+{% else %}
+    ⏳
+{% endif %}
+
+    </td>
+    <td>
+      <a href="{% url 'scompras:agregar_detalle_factura' registro.id %}" class="btn btn-primary btn-sm">
+        Detalles
+      </a>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+<tfoot>
+  <tr>
+    <th>ID</th>
+    <th>Proveedor</th>
+    <th>Número de Factura</th>
+    <th>Número de Serie</th>
+    <th>Fecha de Factura</th>
+    <th>Estado</th>  <!-- Pie de tabla también -->
+    <th>Acciones</th>
+  </tr>
+</tfoot>
+
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Container-fluid Ends-->
+</div>
+
+
+<!-- Modal para Crear Formulario 1H -->
+<div
+  class="modal fade"
+  id="crearForm1hModal"
+  tabindex="-1"
+  aria-labelledby="crearForm1hModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="Riho-demo-img">
+          <!-- Título principal -->
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Crear - </span>Formulario 1H</h5>
+            <p>
+              Por favor, complete el formulario para crear un nuevo Formulario
+              1H.
+            </p>
+          </div>
+          <!-- Imagen decorativa -->
+          <div class="overflow-hidden text-center mb-4">
+            <img
+              class="img-fluid"
+              src="{% static 'assets/images/logo/logo.png' %}"
+              alt="imagen decorativa"
+            />
+          </div>
+          <!-- Formulario para Crear Formulario 1H -->
+          <form method="post" id="form1h-form">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="id_proveedor" class="form-label">Proveedor</label>
+                {{ form.proveedor }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_nit_proveedor" class="form-label"
+                  >NIT del Proveedor</label
+                >
+                <input
+                  type="text"
+                  id="id_nit_proveedor"
+                  name="nit_proveedor"
+                  class="form-control"
+                  placeholder="Ingresa el NIT del proveedor"
+                />
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label for="id_telefono_proveedor" class="form-label"
+                  >Teléfono del Proveedor</label
+                >
+                <input
+                  type="text"
+                  id="id_telefono_proveedor"
+                  name="telefono_proveedor"
+                  class="form-control"
+                  readonly
+                />
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label for="id_direccion_proveedor" class="form-label"
+                  >Dirección del Proveedor</label
+                >
+                <input
+                  type="text"
+                  id="id_direccion_proveedor"
+                  name="direccion_proveedor"
+                  class="form-control"
+                  readonly
+                />
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="id_numero_factura" class="form-label"
+                  >Número de Factura</label
+                >
+                {{ form.numero_factura }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_dependencia" class="form-label"
+                  >Dependencia</label
+                >
+                {{ form.dependencia }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_programa" class="form-label">Programa</label>
+                {{ form.programa }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_orden_compra" class="form-label"
+                  >Orden de Compra</label
+                >
+                {{ form.orden_compra }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="id_patente" class="form-label">Patente</label>
+                {{ form.patente }}
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label for="id_fecha_factura" class="form-label"
+                  >Fecha de Factura</label
+                >
+                {{ form.fecha_factura }}
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+  <label for="id_cantidad_detalles" class="form-label">Cantidad de Detalles</label>
+  <input
+    type="number"
+    id="id_cantidad_detalles"
+    name="cantidad_detalles"
+    class="form-control"
+    min="1"
+    placeholder="Ej. 5"
+    required
+  />
+</div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Evento para buscar por NIT
+  document
+    .getElementById("id_nit_proveedor")
+    .addEventListener("keypress", function (e) {
+      if (e.keyCode === 13) {
+        e.preventDefault();
+        const nit = this.value.trim();
+
+        if (nit.length > 0) {
+          fetch(`/scompras/buscar-proveedor-nit/${nit}/`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                alert(data.error);
+              } else {
+                document.getElementById("id_proveedor").value =
+                  data.proveedor_id;
+                document.getElementById("id_telefono_proveedor").value =
+                  data.telefono;
+                document.getElementById("id_direccion_proveedor").value =
+                  data.direccion;
+              }
+            })
+            .catch((error) => {
+              console.error("Error al buscar el proveedor por NIT:", error);
+            });
+        }
+      }
+    });
+
+  // Evento para buscar por proveedor (select)
+  document
+    .getElementById("id_proveedor")
+    .addEventListener("change", function () {
+      const proveedorId = this.value;
+      if (proveedorId) {
+        fetch(`/scompras/buscar-proveedor-id/${proveedorId}/`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(data.error);
+            } else {
+              document.getElementById("id_telefono_proveedor").value =
+                data.telefono;
+              document.getElementById("id_direccion_proveedor").value =
+                data.direccion;
+              document.getElementById("id_nit_proveedor").value = data.nit;
+            }
+          })
+          .catch((error) => {
+            console.error("Error al buscar el proveedor por ID:", error);
+          });
+      }
+    });
+</script>
+
+{% endblock %}

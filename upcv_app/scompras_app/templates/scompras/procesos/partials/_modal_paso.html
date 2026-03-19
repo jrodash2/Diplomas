@@ -1,0 +1,47 @@
+<div class="modal fade" id="modalPaso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        {% include 'components/modal_header_upcv.html' with title='Nuevo paso' title_id='pasoModalTitle' subtitle='Defina el orden y contenido del paso del proceso de compra.' %}
+
+        <form id="pasoForm" data-url="">
+          {% csrf_token %}
+          <input type="hidden" name="tipo" id="pasoTipo" value="{{ tipo.id }}">
+          <input type="hidden" name="subtipo" id="pasoSubtipo" value="{% if subtipo %}{{ subtipo.id }}{% endif %}">
+          <div class="alert alert-danger d-none" id="pasoFormErrors"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <input type="text" class="form-control" value="{{ tipo.nombre }}" readonly>
+          </div>
+          {% if subtipo %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subtipo</label>
+            <input type="text" class="form-control" value="{{ subtipo.nombre }}" readonly>
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="pasoNumero">Número</label>
+            <input type="number" class="form-control" id="pasoNumero" name="numero" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="pasoTitulo">Título</label>
+            <input type="text" class="form-control" id="pasoTitulo" name="titulo" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="pasoDuracion">Duración referencia</label>
+            <input type="text" class="form-control" id="pasoDuracion" name="duracion_referencia">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="pasoActivo" name="activo" checked>
+            <label class="form-check-label" for="pasoActivo">Activo</label>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="pasoForm" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

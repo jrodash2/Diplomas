@@ -1,0 +1,76 @@
+{% extends 'scompras/base.html' %}
+{% load static money %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <div>
+        <h4>Ejecutar CDP #{{ cdp.id }}</h4>
+        <p class="text-muted mb-0">Solicitud {{ cdp.solicitud.codigo_correlativo }} - {{ cdp.renglon.label_compacto }}</p>
+      </div>
+      <a class="btn btn-light" href="{% url 'scompras:detalle_solicitud' cdp.solicitud.id %}">Volver al detalle</a>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Confirmación de ejecución</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Monto a ejecutar</label>
+                {{ form.monto }}
+              </div>
+              <div class="form-check mb-3">
+                {{ form.confirmar }}
+                <label class="form-check-label">{{ form.confirmar.label }}</label>
+                <div class="form-text">{{ form.confirmar.help_text }}</div>
+                {% if form.confirmar.errors %}
+                  <div class="text-danger small">{{ form.confirmar.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+              <button type="submit" class="btn btn-primary">Ejecutar y generar CDO</button>
+              <a class="btn btn-link" href="{% url 'scompras:detalle_solicitud' cdp.solicitud.id %}">Cancelar</a>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Estado presupuestario</h5>
+          </div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Reservado en este CDP
+                <span class="badge bg-primary rounded-pill">{{ cdp.monto|money_gtq }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Reservado total renglón
+                <span class="badge bg-secondary rounded-pill">{{ cdp.renglon.monto_reservado|money_gtq }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Ejecutado total renglón
+                <span class="badge bg-info rounded-pill">{{ cdp.renglon.monto_ejecutado|money_gtq }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Disponible renglón
+                <span class="badge bg-success rounded-pill">{{ cdp.renglon.monto_disponible|money_gtq }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

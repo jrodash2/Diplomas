@@ -1,0 +1,77 @@
+{% load static %}
+<!-- Fila 1 -->
+<div class="col-xl-3 col-sm-6 dashboard-card">
+  <div class="card height-equal">
+    <div class="card-body">
+      <ul class="product-costing">
+        <li class="product-cost">
+          <div class="product-icon bg-black">
+            <svg><use href="{% static 'assets/svg/icon-sprite.svg#activity' %}"></use></svg>
+          </div>
+          <div>
+            <span class="f-w-500 f-14 mb-0">Total de Tickets</span>
+            <h2 class="f-w-600">{{ total_tickets }}</h2>
+          </div>
+        </li>
+        <li><span class="f-light f-14 f-w-500">Tenemos un total de {{ total_tickets }} tickets.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="col-xl-3 col-sm-6 dashboard-card">
+  <div class="card height-equal">
+    <div class="card-body">
+      <ul class="product-costing">
+        <li class="product-cost">
+          <div class="product-icon bg-primary">
+            <svg><use href="{% static 'assets/svg/icon-sprite.svg#people' %}"></use></svg>
+          </div>
+          <div>
+            <span class="f-w-500 f-14 mb-0">Tickets Abiertos</span>
+            <h2 class="f-w-600">{{ tickets_abiertos }}</h2>
+          </div>
+        </li>
+        <li><span class="f-light f-14 f-w-500">Tenemos {{ tickets_abiertos }} tickets abiertos.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="col-xl-3 col-sm-6 dashboard-card">
+  <div class="card height-equal">
+    <div class="card-body">
+      <ul class="product-costing">
+        <li class="product-cost">
+          <div class="product-icon bg-warning">
+            <svg><use href="{% static 'assets/svg/icon-sprite.svg#tasks' %}"></use></svg>
+          </div>
+          <div>
+            <span class="f-w-500 f-14 mb-0">Tickets En Proceso</span>
+            <h2 class="f-w-600">{{ tickets_en_proceso }}</h2>
+          </div>
+        </li>
+        <li><span class="f-light f-14 f-w-500">Tenemos {{ tickets_en_proceso }} tickets en proceso.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="col-xl-3 col-sm-6 dashboard-card">
+  <div class="card height-equal">
+    <div class="card-body">
+      <ul class="product-costing">
+        <li class="product-cost">
+          <div class="product-icon bg-success">
+            <svg><use href="{% static 'assets/svg/icon-sprite.svg#task-square' %}"></use></svg>
+          </div>
+          <div>
+            <span class="f-w-500 f-14 mb-0">Tickets Cerrados</span>
+            <h2 class="f-w-600">{{ tickets_cerrados }}</h2>
+          </div>
+        </li>
+        <li><span class="f-light f-14 f-w-500">Tenemos {{ tickets_cerrados }} tickets cerrados esta semana.</span></li>
+      </ul>
+    </div>
+  </div>
+</div>

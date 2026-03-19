@@ -1,0 +1,169 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <link rel="icon" href="{% static 'assets/images/favicon.png' %}" type="image/x-icon">
+    <link rel="shortcut icon" href="{% static 'assets/images/favicon.svg' %}" type="image/x-icon">
+    <title>Insumos - UPCV</title>
+
+    <!-- CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/vendors/bootstrap.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/vendors/datatables.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/style.css' %}">
+</head>
+<body>
+<!-- Encabezado con imagen SVG -->
+<div class="header-image">
+    <img src="{% static 'assets/images/insumos.svg' %}" alt="Encabezado" class="img-fluid w-100" style="max-height: 480px; object-fit: cover;">
+</div>
+
+<div class="container-fluid mt-3">
+  <div class="card">
+    
+    <div class="card-header d-flex justify-content-between flex-wrap align-items-center">
+  
+        <!-- DIV IZQUIERDA -->
+        <div class="left-header">
+          <div>
+            <a class="toggle-sidebar" href="#">
+              <i class="iconly-Category icli"></i>
+            </a>
+            <div class="d-flex align-items-center gap-2">
+              <h4 class="f-w-600">Bienvenido {{ user.first_name }}</h4>
+              <img class="mt-0" src="{% static 'assets/images/hand.gif' %}" alt="hand-gif">
+            </div>
+          </div>
+      
+          {% if frase_del_dia %}
+            <div class="welcome-content d-xl-block d-none mt-2">
+              <span class="text-truncate">
+                {{ frase_del_dia.frase }}
+                <i>- 
+                  {% if frase_del_dia.personaje == 'Unknown' %}
+                    Anónimo
+                  {% else %}
+                    {{ frase_del_dia.personaje }}
+                  {% endif %}
+                </i>
+              </span>
+            </div>
+          {% endif %}
+        </div>
+      
+        <!-- DIV DERECHA -->
+        <div class="right-header text-end mt-2 mt-xl-0">         
+          <h6 class="card-title">Datos actualizados hasta:
+{% if ultima_fecha_insumo %}
+             {{ ultima_fecha_insumo.fechainsumo|date:"j \d\e F \d\e Y" }}
+        {% else %}
+            <p>No se encontró fecha de actualización.</p>
+        {% endif %}
+          </h6>
+
+          <a href="{% url 'scompras:descargar_insumos' %}" class="btn btn-primary">Descargar Excel</a>
+        </div>
+      
+    </div>
+      
+    <div class="card-body">
+  <button id="btnLimpiarFiltros" class="btn btn-primary btn-sm">
+    🧹 Limpiar filtros
+  </button><br>
+
+      <div class="table-responsive">
+        <table class="display table" id="basic-1" style="width:100%">
+<thead>
+  <tr>
+    <th>Renglón<br>
+      <input type="text" id="searchRenglon" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+    <th>Código<br>
+      <input type="text" id="searchCodigoInsumo" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+    <th>Nombre<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Características<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Presentación<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Cantidad y Unidad<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Código Presentación<br>
+      <input type="text" id="searchCodigoPresentacion" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+  </tr>
+</thead>
+
+          <tbody>
+            <!-- DataTables llenará esta parte automáticamente -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card note p-20">
+      <p class="mb-0 text-center">Copyright <span id="currentYear"></span> © Informatica UPCV</p>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+
+<script>
+  $(document).ready(function () {
+    const tablaInsumos = $('#basic-1').DataTable({
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: '{% url "scompras:insumos_json" %}',
+        data: function (d) {
+          d.renglon = $('#searchRenglon').val();
+          d.codigo_insumo = $('#searchCodigoInsumo').val();
+          d.codigo_presentacion = $('#searchCodigoPresentacion').val();
+        }
+      },
+      columns: [
+        { data: 0 },
+        { data: 1 },
+        { data: 2 },
+        { data: 3 },
+        { data: 4 },
+        { data: 5 },
+        { data: 6 }
+      ],
+      language: {
+        url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+      }
+    });
+
+    // Filtros personalizados
+    $('#searchRenglon, #searchCodigoInsumo, #searchCodigoPresentacion').on('keyup', function () {
+      tablaInsumos.ajax.reload();
+    });
+
+    // Botón limpiar filtros
+    $('#btnLimpiarFiltros').on('click', function () {
+      $('#searchRenglon, #searchCodigoInsumo, #searchCodigoPresentacion').val('');
+      tablaInsumos.ajax.reload();
+    });
+  });
+</script>
+
+<script>
+  document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>

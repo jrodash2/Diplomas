@@ -1,0 +1,225 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+{% include 'components/modal_theme_upcv_styles.html' %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-8">
+          <h2 class="mb-0">
+            Pasos del proceso:
+            {% if subtipo %}
+              {{ tipo.nombre }} / Subtipo: {{ subtipo.nombre }}
+            {% else %}
+              {{ tipo.nombre }}
+            {% endif %}
+          </h2>
+          <p class="text-muted mb-0">Gestiona el catálogo de pasos por tipo y subtipo.</p>
+        </div>
+        <div class="col-4 text-end">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearPaso">+ Crear paso</button>
+          <a class="btn btn-light" href="{% url 'scompras:tipos_proceso' %}">Volver</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Título</th>
+                <th>Subtipo</th>
+                <th>Duración ref.</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for paso in pasos %}
+              <tr>
+                <td>{{ paso.numero }}</td>
+                <td>{{ paso.titulo }}</td>
+                <td>{{ paso.subtipo.nombre|default:'General' }}</td>
+                <td>{{ paso.duracion_referencia|default:'-' }}</td>
+                <td>{% if paso.activo %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-danger">Inactivo</span>{% endif %}</td>
+                <td class="text-end">
+                  <button
+                    class="btn btn-outline-secondary btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalEditarPaso"
+                    data-id="{{ paso.id }}"
+                    data-numero="{{ paso.numero }}"
+                    data-titulo="{{ paso.titulo }}"
+                    data-duracion="{{ paso.duracion_referencia }}"
+                    data-activo="{% if paso.activo %}1{% else %}0{% endif %}"
+                    data-subtipo="{{ paso.subtipo_id|default:'' }}"
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">Sin pasos configurados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCrearPaso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        {% include 'components/modal_header_upcv.html' with title='Crear paso' subtitle='Registre la información del nuevo paso del proceso.' %}
+
+        <form id="formCrearPaso" data-url="{% url 'scompras:crear_paso_proceso' tipo.id %}">
+          {% csrf_token %}
+          {{ paso_form.tipo }}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subtipo</label>
+            {{ paso_form.subtipo }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Número</label>
+            {{ paso_form.numero }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título</label>
+            {{ paso_form.titulo }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Duración referencia</label>
+            {{ paso_form.duracion_referencia }}
+          </div>
+          <div class="form-check">
+            {{ paso_form.activo }}
+            <label class="form-check-label">Activo</label>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="formCrearPaso" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalEditarPaso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        {% include 'components/modal_header_upcv.html' with title='Editar paso' subtitle='Actualice número, título y configuración del paso.' %}
+
+        <form id="formEditarPaso">
+          {% csrf_token %}
+          <input type="hidden" name="tipo" value="{{ tipo.id }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subtipo</label>
+            <select name="subtipo" id="editarPasoSubtipo" class="form-select">
+              <option value="">General</option>
+              {% for subtipo in subtipos %}
+                <option value="{{ subtipo.id }}">{{ subtipo.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Número</label>
+            <input type="number" name="numero" id="editarPasoNumero" class="form-control" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título</label>
+            <input type="text" name="titulo" id="editarPasoTitulo" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Duración referencia</label>
+            <input type="text" name="duracion_referencia" id="editarPasoDuracion" class="form-control">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="activo" id="editarPasoActivo" class="form-check-input">
+            <label class="form-check-label">Activo</label>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="formEditarPaso" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  };
+
+  const submitForm = (form, url) => {
+    const formData = new FormData(form);
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('No fue posible guardar los cambios.');
+      }
+    })
+    .catch(() => alert('No fue posible guardar los cambios.'));
+  };
+
+  const formCrearPaso = document.getElementById('formCrearPaso');
+  if (formCrearPaso) {
+    formCrearPaso.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitForm(formCrearPaso, formCrearPaso.dataset.url);
+    });
+  }
+
+  const modalEditarPaso = document.getElementById('modalEditarPaso');
+  if (modalEditarPaso) {
+    modalEditarPaso.addEventListener('show.bs.modal', (event) => {
+      const button = event.relatedTarget;
+      if (!button) return;
+      const id = button.getAttribute('data-id');
+      document.getElementById('editarPasoNumero').value = button.getAttribute('data-numero');
+      document.getElementById('editarPasoTitulo').value = button.getAttribute('data-titulo');
+      document.getElementById('editarPasoDuracion').value = button.getAttribute('data-duracion');
+      document.getElementById('editarPasoActivo').checked = button.getAttribute('data-activo') === '1';
+      const subtipoValue = button.getAttribute('data-subtipo');
+      const subtipoSelect = document.getElementById('editarPasoSubtipo');
+      subtipoSelect.value = subtipoValue || '';
+      document.getElementById('formEditarPaso').dataset.url = `/scompras/pasos/${id}/editar/`;
+    });
+  }
+
+  const formEditarPaso = document.getElementById('formEditarPaso');
+  if (formEditarPaso) {
+    formEditarPaso.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitForm(formEditarPaso, formEditarPaso.dataset.url);
+    });
+  }
+</script>
+{% endblock %}

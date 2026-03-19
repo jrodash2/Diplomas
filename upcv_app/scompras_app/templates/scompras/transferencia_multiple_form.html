@@ -1,0 +1,378 @@
+{% extends 'scompras/base.html' %}
+
+{% block content %}
+<div class="page-body">
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Nueva transferencia múltiple presupuestaria</h5>
+          <a class="btn btn-light" href="{% url 'scompras:transferencias_list' %}">Volver</a>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Presupuesto activo: {{ presupuesto_activo }}</p>
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row">
+              <div class="col-md-8 mb-3">
+                <label class="form-label" for="id_renglon_origen">{{ form.renglon_origen.label }}</label>
+                {{ form.renglon_origen }}
+                {% for error in form.renglon_origen.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="text-muted small pt-2">Seleccione un solo origen y distribuya el monto en varios destinos.</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="id_descripcion">{{ form.descripcion.label }}</label>
+              {{ form.descripcion }}
+              {% for error in form.descripcion.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <h6 class="mt-4">Destinos</h6>
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+              <div class="alert alert-danger">
+                {% for error in formset.non_form_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle" id="destinos-table">
+                <thead>
+                  <tr>
+                    <th>Renglón destino</th>
+                    <th style="width: 180px;">Monto</th>
+                    <th style="width: 110px;">Eliminar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for destino_form in formset %}
+                    <tr class="destino-form-row" data-form-index="{{ forloop.counter0 }}">
+                      <td>
+                        {{ destino_form.renglon_destino }}
+                        {% for error in destino_form.renglon_destino.errors %}
+                          <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                      </td>
+                      <td>
+                        {{ destino_form.monto }}
+                        {% for error in destino_form.monto.errors %}
+                          <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                      </td>
+                      <td class="text-center">
+                        <div class="d-none">
+                          {{ destino_form.DELETE }}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger js-remove-row">Eliminar</button>
+                        {% for hidden in destino_form.hidden_fields %}
+                          {{ hidden }}
+                        {% endfor %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="button" id="add-row" class="btn btn-outline-secondary">Agregar destino</button>
+              <button type="submit" class="btn btn-primary">Guardar transferencia múltiple</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const endpoint = "{% url 'scompras:transferencia_buscar_renglones' %}";
+    const montoEndpoint = "{% url 'scompras:transferencia_renglon_monto' %}";
+
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+
+    function formatearMonto(monto) {
+      const valor = Number(monto);
+      if (!Number.isFinite(valor)) return '--';
+      return 'Q ' + valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function mostrarMontoRenglon(contenedor, monto) {
+      if (!contenedor) return;
+      contenedor.textContent = 'Monto actual: ' + (monto === null || monto === undefined || monto === '' ? '--' : formatearMonto(monto));
+    }
+
+    function cargarMontoRenglon(renglonId, targetElement) {
+      if (!targetElement) return;
+      if (!renglonId) {
+        mostrarMontoRenglon(targetElement, null);
+        return;
+      }
+      fetch(montoEndpoint + '?id=' + encodeURIComponent(renglonId), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then((response) => response.ok ? response.json() : Promise.reject())
+        .then((data) => mostrarMontoRenglon(targetElement, data.monto_disponible))
+        .catch(() => mostrarMontoRenglon(targetElement, null));
+    }
+
+    function initAjaxRenglonSelect(select) {
+      if (!select || select.dataset.ajaxReady === '1') {
+        return;
+      }
+      select.dataset.ajaxReady = '1';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mt-1';
+
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'form-control form-control-sm mb-1';
+      searchInput.placeholder = 'Buscar renglón...';
+
+      const status = document.createElement('small');
+      status.className = 'text-muted d-block';
+      status.textContent = 'Escriba 2+ caracteres.';
+
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.appendChild(searchInput);
+      wrapper.appendChild(status);
+
+      const montoInfo = document.createElement('small');
+      montoInfo.className = 'text-info d-block';
+      mostrarMontoRenglon(montoInfo, null);
+      wrapper.appendChild(montoInfo);
+
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption && selectedOption.value) {
+        select.dataset.selectedText = selectedOption.textContent;
+      }
+
+      const loadResults = debounce(function () {
+        const q = searchInput.value.trim();
+        if (q.length < 2) {
+          status.textContent = 'Escriba 2+ caracteres.';
+          return;
+        }
+        status.textContent = 'Buscando...';
+
+        fetch(endpoint + '?q=' + encodeURIComponent(q) + '&limit=20', {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+          .then((response) => response.ok ? response.json() : Promise.reject())
+          .then((data) => {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">---------</option>';
+
+            (data.results || []).forEach((item) => {
+              const option = document.createElement('option');
+              option.value = item.id;
+              option.textContent = item.text;
+              option.dataset.montoDisponible = item.monto_disponible;
+              if (String(item.id) === String(currentValue)) {
+                option.selected = true;
+              }
+              select.appendChild(option);
+            });
+
+            const seleccionActual = select.querySelector('option[value="' + currentValue + '"]');
+            if (!seleccionActual && select.dataset.selectedText && currentValue) {
+              const fallback = document.createElement('option');
+              fallback.value = currentValue;
+              fallback.textContent = select.dataset.selectedText;
+              fallback.selected = true;
+              select.appendChild(fallback);
+            }
+
+            status.textContent = (data.results || []).length
+              ? (data.results || []).length + ' resultado(s).'
+              : 'Sin resultados.';
+          })
+          .catch(() => {
+            status.textContent = 'Error al buscar.';
+          });
+      }, 250);
+
+      searchInput.addEventListener('input', loadResults);
+      select.addEventListener('change', function () {
+        const current = select.options[select.selectedIndex];
+        if (current && current.value) {
+          select.dataset.selectedText = current.textContent;
+          if (current.dataset.montoDisponible !== undefined && current.dataset.montoDisponible !== '') {
+            mostrarMontoRenglon(montoInfo, current.dataset.montoDisponible);
+          } else {
+            cargarMontoRenglon(current.value, montoInfo);
+          }
+        } else {
+          mostrarMontoRenglon(montoInfo, null);
+        }
+      });
+      if (select.value) {
+        cargarMontoRenglon(select.value, montoInfo);
+      }
+    }
+
+    function inicializarFiltroDestino(row) {
+      if (!row) return;
+      const select = row.querySelector('select.js-renglon-ajax');
+      if (!select) return;
+      initAjaxRenglonSelect(select);
+    }
+
+    function inicializarFiltroOrigen() {
+      const origenSelect = document.getElementById('id_renglon_origen');
+      if (!origenSelect) return;
+      initAjaxRenglonSelect(origenSelect);
+    }
+
+    function inicializarFiltroDestino(row) {
+      if (!row) return;
+      const select = row.querySelector('select.js-renglon-ajax');
+      if (!select) return;
+      initAjaxRenglonSelect(select);
+    }
+
+    function inicializarFiltroOrigen() {
+      const origenSelect = document.getElementById('id_renglon_origen');
+      if (!origenSelect) return;
+      initAjaxRenglonSelect(origenSelect);
+    }
+
+    const totalForms = document.getElementById('id_destinos-TOTAL_FORMS');
+    const initialForms = document.getElementById('id_destinos-INITIAL_FORMS');
+    const tbody = document.querySelector('#destinos-table tbody');
+    const addBtn = document.getElementById('add-row');
+
+    function getRowIndex(row) {
+      if (row.dataset.formIndex !== undefined) {
+        return parseInt(row.dataset.formIndex, 10);
+      }
+      const field = row.querySelector('[name^="destinos-"]');
+      if (!field || !field.name) return -1;
+      const match = field.name.match(/destinos-(\d+)-/);
+      return match ? parseInt(match[1], 10) : -1;
+    }
+
+    function setRowIndex(row, newIndex) {
+      const oldIndex = getRowIndex(row);
+      if (oldIndex < 0) return;
+      row.dataset.formIndex = String(newIndex);
+      row.querySelectorAll('input, select, textarea, label').forEach(function (field) {
+        if (field.name) {
+          field.name = field.name.replace(new RegExp(`destinos-${oldIndex}-`, 'g'), `destinos-${newIndex}-`);
+        }
+        if (field.id) {
+          field.id = field.id.replace(new RegExp(`id_destinos-${oldIndex}-`, 'g'), `id_destinos-${newIndex}-`);
+        }
+        if (field.htmlFor) {
+          field.htmlFor = field.htmlFor.replace(new RegExp(`id_destinos-${oldIndex}-`, 'g'), `id_destinos-${newIndex}-`);
+        }
+      });
+    }
+
+    function reindexNewRows() {
+      const initialCount = parseInt(initialForms.value, 10) || 0;
+      let nextNewIndex = initialCount;
+      tbody.querySelectorAll('.destino-form-row').forEach(function (row) {
+        const idx = getRowIndex(row);
+        if (idx >= initialCount) {
+          setRowIndex(row, nextNewIndex);
+          nextNewIndex += 1;
+        }
+      });
+      totalForms.value = tbody.querySelectorAll('.destino-form-row').length;
+    }
+
+    inicializarFiltroOrigen();
+    tbody.querySelectorAll('.destino-form-row').forEach(inicializarFiltroDestino);
+
+    addBtn.addEventListener('click', function () {
+      const index = parseInt(totalForms.value, 10);
+      const firstRow = tbody.querySelector('.destino-form-row');
+      if (!firstRow) return;
+
+      const clone = firstRow.cloneNode(true);
+      clone.style.display = '';
+      clone.classList.remove('d-none');
+      clone.querySelectorAll('.text-danger.small').forEach(function (el) { el.remove(); });
+      clone.querySelectorAll('.mt-1').forEach(function (el) { el.remove(); });
+
+      clone.querySelectorAll('input, select, textarea').forEach(function (field) {
+        if (!field.name) return;
+        field.name = field.name.replace(/destinos-\d+-/g, `destinos-${index}-`);
+        field.id = field.id.replace(/id_destinos-\d+-/g, `id_destinos-${index}-`);
+        if (field.type === 'checkbox') {
+          field.checked = false;
+        } else {
+          field.value = '';
+        }
+      });
+
+      const destinoSelect = clone.querySelector('select.js-renglon-ajax');
+      if (destinoSelect) {
+        destinoSelect.dataset.ajaxReady = '0';
+        delete destinoSelect.dataset.selectedText;
+        destinoSelect.innerHTML = '<option value="">---------</option>';
+      }
+
+      clone.dataset.formIndex = String(index);
+      tbody.appendChild(clone);
+      totalForms.value = index + 1;
+      inicializarFiltroDestino(clone);
+    });
+
+    tbody.addEventListener('click', function (event) {
+      const removeBtn = event.target.closest('.js-remove-row');
+      if (!removeBtn) return;
+
+      const row = removeBtn.closest('.destino-form-row');
+      if (!row) return;
+
+      const rowIndex = getRowIndex(row);
+      const initialCount = parseInt(initialForms.value, 10) || 0;
+      const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+      if (deleteInput && rowIndex < initialCount) {
+        deleteInput.checked = true;
+        row.style.display = 'none';
+      } else {
+        row.remove();
+        reindexNewRows();
+      }
+    });
+  })();
+</script>
+{% endblock %}

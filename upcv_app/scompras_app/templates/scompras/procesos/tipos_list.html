@@ -1,0 +1,232 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+{% include 'components/modal_theme_upcv_styles.html' %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-xl-10">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-0">Tipos de proceso</h4>
+              <small class="text-muted">Gestiona tipos, subtipos y pasos de compra.</small>
+            </div>
+            <button
+              class="btn btn-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#modalTipo"
+              data-mode="create"
+              data-url="{% url 'scompras:tipo_proceso_create' %}"
+            >
+              Nuevo tipo
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="pageAlert" class="alert alert-success d-none" role="alert"></div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Código</th>
+                    <th class="text-center">Subtipos</th>
+                    <th class="text-center">Pasos</th>
+                    <th class="text-center">Activo</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for tipo in tipos %}
+                  <tr>
+                    <td>{{ tipo.nombre }}</td>
+                    <td><span class="badge bg-light text-dark">{{ tipo.codigo }}</span></td>
+                    <td class="text-center">{{ tipo.subtipos_count }}</td>
+                    <td class="text-center">{{ tipo.pasos_count }}</td>
+                    <td class="text-center">
+                      {% if tipo.activo %}
+                        <span class="badge bg-success">Activo</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <a class="btn btn-outline-primary btn-sm" href="{% url 'scompras:subtipos_proceso_list' tipo.id %}">Subtipos</a>
+                      <a class="btn btn-outline-info btn-sm" href="{% url 'scompras:pasos_tipo_list' tipo.id %}">Pasos (sin subtipo)</a>
+                      <button
+                        class="btn btn-outline-secondary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalTipo"
+                        data-mode="edit"
+                        data-url="{% url 'scompras:tipo_proceso_update' tipo.id %}"
+                        data-nombre="{{ tipo.nombre }}"
+                        data-codigo="{{ tipo.codigo }}"
+                        data-activo="{% if tipo.activo %}1{% else %}0{% endif %}"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        class="btn btn-outline-warning btn-sm js-toggle"
+                        data-url="{% url 'scompras:tipo_proceso_toggle' tipo.id %}"
+                      >
+                        {% if tipo.activo %}Desactivar{% else %}Activar{% endif %}
+                      </button>
+                      <button
+                        class="btn btn-danger btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalEliminarTipo{{ tipo.id }}"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted">No hay tipos registrados.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% for tipo in tipos %}
+        <div class="modal fade" id="modalEliminarTipo{{ tipo.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content dark-sign-up modal-theme-upcv">
+              <div class="modal-body social-profile text-start p-4">
+                {% include 'components/modal_header_upcv.html' with title='Eliminar tipo de proceso' subtitle='Esta acción eliminará el registro seleccionado de forma permanente.' %}
+                <p class="mb-0">¿Seguro que desea eliminar <strong>{{ tipo.nombre }}</strong>? Esta acción no se puede deshacer.</p>
+
+                <div class="modal-footer justify-content-center border-top-0 mt-4">
+                  <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+                  <form method="post" action="{% url 'scompras:tipo_proceso_eliminar' tipo.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger px-4">Confirmar</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'scompras/procesos/partials/_modal_tipo.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  };
+
+  const showAlert = (message, type = 'success') => {
+    const alert = document.getElementById('pageAlert');
+    alert.textContent = message;
+    alert.classList.remove('d-none', 'alert-success', 'alert-danger');
+    alert.classList.add(type === 'success' ? 'alert-success' : 'alert-danger');
+    setTimeout(() => {
+      alert.classList.add('d-none');
+    }, 2500);
+  };
+
+  const renderErrors = (container, errors) => {
+    container.innerHTML = '';
+    const list = document.createElement('ul');
+    list.classList.add('mb-0');
+    Object.entries(errors).forEach(([field, messages]) => {
+      messages.forEach((message) => {
+        const item = document.createElement('li');
+        item.textContent = `${field}: ${message}`;
+        list.appendChild(item);
+      });
+    });
+    container.appendChild(list);
+    container.classList.remove('d-none');
+  };
+
+  const tipoModal = document.getElementById('modalTipo');
+  const tipoForm = document.getElementById('tipoForm');
+  const tipoErrors = document.getElementById('tipoFormErrors');
+
+  if (tipoModal) {
+    tipoModal.addEventListener('show.bs.modal', (event) => {
+      const button = event.relatedTarget;
+      if (!button) return;
+      const mode = button.getAttribute('data-mode');
+      const url = button.getAttribute('data-url');
+      document.getElementById('tipoModalTitle').textContent =
+        mode === 'edit' ? 'Editar tipo de proceso' : 'Nuevo tipo de proceso';
+      tipoForm.dataset.url = url;
+      tipoErrors.classList.add('d-none');
+      tipoErrors.innerHTML = '';
+      if (mode === 'edit') {
+        document.getElementById('tipoNombre').value = button.getAttribute('data-nombre') || '';
+        document.getElementById('tipoCodigo').value = button.getAttribute('data-codigo') || '';
+        document.getElementById('tipoActivo').checked = button.getAttribute('data-activo') === '1';
+      } else {
+        tipoForm.reset();
+        document.getElementById('tipoActivo').checked = true;
+      }
+    });
+  }
+
+  if (tipoForm) {
+    tipoForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const url = tipoForm.dataset.url;
+      const formData = new FormData(tipoForm);
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            const modalInstance = bootstrap.Modal.getInstance(tipoModal);
+            if (modalInstance) modalInstance.hide();
+            showAlert(data.message || 'Guardado');
+            setTimeout(() => {
+              window.location.reload();
+            }, 900);
+          } else {
+            renderErrors(tipoErrors, data.errors || {});
+          }
+        })
+        .catch(() => {
+          showAlert('No fue posible guardar los cambios.', 'danger');
+        });
+    });
+  }
+
+  document.querySelectorAll('.js-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+      fetch(button.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            showAlert(data.message || 'Actualizado');
+            setTimeout(() => {
+              window.location.reload();
+            }, 900);
+          } else {
+            showAlert('No fue posible actualizar.', 'danger');
+          }
+        })
+        .catch(() => showAlert('No fue posible actualizar.', 'danger'));
+    });
+  });
+</script>
+{% endblock %}

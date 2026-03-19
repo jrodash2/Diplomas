@@ -1,0 +1,291 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">
+              <svg class="stroke-icon">
+                <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+              </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="row" style="margin: 20px;">
+    {% include 'tickets/partials/cards_resumen.html' %}
+  
+    <div class="col-md-12 text-end" >
+      <a href="{% url 'tickets:exportar_excel_tickets' %}" class="btn btn-primary">
+        <i class="fa fa-download"></i> Descargar Excel
+      </a>
+    </div>
+  
+  </div>
+
+  <!-- GRÁFICAS Chart.js -->
+  <div class="row" style="margin: 20px;">
+    <div class="col-md-6">
+  <div class="card">
+    <div class="card-header"><h4>Tickets por Estado</h4></div>
+    <div class="card-body">
+      <div id="estadoChart"></div>
+    </div>
+  </div>
+</div>
+
+    <div class="col-md-6">
+     <div class="card">
+      <div class="card-header">
+        <h4>Tickets por Técnico</h4>
+      </div>
+      <div class="card-body">
+        <div id="basic-apex"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  
+
+  <div class="row" style="margin: 20px;">
+    <!-- Técnico y Estado -->
+    <div class="col-sm-12 col-xl-6 box-col-6">
+      <div class="card">
+        <div class="card-header">
+          <h4>Tickets por Técnico y Estado</h4>
+        </div>
+        <div class="card-body">
+          <div id="tecnicoEstadoChart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Por Oficina -->
+    <div class="col-sm-12 col-xl-6 box-col-6">
+      <div class="card">
+        <div class="card-header">
+          <h4>Tickets por Oficina (Top 10)</h4>
+        </div>
+        <div class="card-body">
+          <div id="basic-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="{% static 'assets/js/chart/apex-chart/apex-chart.js' %}"></script>
+  <script src="{% static 'assets/js/chart/apex-chart/chart-custom.js' %}"></script>
+
+
+  <script>
+   document.addEventListener("DOMContentLoaded", function () {
+  const estadoData = {{ tickets_por_estado|safe }};
+
+  const labelsEstado = estadoData.map(item => item.estado);
+  const dataEstado = estadoData.map(item => item.total);
+
+  var optionsEstado = {
+    chart: {
+      type: 'bar',
+      height: 350,
+      toolbar: { show: false }
+    },
+    series: [{
+      name: 'Cantidad',
+      data: dataEstado
+    }],
+    xaxis: {
+      categories: labelsEstado
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        endingShape: 'rounded'
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    colors: ['#36A2EB'],
+    tooltip: {
+      y: {
+        formatter: val => val + " tickets"
+      }
+    }
+  };
+
+  var chartEstado = new ApexCharts(document.querySelector("#estadoChart"), optionsEstado);
+  chartEstado.render();
+});
+
+
+
+
+    // Tickets por Técnico y Estado - ApexCharts
+    document.addEventListener("DOMContentLoaded", function () {
+      const tecnicoEstadoData = {{ tickets_por_tecnico_estado|safe }};
+
+      const labels = tecnicoEstadoData.map(item => item.tecnico_asignado__username || 'Sin asignar');
+      const abiertos = tecnicoEstadoData.map(item => item.abiertos);
+      const cerrados = tecnicoEstadoData.map(item => item.cerrados);
+      const enProceso = tecnicoEstadoData.map(item => item.en_proceso);
+
+      var options = {
+        chart: {
+          type: 'bar',
+          height: 350,
+          toolbar: { show: false },
+        },
+        series: [
+          { name: 'Abiertos', data: abiertos },
+          { name: 'Cerrados', data: cerrados },
+          { name: 'En Proceso', data: enProceso }
+        ],
+        xaxis: {
+          categories: labels
+        },
+        colors: ['#007bff', '#28a745', '#ffc107'],
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '55%',
+            endingShape: 'rounded'
+          },
+        },
+        dataLabels: {
+          enabled: false
+        },
+        legend: {
+          position: 'top',
+          horizontalAlign: 'left'
+        },
+        fill: {
+          opacity: 1
+        },
+        tooltip: {
+          y: {
+            formatter: val => val + " tickets"
+          }
+        }
+      };
+
+      var chart = new ApexCharts(document.querySelector("#tecnicoEstadoChart"), options);
+      chart.render();
+    });
+
+    // Tickets por Oficina - ApexCharts
+    document.addEventListener("DOMContentLoaded", function () {
+      const oficinaData = {{ tickets_por_oficina|safe }};
+
+      const labels = oficinaData.map(item => item.oficina__nombre || 'Sin oficina');
+      const data = oficinaData.map(item => item.total);
+
+      var options = {
+        chart: {
+          type: 'bar',
+          height: 350,
+          toolbar: { show: false }
+        },
+        series: [{
+          name: 'Tickets',
+          data: data
+        }],
+        xaxis: {
+          categories: labels,
+          labels: {
+            rotate: -45
+          }
+        },
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            columnWidth: '55%',
+            endingShape: 'rounded'
+          },
+        },
+        dataLabels: { enabled: false },
+        stroke: {
+          show: true,
+          width: 2,
+          colors: ['transparent']
+        },
+        colors: ['#1E90FF'],
+        fill: {
+          opacity: 1
+        },
+        tooltip: {
+          y: {
+            formatter: val => val + " tickets"
+          }
+        }
+      };
+
+      var chart = new ApexCharts(document.querySelector("#basic-bar"), options);
+      chart.render();
+    });
+
+    // NUEVO: Tickets por Técnico - ApexCharts (gráfico área en #basic-apex)
+    document.addEventListener("DOMContentLoaded", function () {
+      const tecnicoData = {{ tickets_por_tecnico|safe }};
+
+      const labelsApex = tecnicoData.map(item => item.tecnico_asignado__username || 'Sin asignar');
+      const dataApex = tecnicoData.map(item => item.total);
+
+      var optionsApex = {
+        chart: {
+          type: 'area',
+          height: 350,
+          toolbar: { show: false }
+        },
+        series: [{
+          name: 'Tickets',
+          data: dataApex
+        }],
+        xaxis: {
+          categories: labelsApex,
+          title: { text: 'Técnicos' }
+        },
+        yaxis: {
+          title: { text: 'Cantidad de Tickets' },
+          min: 0
+        },
+        dataLabels: {
+          enabled: false
+        },
+        stroke: {
+          curve: 'smooth'
+        },
+        colors: ['#00B5EC'],
+        tooltip: {
+          y: {
+            formatter: val => val + ' tickets'
+          }
+        }
+      };
+
+      var chartApex = new ApexCharts(document.querySelector("#basic-apex"), optionsApex);
+      chartApex.render();
+    });
+  </script>
+
+  <!-- Otros scripts de la plantilla -->
+  <script src="{% static 'assets/js/jquery.min.js' %}"></script>
+  <script src="{% static 'assets/js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+
+  <script src="{% static 'assets/js/icons/feather-icon/feather.min.js' %}"></
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends 'empleados/base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Fuentes y scripts -->
+<link href="{% static 'fonts/Montserrat-Regular.ttf' %}" rel="stylesheet">
+<link href="{% static 'fonts/Montserrat-Bold.ttf' %}" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fontfaceobserver/2.1.0/fontfaceobserver.standalone.min.js"></script>
+
+<style>
+  @font-face {
+    font-family: 'Altivo Black';
+    src: url("{% static 'assets/fonts/altivo-black.ttf' %}") format('truetype');
+  }
+
+  @font-face {
+    font-family: 'Altivo Medium';
+    src: url("{% static 'assets/fonts/35172.otf' %}") format('truetype');
+  }
+
+  body {
+    font-family: 'Altivo Medium', sans-serif;
+  }
+
+  .t {
+    font-family: 'Altivo Black', sans-serif;
+  }
+
+  .t2 {
+    font-family: 'Altivo Medium', sans-serif;
+  }
+
+  .t3 {
+    font-family: 'Altivo Medium', sans-serif;
+    color: white;
+    font-size: clamp(18px, 2vw, 22px);
+    padding-left: 0.7em;
+  }
+
+  .gafete-wrapper {
+    width: 100%;
+    max-width: 645px;
+    aspect-ratio: 645 / 1004;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .gafete-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .card-body {
+    background-image: url('{% static "assets/svg/empleado.svg" %}');
+  }
+
+  .card2-body {
+    background-image: url('{% static "assets/svg/empleado2.svg" %}');
+  }
+
+  .gafete-img {
+    position: absolute;
+    top: 9%;
+    left: 14%;
+    width: 45%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 50%;
+    z-index: 5;
+  }
+
+  .qr-code {
+    position: absolute;
+    top: 52%;
+    left: 62%;
+    width: 30%;
+    aspect-ratio: 1 / 1;
+    z-index: 10;
+  }
+
+  .qr-code img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .logotipos {
+    position: absolute;
+    bottom: 5%;
+    left: 5%;
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    z-index: 5;
+  }
+
+  .logotipo img {
+    max-width: 140px;
+    height: auto;
+  }
+
+  svg text {
+    font-size: clamp(14px, 2.5vw, 32px);
+  }
+
+  .gafetes-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  #download-gafete-button,
+  #download-gafete-2-button {
+    padding: 12px 25px;
+    background-color: #180269;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+
+  #download-gafete-button:hover,
+  #download-gafete-2-button:hover {
+    background-color: #7445a0;
+  }
+
+  @media print {
+    body {
+      background-color: white;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page-body, .container-fluid, .edit-profile {
+      width: 100%;
+      height: auto;
+    }
+
+    button, .logotipos {
+      display: none;
+    }
+
+    .gafete-wrapper {
+      page-break-after: always;
+    }
+  }
+</style>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="gafetes-container">
+
+          <!-- Gafete Parte 1 -->
+          <div class="gafete-wrapper">
+            <div class="gafete-card card-body" id="gafete">
+              <div class="t3" style="position:absolute; top: 5%; left: 5%;">
+                {{ configuracion.nombre_institucion }}
+              </div>
+
+              {% if empleado.imagen %}
+                <img src="{{ empleado.imagen.url }}" alt="Imagen del empleado" class="gafete-img">
+              {% else %}
+                <p>No hay imagen cargada</p>
+              {% endif %}
+
+              <svg viewBox="0 0 600 1004" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                <text x="50" y="145" class="t2" fill="#182b55">{{ empleado.nombres }}</text>
+                <text x="50" y="182" class="t" fill="#182b55">{{ empleado.apellidos }}</text>
+                <text x="50" y="388" class="t2" fill="#182b55">{{ empleado.tipoc }}</text>
+
+                {% if empleado.dcargo %}
+                  <text x="50" y="428" class="t" fill="#182b55">{{ empleado.dcargo }}</text>
+                  {% if empleado.dcargo2 %}
+                    <text x="50" y="458" class="t" fill="#182b55">{{ empleado.dcargo2 }}</text>
+                  {% endif %}
+                {% endif %}
+
+                <text x="50" y="275" class="t2" fill="#182b55">No. de Identificación:</text>
+                <text x="50" y="306" class="t" fill="#182b55">DPI: {{ empleado.dpi }}</text>
+
+                {% if not request.user.is_authenticated %}
+                  <text x="180" y="645" class="t2" fill="#ffffff">
+                    Empleado: {% if empleado.activo %}Activo{% else %}Inactivo{% endif %}
+                  </text>
+                {% endif %}
+              </svg>
+
+              {% if empleado.qr_code %}
+                <div class="qr-code">
+                  <img src="{{ empleado.qr_code.url }}" alt="Código QR">
+                </div>
+              {% endif %}
+
+              <div class="logotipos">
+                {% if configuracion.logotipo %}
+                  <div class="logotipo">
+                    <img src="{{ configuracion.logotipo.url }}" alt="Logotipo 1">
+                  </div>
+                {% endif %}
+                {% if configuracion.logotipo2 %}
+                  <div class="logotipo">
+                    <img src="{{ configuracion.logotipo2.url }}" alt="Logotipo 2">
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Gafete Parte 2 -->
+          <div class="gafete-wrapper">
+            <div class="gafete-card card2-body" id="gafete-2">
+              <svg viewBox="0 0 600 1004" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                <text x="50%" y="900" class="t" text-anchor="middle" fill="#182b55">
+                  Válido hasta el {{ empleado.fecha_vencimiento|date:"d F Y" }}
+                </text>
+              </svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if user.is_authenticated %}
+  <div style="display: flex; gap: 10px; justify-content: center;">
+    <button id="download-gafete-button" onclick="downloadGafete()">Descargar Parte 1</button>
+    <button id="download-gafete-2-button" onclick="downloadGafete2()">Descargar Parte 2</button>
+  </div>
+{% endif %}
+
+<script>
+  function downloadGafete() {
+    html2canvas(document.getElementById('gafete'), {
+      useCORS: true,
+      scale: 4,
+      backgroundColor: null
+    }).then(function(canvas) {
+      var link = document.createElement('a');
+      link.href = canvas.toDataURL('image/jpeg');
+      link.download = 'gafete.jpg';
+      link.click();
+    });
+  }
+
+  function downloadGafete2() {
+    html2canvas(document.getElementById('gafete-2'), {
+      useCORS: true,
+      scale: 4,
+      backgroundColor: null
+    }).then(function(canvas) {
+      var link = document.createElement('a');
+      link.href = canvas.toDataURL('image/jpeg');
+      link.download = 'gafete-2.jpg';
+      link.click();
+    });
+  }
+</script>
+{% endblock %}

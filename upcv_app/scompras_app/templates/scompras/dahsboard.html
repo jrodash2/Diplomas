@@ -1,0 +1,74 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <!-- Fila 1: Solo la gráfica de Solicitudes por Sección y Año -->
+    <div class="row mt-4">
+      <div class="col-md-12"> <!-- Aquí cambiamos el tamaño de la columna -->
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">Solicitudes por Sección y Año</h4>
+          </div>
+          <div class="card-body">
+            <div id="solicitudesPorAnioChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // === Datos ===
+  const solicitudesPorAnio = {{ solicitudes_por_anio|safe }};
+  
+  // --- Datos iniciales ---
+  const anios = [...new Set(solicitudesPorAnio.map(item => item.anio))];
+  const seccionesAnio = [...new Set(solicitudesPorAnio.map(item => item.seccion__nombre))];
+  
+  // --- Gráfico de Solicitudes por Año ---
+  const seriesAnio = seccionesAnio.map(sec => {
+    return {
+      name: sec,
+      data: anios.map(anio => {
+        const match = solicitudesPorAnio.find(i => i.seccion__nombre === sec && i.anio === anio);
+        return match ? match.total : 0;
+      })
+    }
+  });
+
+  const chartAnio = new ApexCharts(document.querySelector("#solicitudesPorAnioChart"), {
+    chart: { type: 'bar', height: 350, toolbar: { show: false } },
+    series: seriesAnio,
+    xaxis: { categories: anios },
+    yaxis: { title: { text: 'Total de solicitudes' } },
+    colors: ['#0c4a6e', '#4cb8a4', '#f97316', '#ff7c1f'],
+    tooltip: {
+      y: { formatter: val => val + ' solicitudes' }
+    },
+    grid: { borderColor: '#f1f1f1' },
+    dataLabels: { enabled: false },
+    legend: { position: 'top' }
+  });
+  chartAnio.render();
+});
+
+</script>
+
+<style>
+#solicitudesPorAnioChart {
+  max-width: 100%;
+  height: 350px;
+  margin: 0 auto;
+}
+</style>
+{% endblock %}
+{% endblock %}

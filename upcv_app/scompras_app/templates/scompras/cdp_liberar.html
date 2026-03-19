@@ -1,0 +1,136 @@
+{% extends 'scompras/base.html' %}
+{% load static money %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <div>
+        <h4>Liberar CDP #{{ cdp.id }}</h4>
+        <p class="text-muted mb-0">Solicitud {{ cdp.solicitud.codigo_correlativo }} - {{ cdp.renglon.label_compacto }}</p>
+      </div>
+      <a class="btn btn-light" href="{% url 'scompras:detalle_solicitud' cdp.solicitud.id %}">Volver al detalle</a>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Confirmación de liberación</h5>
+          </div>
+          <div class="card-body">
+            {% if cdps_ejecutados %}
+              <div class="alert alert-warning">
+                Esta solicitud tiene CDP ejecutados; solo los CDP en estado <strong>Reservado</strong> pueden liberarse.
+              </div>
+            {% endif %}
+            <form method="post" novalidate>
+              {% csrf_token %}
+              <div class="alert alert-warning">
+                Esta acción devolverá {{ cdp.monto|money_gtq }} al disponible del renglón.
+              </div>
+              <div class="form-check mb-3">
+                {{ form.confirmar }}
+                <label class="form-check-label">{{ form.confirmar.label }}</label>
+                <div class="form-text">{{ form.confirmar.help_text }}</div>
+                {% if form.confirmar.errors %}
+                  <div class="text-danger small">{{ form.confirmar.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+              <button type="submit" class="btn btn-danger">Liberar reserva</button>
+              <a class="btn btn-link" href="{% url 'scompras:detalle_solicitud' cdp.solicitud.id %}">Cancelar</a>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="mb-0">Estado presupuestario</h5>
+          </div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Reservado en este CDP
+                <span class="badge bg-primary rounded-pill">{{ cdp.monto|money_gtq }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Reservado total renglón
+                <span class="badge bg-secondary rounded-pill">{{ cdp.renglon.monto_reservado|money_gtq }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Disponible renglón
+                <span class="badge bg-success rounded-pill">{{ cdp.renglon.monto_disponible|money_gtq }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">CDP de la solicitud</h5>
+            <small class="text-muted">Navega para liberar otros CDP reservados</small>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Renglón</th>
+                    <th class="text-end">Monto</th>
+                    <th class="text-end">Reservado renglón</th>
+                    <th class="text-end">Disponible renglón</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in cdps_solicitud %}
+                    <tr>
+                      <td>{{ item.id }}</td>
+                      <td>{{ item.renglon.label_compacto }}</td>
+                      <td class="text-end">{{ item.monto|money_gtq }}</td>
+                      <td class="text-end">{{ item.monto_reservado_renglon|money_gtq }}</td>
+                      <td class="text-end">{{ item.monto_disponible_renglon|money_gtq }}</td>
+                      <td>
+                        <span class="cdp-badge
+                          {% if item.estado == 'RESERVADO' %}cdp-badge--reservado{% endif %}
+                          {% if item.estado == 'EJECUTADO' %}cdp-badge--ejecutado{% endif %}
+                          {% if item.estado == 'LIBERADO' %}cdp-badge--liberado{% endif %}">{{ item.estado|title }}</span>
+                      </td>
+                      <td class="text-end">
+                        {% if item.estado == 'RESERVADO' and item.id != cdp.id %}
+                          <a class="btn btn-outline-warning btn-sm" href="{% url 'scompras:liberar_cdp' item.id %}">Liberar</a>
+                        {% elif item.id == cdp.id %}
+                          <span class="text-muted">Actual</span>
+                        {% else %}
+                          <span class="text-muted">Sin acción</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No hay CDP asociados.</td></tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot>
+                  <tr class="fw-semibold">
+                    <td colspan="2">Totales solicitud</td>
+                    <td class="text-end">{{ totales_solicitud.total_reservado|money_gtq }}</td>
+                    <td class="text-end" colspan="2">Ejecutado: {{ totales_solicitud.total_ejecutado|money_gtq }}</td>
+                    <td colspan="2"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

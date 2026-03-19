@@ -1,0 +1,368 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="page-body">
+  <div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0"> {{ seccion.departamento.nombre }} / {{ seccion.nombre }}</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'scompras:lista_departamentos' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Departamentos</li>
+            <li class="breadcrumb-item active">Detalle de Sección</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="row mt-4">
+
+      <!-- Formulario: ocupa 4 columnas -->
+      <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-4">
+        <div class="feature-box common-card bg-feature no-bg-hover card-hover shadow">
+          <div class="feature-icon">
+            <img src="{% static 'assets/images/landing/feature-icon/4.svg' %}" alt="form-icon">
+          </div>
+   
+{% if not es_presupuesto %}
+<form method="post">
+  {% csrf_token %}
+
+<!-- Descripción: ancho completo con label personalizado -->
+<div class="form-group">
+  <label for="{{ form.descripcion.id_for_label }}" class="custom-label">
+    Justificación
+  </label>
+  {{ form.descripcion }}
+  {% if form.descripcion.errors %}
+    <div class="text-danger">{{ form.descripcion.errors }}</div>
+  {% endif %}
+</div>
+
+
+<!-- Contenedor fila para dos columnas -->
+<div class="row">
+
+  <!-- Columna izquierda -->
+  <div class="col-6">
+    <div class="mb-3">
+      {{ form.producto.label_tag }}
+      {{ form.producto }}
+      {% if form.producto.errors %}
+        <div class="text-danger">{{ form.producto.errors }}</div>
+      {% endif %}
+    </div>
+
+    
+  </div>
+
+  <!-- Columna derecha -->
+  <div class="col-6">
+    <div class="mb-3">
+      {{ form.subproducto.label_tag }}
+      {{ form.subproducto }}
+      {% if form.subproducto.errors %}
+        <div class="text-danger">{{ form.subproducto.errors }}</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+    <div class="mb-12">
+      {{ form.prioridad.label_tag }}
+      {{ form.prioridad }}
+      {% if form.prioridad.errors %}
+        <div class="text-danger">{{ form.prioridad.errors }}</div>
+      {% endif %}
+    </div>
+</div>
+
+
+
+  <!-- Botón centrado -->
+  <div class="text-center">
+    <button type="submit" class="btn btn-primary mt-3">Crear Solicitud</button>
+  </div>
+
+  </form>
+{% endif %}
+
+        </div>
+      </div>
+
+      <!-- Tabla: ocupa 8 columnas -->
+      <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 mb-4">
+        <div class="feature-box common-card bg-light no-bg-hover card-hover shadow">
+          <div class="feature-icon">
+            <img src="{% static 'assets/images/landing/feature-icon/4.svg' %}" alt="history-icon">
+          </div>
+          <h6 class="text-center mb-3">Ultimas 10 Solicitudes</h6>
+          {% if solicitudes %}
+            <div class="table-responsive">
+<table class="table table-striped" id="solicitudesTable">
+  <thead>
+    <tr>
+      <th>Correlativo</th>
+      <th>Fecha</th>
+      <th>Estado</th>
+      <th>Creador</th> <!-- Nueva columna -->
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for solicitud in solicitudes %}
+      <tr>
+       <td>
+                <span style="display: block; line-height: 1.5; font-size: 16px; color: #0068ab; font-weight: 600;">
+                  {{ solicitud.codigo_correlativo }}
+                </span>
+       </td>
+        <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+        <td>
+          {% if solicitud.estado == 'Creada' %}
+            <span class="badge bg-primary">Creada</span>
+          {% elif solicitud.estado == 'Rechazada' %}
+                     <span class="badge bg-secondary">
+    {% if solicitud.estado == 'Rechazada' %}
+        Anulada
+    {% else %}
+        {{ solicitud.estado }}
+    {% endif %}
+</span>
+          {% elif solicitud.estado == 'Finalizada' %}
+            <span class="badge bg-success">Finalizada</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ solicitud.estado }}</span>
+          {% endif %}
+        </td>
+        <td>{{ solicitud.usuario.get_full_name|default:solicitud.usuario.username }}</td> <!-- Nombre completo -->
+        <td class="text-center">
+          <a href="{% url 'scompras:detalle_solicitud' solicitud.id %}" title="Ver detalles">
+            <i class="icon-eye"></i>
+          </a>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+            </div>
+          {% else %}
+            <p class="text-muted text-center">No hay solicitudes registradas para esta sección.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- Tabla con todas las solicitudes -->
+<div class="container-fluid mt-3">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="card-title mb-0">Todas las Solicitudes</h6>
+    </div>
+    <div class="card-body">
+      {% if todas_solicitudes %}
+      <div class="table-responsive">
+        <table class="display table" id="basic-1" style="width:100%">
+          <thead>
+            <tr>
+              <th>Correlativo</th> <!-- Nueva columna -->
+              <th>Fecha</th>
+              <th>Justificación</th>
+              <th>Estado</th>
+              <th>Creador</th>
+              <th>Departamento / Sección</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for solicitud in todas_solicitudes %}
+            <tr>
+              <td>
+                <span style="display: block; line-height: 1.5; font-size: 16px; color: #0068ab; font-weight: 600;">
+                  {{ solicitud.codigo_correlativo }}
+                </span>
+              </td>
+              <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+              <td>{{ solicitud.descripcion|truncatewords:10 }}</td>
+              <td>
+                {% if solicitud.estado == 'Creada' %}
+                  <span class="badge bg-primary">Creada</span>
+                {% elif solicitud.estado == 'Rechazada' %}
+                           <span class="badge bg-secondary">
+    {% if solicitud.estado == 'Rechazada' %}
+        Anulada
+    {% else %}
+        {{ solicitud.estado }}
+    {% endif %}
+</span>
+                {% elif solicitud.estado == 'Finalizada' %}
+                  <span class="badge bg-success">Finalizada</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ solicitud.estado }}</span>
+                {% endif %}
+              </td>
+              <td>{{ solicitud.usuario.get_full_name|default:solicitud.usuario.username }}</td>
+              <td>{{ solicitud.departamento.nombre }} / {{ solicitud.seccion.nombre }}</td>
+              <td class="text-center">
+                <a href="{% url 'scompras:detalle_solicitud' solicitud.id %}" title="Ver detalles">
+                  <i class="icon-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="text-muted text-center">No hay solicitudes registradas.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- Estilos -->
+<style>
+ .card-hover:hover {
+  transform: scale(1.03);
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+.no-bg-hover:hover {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
+.no-bg-hover:hover h5 {
+  color: inherit !important;
+}
+
+.feature-box {
+  padding: 25px;
+  border-radius: 8px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.feature-icon img {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 15px auto;
+  display: block;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+</style>
+
+
+
+
+<!-- Carga dinámica de subproductos por producto -->
+<script>
+(function () {
+  const url = "{% url 'scompras:ajax_cargar_subproductos' %}";
+
+  function resetSubproductos(subproductoSelect, texto) {
+    subproductoSelect.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = texto;
+    subproductoSelect.appendChild(option);
+  }
+
+  async function cargarSubproductos(productoSelect, subproductoSelect) {
+    const productoId = productoSelect.value;
+
+    if (!productoId) {
+      resetSubproductos(subproductoSelect, 'Seleccione un subproducto');
+      subproductoSelect.disabled = true;
+      return;
+    }
+
+    resetSubproductos(subproductoSelect, 'Cargando subproductos...');
+    subproductoSelect.disabled = true;
+
+    try {
+      const response = await fetch(`${url}?producto_id=${encodeURIComponent(productoId)}`);
+      if (!response.ok) {
+        throw new Error('Error al cargar subproductos');
+      }
+
+      const data = await response.json();
+      resetSubproductos(subproductoSelect, 'Seleccione un subproducto');
+
+      data.forEach(function (item) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.nombre;
+        subproductoSelect.appendChild(option);
+      });
+
+      subproductoSelect.disabled = data.length === 0;
+    } catch (error) {
+      resetSubproductos(subproductoSelect, 'No se pudieron cargar los subproductos');
+      subproductoSelect.disabled = true;
+    }
+  }
+
+  function inicializar() {
+    document.querySelectorAll('form').forEach(function (form) {
+      const productoSelect = form.querySelector('select[name="producto"]');
+      const subproductoSelect = form.querySelector('select[name="subproducto"]');
+
+      if (!productoSelect || !subproductoSelect) {
+        return;
+      }
+
+      resetSubproductos(subproductoSelect, 'Seleccione un subproducto');
+      subproductoSelect.disabled = true;
+
+      productoSelect.addEventListener('change', function () {
+        cargarSubproductos(productoSelect, subproductoSelect);
+      });
+
+      if (productoSelect.value) {
+        cargarSubproductos(productoSelect, subproductoSelect);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializar);
+  } else {
+    inicializar();
+  }
+})();
+</script>
+
+{% endblock %}

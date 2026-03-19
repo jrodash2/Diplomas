@@ -1,0 +1,116 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <div>
+        <h4>Carga masiva de renglones - Presupuesto {{ presupuesto.anio }}</h4>
+        <p class="text-muted mb-0">Sube un archivo CSV o XLSX para registrar renglones.</p>
+      </div>
+      <a class="btn btn-light" href="{% url 'scompras:presupuesto_anual_detalle' presupuesto.id %}">Volver al presupuesto</a>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Archivo de carga</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">
+              Encabezados requeridos: producto_codigo, subproducto_codigo, codigo_renglon, descripcion, monto_inicial.
+            </p>
+            <form method="post" enctype="multipart/form-data" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Archivo</label>
+                {{ form.archivo }}
+                {% if form.archivo.errors %}
+                  <div class="text-danger small">{{ form.archivo.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Modo</label>
+                {{ form.modo }}
+                {% if form.modo.errors %}
+                  <div class="text-danger small">{{ form.modo.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+              <button type="submit" class="btn btn-primary">Procesar carga</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Resumen</h5>
+          </div>
+          <div class="card-body">
+            {% if resultado %}
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Filas leídas
+                  <span class="badge bg-primary rounded-pill">{{ resultado.total }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Creados
+                  <span class="badge bg-success rounded-pill">{{ resultado.creados }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Duplicados
+                  <span class="badge bg-secondary rounded-pill">{{ resultado.duplicados }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Actualizados
+                  <span class="badge bg-info text-dark rounded-pill">{{ resultado.actualizados }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Errores
+                  <span class="badge bg-danger rounded-pill">{{ resultado.errores|length }}</span>
+                </li>
+              </ul>
+            {% else %}
+              <p class="text-muted mb-0">Carga pendiente. Sube un archivo para ver el resultado.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if resultado and resultado.errores %}
+      <div class="card mt-3">
+        <div class="card-header">
+          <h5 class="mb-0">Errores por fila</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Fila</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for error in resultado.errores %}
+                  <tr>
+                    <td>{{ error.fila }}</td>
+                    <td>{{ error.error }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

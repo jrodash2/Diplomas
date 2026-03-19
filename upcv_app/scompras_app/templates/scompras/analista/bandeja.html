@@ -1,0 +1,85 @@
+{% extends 'scompras/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-8">
+          <h2 class="mb-0">Bandeja de analista</h2>
+          <p class="text-muted mb-0">Solicitudes asignadas para seguimiento.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <form class="row g-3" method="get">
+          <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select">
+              <option value="">Todos</option>
+              {% for value, label in estados %}
+                <option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Tipo de proceso</label>
+            <select name="tipo_proceso" class="form-select">
+              <option value="">Todos</option>
+              {% for tipo in tipos_proceso %}
+                <option value="{{ tipo.id }}" {% if filtros.tipo_proceso == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Buscar correlativo</label>
+            <input type="text" name="buscar" value="{{ filtros.buscar }}" class="form-control" placeholder="Ej: SC-2024-001">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100">Filtrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Correlativo</th>
+                <th>Sección</th>
+                <th>Estado</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for solicitud in solicitudes %}
+              <tr>
+                <td>{{ solicitud.codigo_correlativo|default:solicitud.id }}</td>
+                <td>{{ solicitud.seccion.nombre }}</td>
+                <td>{{ solicitud.estado }}</td>
+                <td>{{ solicitud.tipo_proceso.nombre|default:'-' }}</td>
+                <td>{{ solicitud.fecha_solicitud|date:'d/m/Y' }}</td>
+                <td class="text-end">
+                  <a class="btn btn-outline-primary btn-sm" href="{% url 'scompras:detalle_solicitud' solicitud.id %}">Ver</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">No hay solicitudes asignadas.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

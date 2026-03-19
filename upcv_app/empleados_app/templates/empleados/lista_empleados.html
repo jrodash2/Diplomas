@@ -1,0 +1,188 @@
+
+{% extends 'empleados/base.html' %}
+{% load static %}
+{% block content %}
+
+
+<!-- Cargar jQuery -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<!-- Cargar Calendar js -->
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4>Empleados Con Contratos Vencidos</h4>
+        </div>
+        <div class="col-6"> 
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="index.html">                                       
+                <svg class="stroke-icon">
+                  <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                </svg></a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Default</li>
+          </ol>
+        </div>
+      
+      </div>
+    </div>
+  </div>
+
+
+
+
+<!-- Container-fluid starts-->
+<div class="container-fluid">
+  <div class="edit-profile">
+      <a href="{% url 'empleados:exportar_empleados_no_vigentes_excel' %}" class="btn btn-primary mb-3" target="_blank">
+    Descargar Excel
+</a>
+    <div class="row">
+      <!-- Formulario de creación de empleado -->
+      <div class="col-xl-12">
+        <div class="card">
+          
+          <div class="card-body">
+            <div class="table-responsive custom-scrollbar">
+              <table class="display" id="basic-9">
+                <thead>
+                  <tr>
+                    <th>Fotografia</th>
+                    <th>Nombres</th>
+                    <th>Apellidos</th>
+                    <th>DPI</th>
+                    <th>Cargo</th>
+                    <th>Detalle del Cargo</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Renglon</th>
+<th>Sede</th>
+
+                    <th>Vigente</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  {% for empleado in empleados %}
+        <tr>
+           <td>
+                {% if empleado.imagen %}
+                  <img src="{{ empleado.imagen.url }}" alt="Foto de {{ empleado.nombres }}" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;">
+                {% else %}
+                  <p><em>Sin foto disponible</em></p>
+                {% endif %}
+              </td>
+          <td>{{ empleado.nombres }}</td>
+          <td>{{ empleado.apellidos }}</td>
+          <td>{{ empleado.dpi }}</td>
+          <td>{{ empleado.tipoc }}</td>
+          <td>{{ empleado.dcargo }}</td>
+<td>
+  {% if empleado.ultimo_contrato %}
+    {{ empleado.ultimo_contrato.fecha_inicio|date:"j \\d\\e F \\d\\e Y" }}
+  {% else %}
+    N/A
+  {% endif %}
+</td>
+<td>
+  {% if empleado.ultimo_contrato %}
+    {{ empleado.ultimo_contrato.fecha_vencimiento|date:"j \\d\\e F \\d\\e Y" }}
+  {% else %}
+    N/A
+  {% endif %}
+</td>
+<td>
+  {% if empleado.ultimo_contrato %}
+    {{ empleado.ultimo_contrato.renglon }}
+  {% else %}
+    N/A
+  {% endif %}
+</td>
+
+<td>
+  {% if empleado.ultimo_contrato and empleado.ultimo_contrato.sede %}
+    {{ empleado.ultimo_contrato.sede.nombre }}
+  {% else %}
+    N/A
+  {% endif %}
+</td>
+
+         
+          <td>  {% if empleado.tiene_contrato_activo %}
+  <i class="icon-check" style="color: green;"></i>
+{% else %}
+  <i class="icon-close" style="color: red;"></i>
+{% endif %}
+
+          <td>
+            <ul class="action"> 
+
+  <li class="edit">
+  <a href="{% url 'empleados:perfil_empleado' empleado.id %}" target="_blank">
+    <i class="icon-user"></i>
+  </a>
+</li>&nbsp;
+<li class="edit">
+  <a href="{% url 'empleados:contratos' empleado.id %}" target="_blank">
+    <i class="icon-write"></i>
+  </a>
+</li>&nbsp;
+
+<li class="edit">
+  <a href="{% url 'empleados:editar_empleado' empleado.id %}" target="_blank">
+    <i class="icon-pencil-alt"></i>
+  </a>
+</li>&nbsp;
+
+<li class="view">
+  <a href="{% url 'empleados:empleado_detalle' empleado.id %}" target="_blank">
+    <i class="icon-eye"></i>
+  </a>
+</li>
+
+
+            </ul>
+           
+          
+
+          </td>
+        </tr>
+      {% endfor %}
+                  
+
+                </tbody>
+                <tfoot>
+                  <tr>
+                     <th>Fotografia</th>
+                    <th>Nombres</th>
+                    <th>Apellidos</th>
+                    <th>DPI</th>
+                    <th>Cargo</th>
+                    <th>Detalle del Cargo</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Renglon</th>
+                 <th>Sede</th>
+
+                    <th><strong>Vigente</strong></th>
+                    <th>Acciones</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Container-fluid Ends--> 
+
+
+
+{% endblock %}

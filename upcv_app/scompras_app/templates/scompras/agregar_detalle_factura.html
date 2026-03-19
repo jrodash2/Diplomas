@@ -1,0 +1,1031 @@
+{% extends 'scompras/base.html' %} {% load static %} {% block content %}
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+
+<style>
+  /* Aplicamos estos estilos a las tablas */
+/* Aplicamos estos estilos a las tablas */
+/* Aplicamos estos estilos a las tablas */
+table.bill-content, 
+table.order-details {
+  width: 60%; /* Reducir el ancho de la tabla al 60% del contenedor */
+  table-layout: fixed; /* Esto asegura que la tabla no se agrande por el contenido */
+  max-width: 80%; /* La tabla no se expandirá más allá del tamaño del contenedor */
+}
+
+table.bill-content td, 
+table.order-details td, 
+table.bill-content th, 
+table.order-details th {
+  padding: 12px 10px; /* Reducir el padding para compactar las celdas */
+  word-wrap: break-word; /* Romper palabras largas para ajustarlas */
+  white-space: normal; /* Permitir que el texto se ajuste a varias líneas */
+  overflow: hidden; /* Evitar que el contenido se desborde */
+  text-overflow: ellipsis; /* Mostrar '...' si el texto es demasiado largo */
+}
+
+table.bill-content td, 
+table.order-details td {
+  max-width: 250px; /* Reducir el ancho máximo de las celdas */
+}
+
+table.bill-content th, 
+table.order-details th {
+  text-align: left;
+}
+
+/* Contenedor para las tarjetas */
+.card-container {
+  display: inline-block;
+  width: fit-content; /* Se ajusta al tamaño del contenido (imagen) */
+  margin: 15px; /* Reducir margen alrededor de la tarjeta */
+}
+
+.card {
+  display: inline-block;
+  width: 80%; /* La tarjeta se ajusta al tamaño del contenedor */
+  height: fit-content;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.card img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  width: 100%; /* Se asegura que la imagen ocupe todo el espacio del contenedor */
+}
+
+/* Contenedor general para las tablas y las tarjetas */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 800px; /* Reducir el máximo tamaño del contenedor */
+  margin: 0 auto;
+}
+
+
+  
+</style>
+
+<div class="page-body">
+  <!-- Page Sidebar Ends-->
+  <div class="page-body">
+    <!-- Container-fluid starts -->
+    
+                 {% if messages %}
+                <div class="container mt-3">
+                  {% for message in messages %}
+                  <div class="alert alert-info dark" role="alert">
+                    <p>{{ message }}</p>
+                  </div>
+                  {% endfor %}  
+                </div>
+                {% endif %} 
+    <div class="container-fluid">
+      <table class="table-wrapper invoice-1">
+        <tbody>
+          <tr>
+            <td>
+              <div class="card">
+                <div class="product-box">
+                  <div class="product-img"><img class="img-fluid" src="{% static 'assets/images/logo/upcv3.jpg' %}" alt="">
+                    <div class="product-hover">
+                      <div class="m-t-15 btn-showcase">
+    
+{# Botón Confirmar #}
+{% if form1h_instance.estado == 'borrador' %}
+    <form method="post" action="{% url 'scompras:confirmar_form1h' form1h_instance.id %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-warning btn-lg" title="Confirmar">
+            <i class="fa fa-check-circle"></i> Confirmar
+        </button>
+    </form>
+{% else %}
+    <a class="btn btn-outline-secondary btn-lg disabled" title="Formulario confirmado o anulado">
+        <i class="fa fa-check-circle"></i> Confirmar
+    </a>
+{% endif %}
+
+<a href="{% url 'scompras:exportar_detalle_factura_pdf' form1h_instance.id %}" target="_blank" class="btn btn-outline-secondary">
+  <i class="fa fa-file-pdf-o"></i> Imprimir
+</a>
+<a href="{% url 'scompras:exportar_excel' form1h_instance.id %}" target="_blank" class="btn btn-outline-success">
+  <i class="fa fa-file-excel-o"></i> Descargar Excel
+</a>
+
+
+{# Botón Anular #}
+{% if form1h_instance.estado == 'borrador' %}
+    <form method="post" action="{% url 'scompras:anular_form1h' form1h_instance.id %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-lg" title="Anular"
+              
+            <i class="fa fa-ban"></i> Anular
+        </button>
+    </form>
+{% else %}
+    <a class="btn btn-outline-secondary btn-lg disabled" title="Formulario confirmado o anulado">
+        <i class="fa fa-ban"></i> Anular
+    </a>
+{% endif %}
+
+
+
+</div>
+                    </div>
+                  </div>
+            
+                </div>
+              </div>
+              
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table class="bill-content" style="width: 100%">
+                <tbody>
+                  <tr>
+                    <td style="width: 40%">
+                      <span style="opacity: 0.8">Serie</span>
+                      {% if form1h_instance.serie %}
+                      <h4 class="card-title mb-0">
+                        {{ form1h_instance.serie.serie }} {{form1h_instance.numero_serie }}
+                      </h4>
+                      {% else %}
+                      <h4 class="card-title mb-0">
+                        Formulario 1H - Serie no disponible
+                      </h4>
+                      {% endif %}
+                    </td>
+                    <td style="width: 40%">
+                      <span style="opacity: 0.8">Fecha de Factura</span>
+                      <h6>{{ form1h_instance.fecha_factura|date:"d/m/Y" }}</h6>
+                    </td>
+                    <td>
+                      <span style="opacity: 0.8">Número de Factura</span>
+                      <h6>#{{ form1h_instance.numero_factura }}</h6>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="width: 36%">
+                      <span style="opacity: 0.8">Proveedor</span>
+                      <h6>{{ form1h_instance.proveedor }}</h6>
+                    </td>
+                    <td>
+                      <span style="opacity: 0.8">NIT</span>
+                      <h6>{{ form1h_instance.nit_proveedor }}</h6>
+                    </td>
+                    <td>
+                      <span style="opacity: 0.8">Teléfono</span>
+                      <h6>{{ form1h_instance.telefono_proveedor }}</h6>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="width: 36%">
+                      <span style="opacity: 0.8">Dirección del Proveedor</span>
+                      <h6>{{ form1h_instance.direccion_proveedor }}</h6>
+                    </td>
+                    <td style="width: 36%">
+                      <span style="opacity: 0.8">Fecha de Ingreso</span>
+                      <h6>{{ form1h_instance.fecha_ingreso|date:"d/m/Y" }}</h6>
+                    </td>
+                    <td>
+                      <span style="opacity: 0.8">Programa</span>
+                      <h6>{{ form1h_instance.programa.nombre }}</h6>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table
+                class="order-details"
+                style="
+                  width: 100%;
+                  border-collapse: separate;
+                  border-spacing: 0 10px;
+                "
+              >
+                <thead>
+                  <tr
+                    style="
+                      background: #007fbf;
+                      border-radius: 8px;
+                      overflow: hidden;
+                      box-shadow: 0px 10.9412px 10.9412px
+                          rgba(82, 77, 141, 0.04),
+                        0px 9.51387px 7.6111px rgba(82, 77, 141, 0.06),
+                        0px 5.05275px 4.0422px rgba(82, 77, 141, 0.0484671);
+                    "
+                  >
+                    <th
+                      style="
+                        padding: 18px 15px;
+                        border-top-left-radius: 8px;
+                        border-bottom-left-radius: 8px;
+                        text-align: left;
+                      "
+                    >
+                      <span style="color: #fff">Linea</span>
+                    </th>
+                    <th
+                    style="padding: 18px 15px; text-align: left">
+                    <span style="color: #fff">Descripción</span>
+                  </th>
+                    <th style="padding: 18px 15px; text-align: left">
+                      <span style="color: #fff">Precio Unitario</span>
+                    </th>
+                    <th style="padding: 18px 15px; text-align: left">
+                      <span style="color: #fff">Cantidad</span>
+                    </th>
+                    <th
+                     style="padding: 18px 15px; text-align: left"
+                    >
+                      <span style="color: #fff">Total Línea</span>
+                    </th>
+                    <th  style="
+                    padding: 18px 15px;
+                    border-top-right-radius: 8px;
+                    border-bottom-right-radius: 8px;
+                    text-align: left;
+                  ">
+                      <span style="color: #fff">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {% for detalle in detalles_factura %}
+                  <tr
+                    style="
+                      box-shadow: 0px 10.9412px 10.9412px
+                          rgba(82, 77, 141, 0.04),
+                        0px 9.51387px 7.6111px rgba(82, 77, 141, 0.06),
+                        0px 5.05275px 4.0422px rgba(82, 77, 141, 0.0484671);
+                      border-radius: 5.47059px;
+                    "
+                  >
+                    <td
+                      style="
+                        padding: 18px 15px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                      "
+                    >
+                      <span
+                        style="
+                          min-width: 7px;
+                          height: 7px;
+                          border: 4px solid #006666;
+                          background: #fff;
+                          border-radius: 100%;
+                          display: inline-block;
+                        "
+                      ></span>
+                      <span>{{ detalle.id_linea }}</span>
+                    </td>
+                    <td style="padding: 18px 15px">
+                      <span>{{ detalle.articulo.nombre }}</span>
+                    </td>
+                    <td style="padding: 18px 15px">
+                      <span>Q{{ detalle.precio_unitario }}</span>
+                    </td>
+                    <td style="padding: 18px 15px">
+                      <span>{{ detalle.cantidad }}</span>
+                    </td>
+                    <td style="padding: 18px 15px; text-align: right">
+                      <span>Q{{ detalle.precio_total }}</span>
+                    </td>
+<td style="text-align: center; vertical-align: middle;">
+  {% if form1h_instance.estado != 'confirmado' and form1h_instance.estado != 'anulado' %}
+    <i class="fa fa-edit editar-detalle-btn fa-2x" 
+       style="cursor: pointer;" 
+       data-id="{{ detalle.id }}" 
+       data-bs-toggle="modal" 
+       data-bs-target="#editarDetalleModal"></i>
+    {% comment %} <i class="fa fa-trash-o eliminar-detalle-btn fa-2x" 
+       style="cursor: pointer;" 
+       data-url="{% url 'scompras:eliminar_detalle_factura' detalle.id %}"></i> {% endcomment %}
+  {% endif %}
+</td>
+
+                  {% empty %}
+                  <tr>
+                    <td
+                      colspan="4"
+                      class="text-center"
+                      style="padding: 18px 15px"
+                    >
+                      No hay detalles agregados aún.
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  <!-- Mostrar total de la factura -->
+                  <tr>
+                    <td
+                      colspan="4"
+                      style="text-align: right; font-weight: bold"
+                    >
+                      Total:
+                    </td>
+                    <td style="text-align: right; font-weight: bold">
+                      Q{{ total_factura }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+            
+          </tr>
+        </tbody>
+        <tr
+        style="
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          margin-top: 12px;
+        "
+      >
+        <td></td>
+        <td>
+  
+</td>
+
+      </tr>
+      
+      </table>
+      {% if form1h_instance.estado != 'confirmado' and form1h_instance.estado != 'anulado' %}
+    <!-- Contenedor para los botones -->
+    <div style="display: flex; gap: 10px;">
+      <!-- Botón de Agregar Detalle -->
+      <button
+        class="btn btn-primary"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#detalleFacturaModal"
+        title="Agregar Detalle"
+      >
+        Agregar Detalle
+      </button>
+
+      <!-- Botón de Agregar Artículo -->
+      <button 
+        class="btn btn-primary"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#crearArticuloModal"
+        title="Crear Nuevo Artículo"
+      >
+        Agregar Artículo
+      </button>
+    </div>
+  {% endif %}
+    </div>
+  </div>
+
+<!-- Modal para seleccionar artículo con imagen de fondo -->
+<div class="modal fade" id="detalleFacturaModal" tabindex="-1" aria-labelledby="detalleFacturaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Contenedor con imagen, título y formulario -->
+        <div class="Riho-demo-img">
+          <!-- Estilo decorativo opcional -->
+          <ul class="dot-group pb-3 pt-0">
+            <li></li>
+            <li></li>
+            <li></li>
+          </ul>
+
+          <!-- Título principal -->
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Seleccionar - </span>Artículo para Detalle</h5>
+            <p>Complete el formulario para agregar los detalles del artículo.</p>
+          </div>
+
+          <!-- Imagen decorativa -->
+          <div class="overflow-hidden text-center mb-4">
+            <img class="img-fluid" src="{% static 'assets/images/logo/logo.png'%}" alt="imagen decorativa">
+          </div>
+
+          <!-- Formulario -->
+          <form method="post" onsubmit="showSuccessMessage('¡Detalle agregado correctamente!')">
+            {% csrf_token %}
+            <input type="hidden" name="form1h" value="{{ form1h_instance.id }}" />
+
+            <div class="row">
+              <!-- Campo para seleccionar artículo -->
+              <div class="col-md-6 mb-3">
+                <label for="id_articulo" class="form-label">Artículo</label>
+                <select class="form-control" id="id_articulo" name="articulo" required>
+                  {% for articulo in articulos %}
+                    <option 
+                      value="{{ articulo.id }}"
+                      data-requiere-vencimiento="{{ articulo.requiere_vencimiento|yesno:'true,false' }}"
+                      data-requiere-inventario="{{ articulo.requiere_inventario_individual|yesno:'true,false' }}">
+                      {{ articulo.nombre }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Campo para ingresar la cantidad -->
+              <div class="col-md-6 mb-3">
+                <label for="id_cantidad" class="form-label">Cantidad</label>
+                <input type="number" id="id_cantidad" class="form-control" name="cantidad" required />
+              </div>
+
+              <!-- Campo para ingresar el precio unitario -->
+              <div class="col-md-6 mb-3">
+                <label for="id_precio_unitario" class="form-label">Precio Unitario</label>
+                <input type="number" class="form-control" id="id_precio_unitario" name="precio_unitario" step="0.01" required />
+              </div>
+
+              <!-- NUEVO: Campos dinámicos de Inventario -->
+              <div class="col-md-12 mb-3" id="inventarioFields" style="display: none;">
+                <label class="form-label">Detalle de Inventario (Folio y Nomenclatura)</label>
+                <div id="inventarioRows">
+                  <!-- Filas agregadas dinámicamente aquí -->
+                </div>
+                <button type="button" id="addInventarioRow" class="btn btn-sm btn-primary mt-2">+ Agregar fila</button>
+              </div>
+
+              <!-- Línea reservada -->
+              <div class="col-md-6 mb-3">
+                <label for="detalle_numero_linea" class="form-label">Número de Línea</label>
+                <select name="detalle_numero_linea" class="form-control" required>
+                  {% for linea in lineas_reservadas %}
+                    <option value="{{ linea.numero_linea }}">{{ linea.numero_linea }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Renglón -->
+              <div class="col-md-6 mb-3">
+                <label for="renglon" class="form-label">Renglón</label>
+                <input type="number" id="renglon" class="form-control" name="renglon" value="{{ renglon_value }}" required />
+              </div>
+
+              <!-- Campo oculto para 'id_linea' -->
+              <input type="hidden" name="id_linea" value="{{ id_linea_value }}">
+
+              <!-- Fecha de vencimiento -->
+              <div class="col-md-6 mb-3" id="fechaVencimientoContainer" style="display:none;">
+                <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento</label>
+                <input type="date" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control" />
+              </div>
+
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Guardar Detalle</button>
+            </div>
+          </form>
+
+        </div>
+
+        <!-- Tabla de Artículos existentes -->
+        <div class="mt-4">
+          <h5>Artículos Creados</h5>
+          <table class="display" id="basic-9">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Unidad de Medida</th>
+                <th>Ubicación</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for articulo in articulos %}
+                <tr>
+                  <td>{{ articulo.id }}</td>
+                  <td>{{ articulo.nombre }}</td>
+                  <td>{{ articulo.categoria }}</td>
+                  <td>{{ articulo.unidad_medida }}</td>
+                  <td>{{ articulo.ubicacion }}</td>
+                  <td>
+                   <button 
+  class="btn btn-success btn-sm seleccionar-articulo" 
+  data-id="{{ articulo.id }}" 
+  data-nombre="{{ articulo.nombre }}" 
+  data-precio="{{ articulo.precio_unitario }}" 
+  data-requiere-vencimiento="{{ articulo.requiere_vencimiento|yesno:'true,false' }}"
+  data-requiere-inventario="{{ articulo.requiere_inventario_individual|yesno:'true,false' }}">
+  Seleccionar
+</button>
+
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center">No hay artículos disponibles.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Script para controlar visibilidad y filas dinámicas -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectArticulo = document.getElementById('id_articulo');
+    const inventarioFields = document.getElementById('inventarioFields');
+    const inventarioRows = document.getElementById('inventarioRows');
+    const addInventarioBtn = document.getElementById('addInventarioRow');
+    const fechaVencContainer = document.getElementById('fechaVencimientoContainer');
+    const fechaVencInput = document.getElementById('fecha_vencimiento');
+
+    function toggleFields() {
+      const selected = selectArticulo.options[selectArticulo.selectedIndex];
+      const requiereInventario = selected.getAttribute('data-requiere-inventario') === 'true';
+      const requiereVencimiento = selected.getAttribute('data-requiere-vencimiento') === 'true';
+
+      inventarioFields.style.display = requiereInventario ? 'block' : 'none';
+      fechaVencContainer.style.display = requiereVencimiento ? 'block' : 'none';
+      fechaVencInput.required = requiereVencimiento;
+
+      if (!requiereInventario) {
+        inventarioRows.innerHTML = ''; // Limpiar filas si no se requiere inventario
+      } else if (inventarioRows.children.length === 0) {
+        addInventarioRow(); // Agregar fila inicial si está visible y vacío
+      }
+    }
+
+    function addInventarioRow() {
+      const row = document.createElement('div');
+      row.className = 'row inventario-row mb-2';
+
+      row.innerHTML = `
+        <div class="col-md-6">
+          <input type="text" name="folio_inventario[]" class="form-control" placeholder="Folio Inventario" required>
+        </div>
+        <div class="col-md-5">
+          <input type="text" name="nomenclatura[]" class="form-control" placeholder="Nomenclatura" required>
+        </div>
+        <div class="col-md-1">
+          <button type="button" class="btn btn-danger btn-sm remove-row-btn" title="Quitar fila">&times;</button>
+        </div>
+      `;
+
+      inventarioRows.appendChild(row);
+
+      // Evento para eliminar fila
+      row.querySelector('.remove-row-btn').addEventListener('click', () => {
+        row.remove();
+      });
+    }
+
+    addInventarioBtn.addEventListener('click', addInventarioRow);
+    selectArticulo.addEventListener('change', toggleFields);
+    toggleFields(); // Inicializar al cargar
+  });
+</script>
+
+<script>
+
+const articuloSelect = document.getElementById('id_articulo');
+const inventarioFieldsContainer = document.getElementById('inventarioFields');
+
+function toggleInventarioFields() {
+  const selectedOption = articuloSelect.options[articuloSelect.selectedIndex];
+  const requiereInventario = selectedOption.getAttribute('data-requiere-inventario') === 'true';
+
+  if (requiereInventario) {
+    inventarioFieldsContainer.style.display = 'block';
+  } else {
+    inventarioFieldsContainer.style.display = 'none';
+    // Opcional: borrar inputs
+  }
+}
+
+articuloSelect.addEventListener('change', toggleInventarioFields);
+document.addEventListener('DOMContentLoaded', toggleInventarioFields);
+
+
+  // Mostrar u ocultar campo fecha de vencimiento según artículo seleccionado
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectArticulo = document.getElementById('id_articulo');
+    const fechaVencContainer = document.getElementById('fechaVencimientoContainer');
+    const fechaVencInput = document.getElementById('fecha_vencimiento');
+
+    function toggleFechaVencimiento() {
+      const selectedOption = selectArticulo.options[selectArticulo.selectedIndex];
+      const requiereVenc = selectedOption.getAttribute('data-requiere-vencimiento') === 'true';
+      if (requiereVenc) {
+        fechaVencContainer.style.display = 'block';
+        fechaVencInput.required = true;
+      } else {
+        fechaVencContainer.style.display = 'none';
+        fechaVencInput.required = false;
+        fechaVencInput.value = ''; // limpiar si antes se puso alguna fecha
+      }
+    }
+
+    // Ejecutar al cargar para setear estado correcto
+    toggleFechaVencimiento();
+
+    // Ejecutar al cambiar selección
+    selectArticulo.addEventListener('change', toggleFechaVencimiento);
+  });
+
+
+document.querySelectorAll('.seleccionar-articulo').forEach(button => {
+  button.addEventListener('click', () => {
+    const articuloId = button.getAttribute('data-id');
+
+    const selectArticulo = document.getElementById('id_articulo');
+    const fechaVencContainer = document.getElementById('fechaVencimientoContainer');
+    const fechaVencInput = document.getElementById('fecha_vencimiento');
+    const inventarioFields = document.getElementById('inventarioFields');
+    const inventarioRows = document.getElementById('inventarioRows');
+    
+    // Seleccionar el artículo en el <select>
+    selectArticulo.value = articuloId;
+
+    // Disparar el evento change para activar los scripts dinámicos
+    selectArticulo.dispatchEvent(new Event('change'));
+  });
+});
+
+
+
+</script>
+
+<!-- Modal para Crear Nuevo Artículo con imagen de fondo -->
+<div class="modal fade" id="crearArticuloModal" tabindex="-1" aria-labelledby="crearArticuloModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Contenedor con imagen, título y formulario -->
+        <div class="Riho-demo-img">
+          <!-- Estilo decorativo opcional -->
+          <ul class="dot-group pb-3 pt-0">
+            <li></li>
+            <li></li>
+            <li></li>
+          </ul>
+
+          <!-- Título principal -->
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Crear - </span>Nuevo Artículo</h5>
+            <p>Complete el formulario para registrar un nuevo artículo en el sistema.</p>
+          </div>
+
+          <!-- Imagen decorativa -->
+          <div class="overflow-hidden text-center mb-4">
+            <img class="img-fluid" src="{% static 'assets/images/logo/logo.png'%}" alt="imagen decorativa">
+          </div>
+
+          <!-- Formulario -->
+          <form method="POST" action="{% url 'scompras:crear_articulo' %}" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-12">
+              <label for="id_nombre" class="form-label">Nombre del Artículo</label>
+              <input type="text" class="form-control" id="id_nombre" name="nombre" required />
+            </div>
+
+            <div class="col-md-6">
+              <label for="id_categoria" class="form-label">Categoría</label>
+              <select class="form-control" id="id_categoria" name="categoria" required>
+                <option value="" disabled selected>Seleccione una Categoría</option>
+                {% for categoria in categorias %}
+                  <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                {% empty %}
+                  <option value="" disabled>No hay categorías disponibles</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="id_ubicacion" class="form-label">Ubicación</label>
+              <select class="form-control" id="id_ubicacion" name="ubicacion" required>
+                <option value="" disabled selected>Seleccione una Ubicación</option>
+                {% for ubicacion in ubicaciones %}
+                  <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }}</option>
+                {% empty %}
+                  <option value="" disabled>No hay ubicaciones disponibles</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-12">
+              <label for="id_unidad_medida" class="form-label">Unidad de Medida</label>
+              <select class="form-control" id="id_unidad_medida" name="unidad_medida" required>
+                <option value="" disabled selected>Seleccione una Unidad de Medida</option>
+                {% for unidad in unidades %}
+                  <option value="{{ unidad.id }}">{{ unidad.nombre }}</option>
+                {% empty %}
+                  <option value="" disabled>No hay unidades de medida disponibles</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Nuevo campo checkbox para fecha de vencimiento -->
+            <div class="col-md-12 form-check mt-3">
+              <input type="checkbox" class="form-check-input" id="id_requiere_vencimiento" name="requiere_vencimiento" value="True" />
+              <label class="form-check-label" for="id_requiere_vencimiento">Requiere Fecha de Vencimiento</label>
+            </div>
+
+            <div class="col-12 text-center">
+              <button type="submit" class="btn btn-primary mt-3">Crear Artículo</button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal para Editar Detalle -->
+<div class="modal fade" id="editarDetalleModal" tabindex="-1" aria-labelledby="editarDetalleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Contenedor con imagen, título y formulario -->
+        <div class="Riho-demo-img">
+          <!-- Estilo decorativo opcional -->
+          <ul class="dot-group pb-3 pt-0">
+            <li></li>
+            <li></li>
+            <li></li>
+          </ul>
+
+          <!-- Título principal -->
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Editar - </span>Detalle</h5>
+            <p>Realiza los cambios necesarios y guarda los detalles del artículo.</p>
+          </div>
+
+          <!-- Imagen decorativa -->
+          <div class="overflow-hidden text-center mb-4">
+            <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="imagen decorativa">
+          </div>
+
+          <!-- Formulario para editar detalle -->
+          <form id="editarDetalleForm" method="POST" action="{% url 'scompras:editar_detalle_factura' %}">
+            {% csrf_token %}
+            <input type="hidden" id="detalleId" name="detalle_id"> <!-- Campo oculto para el ID del detalle -->
+
+            <!-- Campo Artículo -->
+            <div class="mb-3">
+              <label for="editarArticulo" class="form-label">Artículo</label>
+             <select class="form-control" id="editarArticulo" name="articulo">
+  {% for articulo in articulos %}
+    <option 
+      value="{{ articulo.id }}"
+      data-requiere-vencimiento="{{ articulo.requiere_vencimiento|yesno:'true,false' }}"
+    >
+      {{ articulo.nombre }}
+    </option>
+  {% endfor %}
+</select>
+            </div>
+
+            <!-- Campo Cantidad -->
+            <div class="mb-3">
+              <label for="editarCantidad" class="form-label">Cantidad</label>
+              <input type="number" class="form-control" id="editarCantidad" name="cantidad" required>
+            </div>
+
+            <!-- Campo Precio Unitario -->
+            <div class="mb-3">
+              <label for="editarPrecio" class="form-label">Precio Unitario</label>
+              <input type="number" class="form-control" id="editarPrecio" name="precio_unitario" step="0.01" required>
+
+            </div>
+
+            <!-- Campo Renglón -->
+            <div class="mb-3">
+              <label for="editarRenglon" class="form-label">Renglón</label>
+              <input type="number" class="form-control" id="editarRenglon" name="renglon" required>
+            </div>
+
+<div class="mb-3" id="fechaVencimientoContainer" style="visibility: hidden; height: 70px;">
+  <label for="editarFechaVencimiento" class="form-label">Fecha de Vencimiento</label>
+  <input type="date" class="form-control" id="editarFechaVencimiento" name="fecha_vencimiento" style="visibility: hidden;">
+</div>
+
+
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectArticulo = document.getElementById('editarArticulo');
+    const fechaVencimientoContainer = document.getElementById('fechaVencimientoContainer');
+    const inputFechaVencimiento = document.getElementById('editarFechaVencimiento');
+
+function toggleFechaVencimiento() {
+  const selectedOption = selectArticulo.options[selectArticulo.selectedIndex];
+  const requiere = selectedOption.getAttribute('data-requiere-vencimiento') === 'true';
+
+  if (requiere) {
+    fechaVencimientoContainer.style.visibility = 'visible';
+    inputFechaVencimiento.style.visibility = 'visible';
+    inputFechaVencimiento.required = true;
+  } else {
+    fechaVencimientoContainer.style.visibility = 'hidden';
+    inputFechaVencimiento.style.visibility = 'hidden';
+    inputFechaVencimiento.required = false;
+    inputFechaVencimiento.value = '';  // **Importante limpiar valor**
+  }
+}
+
+
+
+
+    // Mostrar u ocultar cuando cambia el artículo seleccionado
+    selectArticulo.addEventListener('change', toggleFechaVencimiento);
+
+    // Cada vez que se abre el modal, verificar el campo según el artículo seleccionado
+    $('#editarDetalleModal').on('shown.bs.modal', function () {
+      toggleFechaVencimiento();
+    });
+
+    // Evento para cargar los datos en el modal (botones con clase .editar-detalle-btn y data-id)
+    document.querySelectorAll('.editar-detalle-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const detailId = button.getAttribute('data-id');
+
+        fetch(`/scompras/obtener-detalle-factura/${detailId}/`)
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('detalleId').value = detailId;
+            selectArticulo.value = data.articulo.toString();
+            document.getElementById('editarCantidad').value = data.cantidad;
+            document.getElementById('editarPrecio').value = data.precio_unitario;
+            document.getElementById('editarRenglon').value = data.renglon;
+
+            toggleFechaVencimiento();
+
+            const selectedOption = selectArticulo.options[selectArticulo.selectedIndex];
+            if (selectedOption.getAttribute('data-requiere-vencimiento') === 'true') {
+              inputFechaVencimiento.value = data.fecha_vencimiento || '';
+            } else {
+              inputFechaVencimiento.value = '';
+            }
+          })
+          .catch(console.error);
+      });
+    });
+  });
+</script>
+
+
+<!-- Modal de Confirmación con imagen y estilo -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Contenedor con imagen, título y formulario -->
+        <div class="Riho-demo-img">
+          <!-- Estilo decorativo opcional -->
+          <ul class="dot-group pb-3 pt-0">
+            <li></li>
+            <li></li>
+            <li></li>
+          </ul>
+
+          <!-- Título principal -->
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Confirmación - </span>Eliminar Detalle</h5>
+            
+          </div>
+
+          <!-- Imagen decorativa -->
+          <div class="overflow-hidden text-center mb-4">
+            <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="imagen decorativa">
+          </div>
+
+          <!-- Mensaje de Confirmación -->
+          <div class="modal-body text-center social-profile text-start p-4">
+            <p>¿Estás seguro de que deseas eliminar este detalle?</p>
+          </div>
+
+          <!-- Botones de Confirmación -->
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmDeleteButton">Eliminar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+  $(document).on('click', '.seleccionar-articulo', function () {
+    var articuloId = $(this).data('id');
+    var articuloNombre = $(this).data('nombre');
+    var articuloPrecio = $(this).data('precio');
+  
+    // Asignar el valor al campo del formulario de detalles
+    $('#id_articulo').val(articuloId);  // Asigna el ID del artículo al campo del select
+    $('#id_precio_unitario').val(articuloPrecio);  // Asigna el precio al campo de precio unitario
+  });
+  
+</script>
+
+<script>
+  // Cuando se envíe el formulario, se ejecutará la recarga
+  $(document).on('submit', '#crearArticuloModal form', function (e) {
+    e.preventDefault(); // Evitar el comportamiento por defecto (recarga normal)
+    
+    // Aquí se podría agregar una lógica para enviar el formulario via AJAX
+    $.ajax({
+      type: 'POST',
+      url: $(this).attr('action'),
+      data: $(this).serialize(),
+      success: function(response) {
+        // Si el artículo se ha creado correctamente, recargamos la página
+        location.reload();
+      },
+      error: function(error) {
+        // Si hay un error, puedes mostrar un mensaje (opcional)
+        alert('Hubo un error al crear el artículo. Intenta nuevamente.');
+      }
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    let deleteUrl = ''; // URL del detalle a eliminar
+    const confirmDeleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+  
+    // Manejar clic en el ícono de eliminar
+    document.querySelectorAll('.eliminar-detalle-btn').forEach((icon) => {
+      icon.addEventListener('click', function () {
+        deleteUrl = this.getAttribute('data-url'); // Obtener la URL del detalle a eliminar
+        confirmDeleteModal.show(); // Mostrar el modal
+      });
+    });
+  
+    // Manejar confirmación de eliminación
+    confirmDeleteButton.addEventListener('click', function () {
+      fetch(deleteUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+      })
+        .then((response) => {
+          if (response.ok) {
+            location.reload(); // Recargar la página si se elimina correctamente
+          } else {
+            alert('Hubo un error al eliminar el detalle.');
+          }
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          alert('Hubo un error al procesar la solicitud.');
+        })
+        .finally(() => {
+          confirmDeleteModal.hide(); // Ocultar el modal
+        });
+    });
+  });
+</script>
+
+
+
+{% endblock %}

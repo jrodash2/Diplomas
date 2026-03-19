@@ -1,0 +1,233 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+{% include 'components/modal_theme_upcv_styles.html' %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-xl-10">
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'scompras:tipos_proceso_list' %}">Tipos</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Subtipos de: {{ tipo.nombre }}</li>
+          </ol>
+        </nav>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-0">Subtipos</h4>
+              <small class="text-muted">Tipo: {{ tipo.nombre }}</small>
+            </div>
+            <button
+              class="btn btn-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#modalSubtipo"
+              data-mode="create"
+              data-url="{% url 'scompras:subtipo_proceso_create' tipo.id %}"
+            >
+              Nuevo subtipo
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="pageAlert" class="alert alert-success d-none" role="alert"></div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Código</th>
+                    <th class="text-center">Activo</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for subtipo in subtipos %}
+                  <tr>
+                    <td>{{ subtipo.nombre }}</td>
+                    <td><span class="badge bg-light text-dark">{{ subtipo.codigo }}</span></td>
+                    <td class="text-center">
+                      {% if subtipo.activo %}
+                        <span class="badge bg-success">Activo</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <a class="btn btn-outline-info btn-sm" href="{% url 'scompras:pasos_subtipo_list' tipo.id subtipo.id %}">Ver pasos</a>
+                      <button
+                        class="btn btn-outline-secondary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalSubtipo"
+                        data-mode="edit"
+                        data-url="{% url 'scompras:subtipo_proceso_update' subtipo.id %}"
+                        data-nombre="{{ subtipo.nombre }}"
+                        data-codigo="{{ subtipo.codigo }}"
+                        data-activo="{% if subtipo.activo %}1{% else %}0{% endif %}"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        class="btn btn-outline-warning btn-sm js-toggle"
+                        data-url="{% url 'scompras:subtipo_proceso_toggle' subtipo.id %}"
+                      >
+                        {% if subtipo.activo %}Desactivar{% else %}Activar{% endif %}
+                      </button>
+                      <button
+                        class="btn btn-danger btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalEliminarSubtipo{{ subtipo.id }}"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted">No hay subtipos registrados.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% for subtipo in subtipos %}
+        <div class="modal fade" id="modalEliminarSubtipo{{ subtipo.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content dark-sign-up modal-theme-upcv">
+              <div class="modal-body social-profile text-start p-4">
+                {% include 'components/modal_header_upcv.html' with title='Eliminar subtipo' subtitle='Esta acción eliminará el subtipo seleccionado de forma permanente.' %}
+                <p class="mb-0">¿Seguro que desea eliminar <strong>{{ subtipo.nombre }}</strong>? Esta acción no se puede deshacer.</p>
+
+                <div class="modal-footer justify-content-center border-top-0 mt-4">
+                  <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+                  <form method="post" action="{% url 'scompras:subtipo_proceso_eliminar' tipo.id subtipo.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger px-4">Confirmar</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'scompras/procesos/partials/_modal_subtipo.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  };
+
+  const showAlert = (message, type = 'success') => {
+    const alert = document.getElementById('pageAlert');
+    alert.textContent = message;
+    alert.classList.remove('d-none', 'alert-success', 'alert-danger');
+    alert.classList.add(type === 'success' ? 'alert-success' : 'alert-danger');
+    setTimeout(() => {
+      alert.classList.add('d-none');
+    }, 2500);
+  };
+
+  const renderErrors = (container, errors) => {
+    container.innerHTML = '';
+    const list = document.createElement('ul');
+    list.classList.add('mb-0');
+    Object.entries(errors).forEach(([field, messages]) => {
+      messages.forEach((message) => {
+        const item = document.createElement('li');
+        item.textContent = `${field}: ${message}`;
+        list.appendChild(item);
+      });
+    });
+    container.appendChild(list);
+    container.classList.remove('d-none');
+  };
+
+  const subtipoModal = document.getElementById('modalSubtipo');
+  const subtipoForm = document.getElementById('subtipoForm');
+  const subtipoErrors = document.getElementById('subtipoFormErrors');
+
+  if (subtipoModal) {
+    subtipoModal.addEventListener('show.bs.modal', (event) => {
+      const button = event.relatedTarget;
+      if (!button) return;
+      const mode = button.getAttribute('data-mode');
+      const url = button.getAttribute('data-url');
+      document.getElementById('subtipoModalTitle').textContent =
+        mode === 'edit' ? 'Editar subtipo' : 'Nuevo subtipo';
+      subtipoForm.dataset.url = url;
+      subtipoErrors.classList.add('d-none');
+      subtipoErrors.innerHTML = '';
+      if (mode === 'edit') {
+        document.getElementById('subtipoNombre').value = button.getAttribute('data-nombre') || '';
+        document.getElementById('subtipoCodigo').value = button.getAttribute('data-codigo') || '';
+        document.getElementById('subtipoActivo').checked = button.getAttribute('data-activo') === '1';
+      } else {
+        subtipoForm.reset();
+        document.getElementById('subtipoActivo').checked = true;
+      }
+    });
+  }
+
+  if (subtipoForm) {
+    subtipoForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const url = subtipoForm.dataset.url;
+      const formData = new FormData(subtipoForm);
+      fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            const modalInstance = bootstrap.Modal.getInstance(subtipoModal);
+            if (modalInstance) modalInstance.hide();
+            showAlert(data.message || 'Guardado');
+            setTimeout(() => {
+              window.location.reload();
+            }, 900);
+          } else {
+            renderErrors(subtipoErrors, data.errors || {});
+          }
+        })
+        .catch(() => {
+          showAlert('No fue posible guardar los cambios.', 'danger');
+        });
+    });
+  }
+
+  document.querySelectorAll('.js-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+      fetch(button.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            showAlert(data.message || 'Actualizado');
+            setTimeout(() => {
+              window.location.reload();
+            }, 900);
+          } else {
+            showAlert('No fue posible actualizar.', 'danger');
+          }
+        })
+        .catch(() => showAlert('No fue posible actualizar.', 'danger'));
+    });
+  });
+</script>
+{% endblock %}

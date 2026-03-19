@@ -1,0 +1,201 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- jQuery -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+
+<!-- DataTables -->
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+
+    <!-- ENCABEZADO -->
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Gestión de Cursos</h4>
+        </div>
+        
+      </div>
+    </div>
+<div class="col-6 text-align-left">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearCurso">
+            + Crear Curso
+          </button>
+        </div>
+    <!-- TABLA -->
+    <div class="container-fluid mt-3">
+      <div class="edit-profile">
+        <div class="row">
+          <div class="col-xl-12">
+            <div class="card">
+              <div class="card-body">
+
+<div class="table-responsive custom-scrollbar">
+  <table class="display" id="basic-9">
+   <thead>
+  <tr>
+    <th>ID</th>
+    <th>Código</th>
+    <th>Nombre</th>
+    <th>Fechas</th>
+    <th>Diseño Diploma</th>
+    <th>Acciones</th>
+  </tr>
+</thead>
+
+<tbody>
+ {% for c in cursos %}
+<tr>
+  <td>{{ c.id }}</td>
+  <td>{{ c.codigo }}</td>
+  <td>{{ c.nombre }}</td>
+  <td>{{ c.fecha_inicio }} - {{ c.fecha_fin }}</td>
+  <td>{{ c.diseno_diploma.nombre|default:'Sin diseño' }}</td>
+  <td>
+<ul class="action">
+
+    <li class="view me-2">
+      <a href="{% url 'diplomas:detalle_curso' c.id %}" title="Ver detalle del curso">
+        <i class="icon-eye"></i>
+      </a>
+    </li>
+
+    <li class="edit me-2">
+      <a href="{% url 'diplomas:editar_curso' c.id %}" title="Editar datos del curso">
+        <i class="icon-pencil-alt"></i>
+      </a>
+    </li>
+
+</ul>
+
+</td>
+
+</tr>
+{% endfor %}
+
+</tbody>
+
+<tfoot>
+  <tr>
+    <th>ID</th>
+    <th>Código</th>
+    <th>Nombre</th>
+    <th>Fechas</th>
+    <th>Diseño Diploma</th>
+    <th>Acciones</th>
+  </tr>
+</tfoot>
+
+
+  </table>
+</div>
+
+
+              </div><!-- card-body -->
+            </div><!-- card -->
+          </div><!-- col -->
+        </div><!-- row -->
+      </div><!-- edit-profile -->
+    </div><!-- container-fluid -->
+
+  </div><!-- container -->
+</div><!-- page-body -->
+
+<!-- ========================== -->
+<!--   MODAL CREAR CURSO        -->
+<!-- ========================== -->
+<div class="modal fade" id="modalCrearCurso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nuevo Curso</h5>
+          <p>Complete los campos para agregar un curso.</p>
+        </div>
+
+        <!-- LOGO -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="">
+        </div>
+
+<form method="POST" action="{% url 'diplomas:crear_curso_modal' %}">
+  {% csrf_token %}
+
+  <div class="row">
+
+    <div class="col-md-4 mb-3">
+      {{ form.codigo.label_tag }}
+      {{ form.codigo }}
+    </div>
+
+    <div class="col-md-8 mb-3">
+      {{ form.nombre.label_tag }}
+      {{ form.nombre }}
+    </div>
+
+    <div class="col-md-12 mb-3">
+      {{ form.descripcion.label_tag }}
+      {{ form.descripcion }}
+    </div>
+
+    <div class="col-md-6 mb-3">
+      {{ form.fecha_inicio.label_tag }}
+      {{ form.fecha_inicio }}
+    </div>
+
+    <div class="col-md-6 mb-3">
+      {{ form.fecha_fin.label_tag }}
+      {{ form.fecha_fin }}
+    </div>
+
+    <div class="col-md-12 mb-3">
+      {{ form.diseno_diploma.label_tag }}
+      {{ form.diseno_diploma }}
+      <small class="text-muted">Seleccione la plantilla de diploma para este curso.</small>
+    </div>
+
+    <!-- SELECT MÚLTIPLE DE FIRMAS -->
+    <div class="col-md-12 mb-3">
+      {{ form.firmas.label_tag }}
+      {{ form.firmas }}
+      <small class="text-muted">Puede seleccionar una o varias firmas (Ctrl + clic).</small>
+    </div>
+
+  </div>
+
+  <div class="modal-footer justify-content-center border-top-0">
+    <button type="submit" class="btn btn-primary">Guardar Curso</button>
+    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancelar</button>
+  </div>
+
+</form>
+
+
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================== -->
+<!--   ACTIVAR DATATABLE        -->
+<!-- ========================== -->
+<script>
+$(document).ready(function() {
+    $('#basic-9').DataTable({
+        "pageLength": 10,
+        "language": {
+            "url": "{% static 'assets/js/datatable/datatables/spanish.json' %}"
+        }
+    });
+});
+</script>
+
+
+{% endblock %}

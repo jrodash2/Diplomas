@@ -1,0 +1,1652 @@
+{% extends 'scompras/basecatalogo.html' %}
+{% block content %}
+{% load static money %}
+
+<!-- Input oculto para solicitud ID -->
+<input type="hidden" id="solicitud-id" value="{{ solicitud.id }}">
+
+<!-- Page Title / Breadcrumb -->
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4>Solicitud</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'scompras:lista_departamentos' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Sección</li>
+            <li class="breadcrumb-item active">Detalle Solicitud</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts -->
+  <div class="container-fluid">
+    <table style="width:1160px;margin:0 auto;">
+      <tbody>
+
+        <!-- Encabezado con logo e info general -->
+        <tr>
+          <td>
+            <table style="width: 100%; background-image: url({% static 'assets/images/email-template/invoice-3/bg-0.png' %}); background-position: center; background-size: cover; background-repeat: no-repeat; border-radius: 10px;">
+              <tbody>
+                <tr>
+                  <td style="padding: 30px 0px 30px 30px;">
+                    <img src="{% static 'assets/images/logo/logo.png' %}" alt="logo">
+{% if not es_presupuesto %}
+{% if es_scompras %}
+{% if not is_analista %}
+{% if solicitud.estado == 'Creada' %}
+<button type="button" class="btn btn-light btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#modalEditarSolicitud"
+        style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ✏️ Editar Solicitud
+</button>
+<button type="button" id="btnFinalizarSolicitud"
+        class="btn btn-sm"
+        style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ✅ Finalizar Solicitud
+</button>
+<button id="btnRechazar" type="button"
+        class="btn btn-sm"
+        style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ❌ Anular Solicitud
+</button>
+{% elif solicitud.estado == 'Finalizada' or solicitud.estado == 'Rechazada' %}
+<button type="button" class="btn btn-light btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#modalEditarSolicitud"
+        style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ✏️ Editar Solicitud
+</button>
+<button id="btnVerPDF" type="button" 
+        class="btn btn-sm"
+        style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;"
+        onclick="window.open('{% url 'scompras:generar_pdf_solicitud' solicitud.id %}', '_blank')">
+  🖨️ Imprimir Solicitud
+</button>
+<button id="btnRechazar" type="button"
+        class="btn btn-sm"
+        style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ❌ Anular Solicitud
+</button>
+{% endif %}
+{% endif %}
+{% else %}
+{% if can_edit_top_actions and mostrar_acciones_solicitud and not is_analista %}
+<!-- Botón Editar -->
+{% if puede_editar_solicitud_ui %}
+<button type="button" class="btn btn-light btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#modalEditarSolicitud"
+        style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ✏️ Editar Solicitud
+</button>
+{% endif %}
+
+<!-- Botón Finalizar -->
+{% if puede_finalizar_solicitud_ui %}
+<button type="button" id="btnFinalizarSolicitud"
+        class="btn btn-sm"
+        style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ✅ Finalizar Solicitud
+</button>
+{% endif %}
+
+<!-- Botón Rechazar -->
+{% if solicitud.estado == 'Creada' and puede_anular_solicitud_ui %}
+<button id="btnRechazar" type="button"
+        class="btn btn-sm"
+        style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+  ❌ Anular Solicitud
+</button>
+{% endif %}
+{% endif %}
+
+<!-- Botón Ver PDF (Solo cuando el estado es "Finalizada" o "Rechazada") -->
+{% if can_edit_top_actions %}
+  {% if solicitud.estado == 'Finalizada' or solicitud.estado == 'Rechazada' %}
+  {% if not is_analista %}
+    <!-- Botón Editar -->
+    {% if puede_editar_solicitud_ui %}
+    <button type="button" class="btn btn-light btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#modalEditarSolicitud"
+            style="margin-top: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+      ✏️ Editar Solicitud
+    </button>
+    {% endif %}
+    {% if puede_imprimir_solicitud_ui %}
+      <button id="btnVerPDF" type="button" 
+              class="btn btn-sm"
+              style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;"
+              onclick="window.open('{% url 'scompras:generar_pdf_solicitud' solicitud.id %}', '_blank')">
+        🖨️ Imprimir Solicitud
+      </button>
+    {% endif %}
+    {% if puede_anular_solicitud_ui %}
+      <button id="btnRechazar" type="button"
+            class="btn btn-sm"
+            style="margin-top: 10px; margin-left: 10px; background-color: #ffffff; color: #0068ab; font-weight: 600; border: none; border-radius: 5px; padding: 6px 12px; cursor:pointer;">
+      ❌ Anular Solicitud
+    </button>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+
+
+
+
+
+                  </td>
+                  <td style="text-align: end; padding: 30px 30px 30px 0;">
+                    <span style="display: block; line-height: 1.5; font-size: 28px; color: #fff; font-weight: 700;">Solicitud de Compra</span>
+                  <span style="display: block; line-height: 1.5; font-size: 18px; color: #fff; font-weight: 500;">
+    {{ solicitud.codigo_correlativo }}
+</span>
+
+<span style="display: block; line-height: 1.5; font-size: 18px; color: #fff; font-weight: 500;">
+    {{ fecha_solicitud_formateada }}
+</span>
+
+
+
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Información del solicitante y sección -->
+        <tr>
+          <td>
+            <table style="width: 100%;">
+              <tbody>
+                <tr style="padding: 28px 0; display: flex; justify-content: space-between;">
+                  <td>
+                    <h4 style="font-weight: 600; margin: 12px 0 5px 0; font-size: 18px;">
+                      {% if solicitud.seccion and solicitud.seccion.firmante_nombre %}
+                        {{ solicitud.seccion.firmante_nombre }}
+                      {% else %}
+                        Firmante no configurado
+                      {% endif %}
+                    </h4>
+                    <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">
+                      Cargo:
+                      {% if solicitud.seccion and solicitud.seccion.firmante_cargo %}
+                        {{ solicitud.seccion.firmante_cargo }}
+                      {% else %}
+                        Cargo no configurado
+                      {% endif %}
+                    </span><br>
+                    <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">Producto: {{ solicitud.producto.nombre }}</span><br>
+                    <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">Sub Producto: {{ solicitud.subproducto.nombre }}</span>
+                  </td>
+                  <td>
+                    <h4 style="font-weight: 600; margin: 12px 0 5px 0; font-size: 18px;">{{ solicitud.seccion.nombre }}</h4>
+                    <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">{{ solicitud.seccion.departamento.nombre }}</span><br>
+                   <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">
+    Estado: 
+    {% if solicitud.estado == 'Rechazada' %}
+        Anulada
+    {% else %}
+        {{ solicitud.estado }}
+    {% endif %}
+</span><br>
+
+                    <span style="line-height: 1.5; font-size: 14px; font-weight: 400; opacity: 0.8;">Prioridad: {{ solicitud.prioridad }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            
+            {% include 'scompras/partials/_timeline_proceso.html' %}
+
+            <h4 style="font-weight: 600; margin: 12px 0 5px 0; font-size: 18px;">Justificación:</h4>
+            <p style="opacity: 0.8; font-size: 16px;">
+              {{ solicitud.descripcion }}
+            </p>
+
+            <div class="card mt-3">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">CDP de la Solicitud</h5>
+                {% if puede_crear_cdp and es_admin and not es_compras %}
+                  <a class="btn btn-primary btn-sm" href="{% url 'scompras:crear_cdp_solicitud' solicitud.id %}">Crear CDP</a>
+                {% elif es_scompras or es_compras %}
+                  <span class="text-muted small">Solo lectura presupuestaria.</span>
+                {% elif not presupuesto_activo %}
+                  <span class="text-danger small">Active un presupuesto para habilitar CDP.</span>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                {% if cdp_resumen %}
+                  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                    <div>
+                      <p class="mb-1 fw-semibold">CDP #{{ cdp_resumen.id }}</p>
+                      <p class="mb-1">Estado: 
+                        <span class="cdp-badge {% if cdp_resumen.estado == 'RESERVADO' %}cdp-badge--reservado{% elif cdp_resumen.estado == 'EJECUTADO' %}cdp-badge--ejecutado{% elif cdp_resumen.estado == 'LIBERADO' %}cdp-badge--liberado{% endif %}">{{ cdp_resumen.estado_display }}</span>
+                      </p>
+                      <p class="mb-0">Monto total: <strong>{{ cdp_resumen.monto_total|money_gtq }}</strong></p>
+                      {% if cdp_totales %}
+                        <p class="mb-0 text-muted small">Reservado: {{ cdp_totales.total_reservado|money_gtq }} | Ejecutado: {{ cdp_totales.total_ejecutado|money_gtq }}</p>
+                      {% endif %}
+                    </div>
+                    <div class="text-end">
+                      {% if cdp_reservado_para_accion and puede_gestionar_cdp and cdp_reservado_para_accion.renglon.presupuesto_anual.activo and es_admin and not es_compras %}
+                        <a class="btn btn-success btn-sm" href="{% url 'scompras:ejecutar_cdp' cdp_reservado_para_accion.id %}">Ejecutar CDO</a>
+                        <a class="btn btn-warning btn-sm" href="{% url 'scompras:liberar_cdp' cdp_reservado_para_accion.id %}">Liberar CDP</a>
+                        {% if mostrar_liberar_todos %}
+                          <a class="btn btn-outline-danger btn-sm mt-2" href="{% url 'scompras:liberar_cdps_solicitud' solicitud.id %}">Liberar todos los CDP reservados</a>
+                        {% endif %}
+                      {% elif es_scompras or es_compras %}
+                        <span class="text-muted">Visualización informativa.</span>
+                      {% elif cdp_resumen.estado == 'RESERVADO' and not presupuesto_activo %}
+                        <span class="text-danger">Presupuesto inactivo.</span>
+                      {% endif %}
+                      {% if cdp_resumen and puede_imprimir_cdp and not es_compras %}
+                        <button
+                          class="btn btn-outline-secondary btn-sm mt-2"
+                          type="button"
+                          onclick="window.open('{% url 'scompras:generar_pdf_cdp' cdp_resumen.id %}', '_blank')"
+                        >
+                          🖨️ Imprimir CDP
+                        </button>
+                      {% endif %}
+                      {% if cdp_principal %}
+                        <div class="mt-2">
+                          <small class="text-muted">Renglón: {{ cdp_principal.renglon.label_compacto }}</small>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% else %}
+                  <p class="text-muted mb-0">La solicitud aún no tiene CDP registrados.</p>
+                {% endif %}
+                {% if tiene_cdo %}
+                  <p class="text-danger mt-2 mb-0">Esta solicitud ya cuenta con CDO ejecutado; no se permiten nuevos CDP.</p>
+                {% endif %}
+              </div>
+            </div>
+
+          </td>
+
+        </tr>
+
+        <!-- Línea divisoria -->
+        <tr>
+          <td>
+            <span style="display: block; background: rgba(82, 82, 108, 0.3); height: 1px; width: 150%; margin-bottom:20px;"></span>
+          </td>
+        </tr>
+
+        <!-- Descripción de productos -->
+        <tr>
+          <td>
+           <!-- Tabla de Insumos -->
+<style>
+  /* === Estilos de tabla mejorados === */
+  #tabla-insumos-agregados {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  }
+
+  #tabla-insumos-agregados th {
+    background: #0068ab;
+    color: white;
+    padding: 12px;
+    font-weight: 600;
+  }
+
+  #tabla-insumos-agregados td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd; /* Línea divisoria entre filas */
+    vertical-align: middle;
+    color: #333;
+    transition: color 0.2s ease, background-color 0.2s ease;
+  }
+
+  /* Fondo alternado */
+  #tabla-insumos-agregados tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+
+  /* Sombra + cambio de color al pasar el mouse */
+  #tabla-insumos-agregados tbody tr:hover {
+    background-color: #1e0551; /* azul intenso */
+    color: #fff; /* texto blanco */
+    box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  /* Asegurar que todos los textos hijos también se tornen blancos */
+  #tabla-insumos-agregados tbody tr:hover td {
+    color: #fff;
+  }
+
+  /* Mantener el color de botones en hover */
+  #tabla-insumos-agregados tbody tr:hover button {
+    background-color: #fff;
+    color: #1e0551;
+    font-weight: 600;
+  }
+
+  .editable-caracteristica {
+    cursor: pointer;
+    position: relative;
+  }
+
+  .editable-caracteristica:hover {
+    text-decoration: underline;
+  }
+
+  .editable-servicio-nombre {
+    cursor: pointer;
+    position: relative;
+  }
+
+  .editable-servicio-nombre:hover {
+    text-decoration: underline;
+  }
+
+  /* === Modal servicio único (estilo moderno) === */
+  .servicio-unico-modal .modal-content {
+    border: 0;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 22px 50px rgba(18, 38, 63, 0.22);
+  }
+
+  .servicio-unico-modal .modal-header,
+  .servicio-unico-modal .modal-body,
+  .servicio-unico-modal .modal-footer {
+    border: 0;
+  }
+
+  .servicio-unico-modal .servicio-unico-shell {
+    background: linear-gradient(150deg, #f6fbff 0%, #eef5ff 55%, #eaf2ff 100%);
+    padding: 1.75rem 1.75rem 1.5rem;
+  }
+
+  .servicio-unico-modal .servicio-unico-title {
+    color: #1f2b50;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+
+  .servicio-unico-modal .servicio-unico-copy {
+    color: #516182;
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+
+  .servicio-unico-modal .servicio-unico-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 193, 7, 0.18);
+    color: #c98700;
+  }
+
+  .servicio-unico-modal .servicio-unico-logo-wrap {
+    text-align: center;
+    margin: 0.65rem 0 0.9rem;
+  }
+
+  .servicio-unico-modal .servicio-unico-logo {
+    width: 82px;
+    height: auto;
+    opacity: 0.93;
+    filter: drop-shadow(0 8px 16px rgba(16, 47, 89, 0.16));
+  }
+
+  .servicio-unico-modal .btn-servicio-entendido {
+    min-width: 130px;
+    border-radius: 0.65rem;
+    font-weight: 600;
+    padding: 0.52rem 1.2rem;
+  }
+
+  
+</style>
+
+<div id="servicios-section" data-role="servicios-section">
+<div id="servicio-guard" data-has-servicio="{% if servicios %}1{% else %}0{% endif %}"></div>
+<div id="servicio-modal-trigger" data-servicio-ya-registrado="{% if servicio_ya_registrado %}1{% else %}0{% endif %}"></div>
+<table id="tabla-insumos-agregados" data-role="tabla-insumos" >
+  <thead>
+    <tr>
+      <th style="font-size:12px;">Cantidad Solicitada</th>
+      <th style="font-size:12px;">Renglón</th>
+      <th style="font-size:12px;">Código Insumo</th>
+      <th style="font-size:12px;">Nombre</th>
+      <th style="font-size:12px;">Características</th>
+      <th style="font-size:12px;">Característica Especial</th>
+      <th style="font-size:12px;">Presentación</th>
+      <th style="font-size:12px;">Cantidad Unidad Presentación</th>
+      <th style="font-size:12px;">Código Presentación</th>
+      <th style="font-size:12px;">Acción</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if detalles or servicios %}
+      {% for detalle in detalles %}
+        <tr data-id="{{ detalle.id }}">
+          <td style="font-size:10px;">{{ detalle.cantidad }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.renglon }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.codigo_insumo }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.nombre }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.caracteristicas|default:"-" }}</td>
+          <td style="font-size:10px;">
+            {% if puede_editar_caracteristica %}
+              <span class="editable-caracteristica caracteristica-editable"
+                    style="cursor:pointer;"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    title="Clic para editar"
+                    data-tipo="insumo"
+                    data-id="{{ detalle.id }}"
+                    data-valor="{{ detalle.caracteristica_especial|default_if_none:''|escape }}">
+                {{ detalle.caracteristica_especial|default:"-" }}
+              </span>
+            {% else %}
+              {{ detalle.caracteristica_especial|default:"-" }}
+            {% endif %}
+          </td>
+          <td style="font-size:10px;">{{ detalle.insumo.nombre_presentacion }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.cantidad_unidad_presentacion }}</td>
+          <td style="font-size:10px;">{{ detalle.insumo.codigo_presentacion }}</td>
+          <td style="font-size:10px;">
+            {% if solicitud.estado != 'Finalizada' and solicitud.estado != 'Rechazada' %}
+              <button type="button" class="btn-eliminar"
+                      data-id="{{ detalle.id }}"
+                      style="background:#0068ab;color:white;border:none;border-radius:5px;padding:5px 10px;font-size:13px;">
+                Eliminar
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+
+      {% for servicio in servicios %}
+        <tr data-id="{{ servicio.id }}">
+          <td style="font-size:10px;">{{ servicio.cantidad|default:0 }}</td>
+          <td style="font-size:10px;">{{ servicio.servicio.renglon|default:"" }}</td>
+          <td style="font-size:10px;">—</td>
+          <td style="font-size:10px;">
+            {% if servicio.nombre_override != None %}
+              {% if puede_editar_caracteristica %}
+                <span class="editable-servicio-nombre"
+                      style="cursor:pointer;"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="Clic para editar"
+                      data-id="{{ servicio.id }}"
+                      data-valor="{{ servicio.nombre_override|default_if_none:''|escapejs }}">
+                  {% if servicio.nombre_override %}
+                    <ul style="margin:0; padding-left:18px; font-size:10px;">
+                      {% for linea in servicio.nombre_override.splitlines %}
+                        {% if linea.strip %}
+                          <li>{{ linea }}</li>
+                        {% endif %}
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    —
+                  {% endif %}
+                </span>
+              {% else %}
+                {% if servicio.nombre_override %}
+                  <ul style="margin:0; padding-left:18px; font-size:10px;">
+                    {% for linea in servicio.nombre_override.splitlines %}
+                      {% if linea.strip %}
+                        <li>{{ linea }}</li>
+                      {% endif %}
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  —
+                {% endif %}
+              {% endif %}
+            {% else %}
+              {% if puede_editar_caracteristica %}
+                <span class="editable-servicio-nombre"
+                      style="cursor:pointer;"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="Clic para editar"
+                      data-id="{{ servicio.id }}"
+                      data-valor="{{ servicio.servicio.concepto|default_if_none:''|escapejs }}">
+                  {% if servicio.servicio.concepto %}
+                    <ul style="margin:0; padding-left:18px; font-size:10px;">
+                      {% for linea in servicio.servicio.concepto.splitlines %}
+                        {% if linea.strip %}
+                          <li>{{ linea }}</li>
+                        {% endif %}
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    —
+                  {% endif %}
+                </span>
+              {% else %}
+                {% if servicio.servicio.concepto %}
+                  <ul style="margin:0; padding-left:18px; font-size:10px;">
+                    {% for linea in servicio.servicio.concepto.splitlines %}
+                      {% if linea.strip %}
+                        <li>{{ linea }}</li>
+                      {% endif %}
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  —
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </td>
+          <td style="font-size:10px;">—</td>
+          <td style="font-size:10px;">
+            {% if servicio.caracteristica_especial != None %}
+              {% if puede_editar_caracteristica %}
+                <span class="editable-caracteristica caracteristica-editable"
+                      style="cursor:pointer;"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="Clic para editar"
+                      data-tipo="servicio"
+                      data-id="{{ servicio.id }}"
+                      data-valor="{{ servicio.caracteristica_especial|default_if_none:''|escape }}">
+                  {{ servicio.caracteristica_especial|default:"-" }}
+                </span>
+              {% else %}
+                {{ servicio.caracteristica_especial|default:"-" }}
+              {% endif %}
+            {% else %}
+              {% if puede_editar_caracteristica %}
+                <span class="editable-caracteristica caracteristica-editable"
+                      style="cursor:pointer;"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="Clic para editar"
+                      data-tipo="servicio"
+                      data-id="{{ servicio.id }}"
+                      data-valor="{{ servicio.servicio.caracteristica_especial|default_if_none:''|escape }}">
+                  {{ servicio.servicio.caracteristica_especial|default:"-" }}
+                </span>
+              {% else %}
+                {{ servicio.servicio.caracteristica_especial|default:"-" }}
+              {% endif %}
+            {% endif %}
+          </td>
+          <td style="font-size:10px;">{{ servicio.servicio.unidad_medida|default:"" }}</td>
+          <td style="font-size:10px;">0</td>
+          <td style="font-size:10px;">—</td>
+          <td style="font-size:10px;">
+            {% if solicitud.estado != 'Finalizada' and solicitud.estado != 'Rechazada' %}
+              <button type="button" class="btn-sm eliminar-servicio"
+                      data-id="{{ servicio.id }}"
+                      style="background:#0068ab;color:white;border:none;border-radius:5px;padding:5px 10px;font-size:13px;">
+                Eliminar
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="10" style="text-align:center; padding:18px; color:#666; font-size:14px;">
+          No hay insumos ni servicios agregados aún.
+        </td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>
+
+</div>
+
+
+
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+<br>
+{% if solicitud.estado != 'Finalizada' and solicitud.estado != 'Rechazada' %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <button id="btnAgregarServicio" data-role="btn-abrir-servicio" class="btn btn-primary btn-sm me-2">
+      ➕ Agregar Servicio
+    </button>
+    <button id="btnLimpiarFiltros" class="btn btn-primary btn-sm">
+      🧹 Limpiar filtros
+    </button>
+  </div>
+</div>
+        <table class="display table" id="basic-1" style="width:100%">
+<thead>
+  <tr>
+    <th>Renglón<br>
+      <input type="text" id="searchRenglon" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+    <th>Código<br>
+      <input type="text" id="searchCodigoInsumo" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+    <th>Nombre<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Características<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Presentación<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Cantidad y Unidad<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+    <th>Código Presentación<br>
+      <input type="text" id="searchCodigoPresentacion" class="form-control form-control-sm" placeholder="Buscar...">
+    </th>
+    <th>Acción<br>
+      <input type="text" class="form-control form-control-sm invisible" disabled>
+    </th>
+  </tr>
+</thead>
+
+
+          <tbody>
+                      </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+ {% endif %}
+
+</div>
+
+
+<!-- Modal Agregar Servicio -->
+<div class="modal fade" id="modalAgregarServicio" tabindex="-1" aria-labelledby="modalAgregarServicioLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Agregar - </span>Servicio</h5>
+          <p>Complete los campos del servicio que desea incluir en esta solicitud.</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-3">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" alt="Logo" style="max-width: 100px;">
+        </div>
+
+        <!-- Formulario -->
+        <form id="form-servicio">
+          {% csrf_token %}
+          <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cantidad:</label>
+            <input type="number" name="cantidad" class="form-control" min="1" required placeholder="Ingrese cantidad">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Concepto:</label>
+            <textarea name="concepto" class="form-control" rows="2" required placeholder="Describa el servicio a solicitar"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Renglón:</label>
+            <input type="text" name="renglon" class="form-control" required placeholder="Ejemplo: 134 ">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Unidad de medida:</label>
+            <input type="text" name="unidad_medida" class="form-control" required placeholder="Ejemplo: Servicio">
+          </div>
+
+ <div class="mb-3">
+  <label class="form-label fw-semibold">Característica especial:</label>
+  <textarea name="caracteristica_especial" class="form-control" rows="2" placeholder="Ingrese característica especial (opcional)"></textarea>
+</div>
+
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" id="btn-agregar-servicio" class="btn btn-primary px-4">Agregar Servicio</button>
+            <button type="button" class="btn" data-bs-dismiss="modal" style="background-color:#0068ab; color:white;">Cancelar</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Editar Solicitud -->
+<div class="modal fade" id="modalEditarSolicitud" tabindex="-1" aria-labelledby="modalEditarSolicitudLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Editar - </span>Información de la Solicitud</h5>
+          <p>Modifique los campos necesarios y guarde los cambios.</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" 
+               src="{% static 'assets/images/logo/logo.png' %}" 
+               alt="Imagen decorativa" 
+               style="max-width: 120px;">
+        </div>
+
+        <!-- Formulario -->
+        <form id="formEditarSolicitud">
+          {% csrf_token %}
+          <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+
+          <div class="row">
+            <!-- Producto -->
+<div class="col-md-6 mb-3">
+  <label for="id_producto" class="form-label fw-semibold">Producto:</label>
+  <select id="id_producto" name="producto" class="form-select">
+    <option value="">Seleccione un producto</option>
+    {% for producto in productos %}
+      <option value="{{ producto.id }}" {% if solicitud.producto.id == producto.id %}selected{% endif %}>
+        {{ producto.nombre }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Subproducto -->
+<div class="col-md-6 mb-3">
+  <label for="id_subproducto" class="form-label fw-semibold">Subproducto:</label>
+  <select id="id_subproducto" name="subproducto" class="form-select">
+    <option value="">Seleccione un subproducto</option>
+    {% for subproducto in subproductos %}
+      {% if subproducto.producto.id == solicitud.producto.id %}
+        <option value="{{ subproducto.id }}" {% if solicitud.subproducto.id == subproducto.id %}selected{% endif %}>
+          {{ subproducto.nombre }}
+        </option>
+      {% endif %}
+    {% endfor %}
+  </select>
+</div>
+
+<div class="col-md-6 mb-3">
+<select id="id_prioridad" name="prioridad" class="form-select">
+  <option value="Baja" {% if solicitud.prioridad == 'Baja' %}selected{% endif %}>Baja</option>
+  <option value="Media" {% if solicitud.prioridad == 'Media' %}selected{% endif %}>Media</option>
+  <option value="Alta" {% if solicitud.prioridad == 'Alta' %}selected{% endif %}>Alta</option>
+</select>
+</div>
+<div class="col-md-6 mb-3">
+  
+    <!-- <input type="datetime-local" id="id_fecha_solicitud" name="fecha_solicitud" class="form-control" value="{{ solicitud.fecha_solicitud|date:'Y-m-d\TH:i' }}"> -->
+</div>
+
+            <div class="col-md-12 mb-3">
+              <label for="id_descripcion" class="form-label fw-semibold">Justificación:</label>
+              <textarea id="id_descripcion" name="descripcion" class="form-control" rows="3">{{ solicitud.descripcion }}</textarea>
+            </div>
+
+
+          </div>
+
+          <!-- Botones -->
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="button" id="btnGuardarEdicion" class="btn btn-primary px-4">Guardar Cambios</button>
+            <button type="button" class="btn" style="background-color: #0068ab; color: white;" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal Ingresar Cantidad -->
+<div class="modal fade" id="modalCantidad" tabindex="-1" aria-labelledby="modalCantidadLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Agregar - </span>Cantidad de Insumo</h5>
+          <p>Ingrese la cantidad del insumo que desea solicitar.</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" 
+               src="{% static 'assets/images/logo/logo.png' %}" 
+               alt="Imagen decorativa" 
+               style="max-width: 120px;">
+        </div>
+
+        <!-- Formulario -->
+        <form id="formCantidad">
+          <div class="row justify-content-center">
+  <div class="col-md-8 mb-3">
+    <label for="inputCantidad" class="form-label fw-semibold">Cantidad solicitada:</label>
+    <input type="number" 
+           id="inputCantidad" 
+           name="cantidad" 
+           class="form-control text-center fs-5" 
+           min="1" 
+           placeholder="Ingrese una cantidad" 
+           required>
+  </div>
+
+  <!-- Nuevo campo -->
+  <div class="col-md-8 mb-3">
+    <label for="inputCaracteristica" class="form-label fw-semibold">Característica especial:</label>
+    <textarea id="inputCaracteristica"
+              name="caracteristica"
+              class="form-control fs-5"
+              rows="2"
+              placeholder="Ejemplo: color específico, pureza, tipo de envase, etc."></textarea>
+  </div>
+</div>
+
+
+          <input type="hidden" id="codigo-presentacion-modal">
+
+          <!-- Botones -->
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="button" id="btnGuardarCantidad" class="btn btn-primary px-4">
+              Agregar Insumo
+            </button>
+            <button type="button" class="btn" 
+                    style="background-color: #0068ab; color: white;" 
+                    data-bs-dismiss="modal">
+              Cancelar
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar característica especial -->
+<div class="modal fade" id="modalEditarCaracteristica" tabindex="-1" aria-labelledby="modalEditarCaracteristicaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0" id="modalEditarCaracteristicaTitulo">Editar característica especial</h5>
+          <p class="text-muted mb-0">Actualiza la información de la solicitud</p>
+        </div>
+
+        <div class="mb-3">
+          <label for="inputCaracteristicaEspecial" class="form-label fw-semibold" id="labelCaracteristicaEspecial">Característica especial:</label>
+          <textarea id="inputCaracteristicaEspecial"
+                    class="form-control"
+                    rows="4"
+                    placeholder="Ingrese la característica especial"></textarea>
+        </div>
+
+        <input type="hidden" id="inputTipoCaracteristica">
+        <input type="hidden" id="inputIdCaracteristica">
+
+        <div class="modal-footer justify-content-center border-top-0 mt-4">
+          <button type="button" id="btnGuardarCaracteristica" class="btn btn-primary px-4">
+            Guardar cambios
+          </button>
+          <button type="button" class="btn" style="background-color:#0068ab; color:white;" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Alerta -->
+<div class="modal fade" id="modalAlerta" tabindex="-1" aria-labelledby="modalAlertaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        
+        <!-- Encabezado -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Mensaje - </span>Sistema de Compras</h5>
+          <p id="alerta-subtitulo" class="text-muted mb-0">Notificación del sistema</p>
+        </div>
+
+        <!-- Imagen decorativa -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid"
+               src="{% static 'assets/images/logo/logo.png' %}"
+               alt="Logo decorativo"
+               style="max-width: 100px;">
+        </div>
+
+        
+
+        <!-- Contenido del mensaje -->
+        <div class="text-center mb-4">
+          <p id="alerta-mensaje" class="fs-5 fw-semibold"></p>
+        </div>
+
+        <!-- Botón de cierre -->
+        <div class="modal-footer justify-content-center border-top-0">
+          <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Aceptar</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+
+<script>
+$(document).ready(function () {
+    /* === FUNCIONES GENERALES === */
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    const puedeEditarCaracteristica = {{ puede_editar_caracteristica|yesno:"true,false" }};
+    let editableActual = null;
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    const alertaModalElement = document.getElementById('modalAlerta');
+    const alertaModal = new bootstrap.Modal(alertaModalElement);
+    const alertaFooter = alertaModalElement.querySelector('.modal-footer');
+    const modalTitulo = $('#modalEditarCaracteristicaTitulo');
+    const modalEtiqueta = $('#labelCaracteristicaEspecial');
+    const modalTextarea = $('#inputCaracteristicaEspecial');
+    const modalTituloDefault = modalTitulo.text();
+    const modalEtiquetaDefault = modalEtiqueta.text();
+    const modalPlaceholderDefault = modalTextarea.attr('placeholder');
+
+    function initTooltips(scope) {
+        const container = scope || document;
+        const tooltipElements = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipElements.forEach((element) => {
+            const existing = bootstrap.Tooltip.getInstance(element);
+            if (existing) {
+                existing.dispose();
+            }
+            new bootstrap.Tooltip(element);
+        });
+    }
+
+    initTooltips();
+
+    function showModalAlert(mensaje, subtitulo = "Notificación del sistema") {
+        $('#alerta-mensaje').text(mensaje);
+        $('#alerta-subtitulo').text(subtitulo);
+        if (alertaFooter) {
+            alertaFooter.style.display = '';
+        }
+        alertaModal.show();
+    }
+
+    function showModalAlertAutoClose(mensaje, subtitulo = "Notificación del sistema", timeout = 1200) {
+        $('#alerta-mensaje').text(mensaje);
+        $('#alerta-subtitulo').text(subtitulo);
+        if (alertaFooter) {
+            alertaFooter.style.display = 'none';
+        }
+        alertaModal.show();
+        setTimeout(() => {
+            alertaModal.hide();
+        }, timeout);
+    }
+
+    function setModalConfiguracion({ titulo, etiqueta, placeholder }) {
+        modalTitulo.text(titulo || modalTituloDefault);
+        modalEtiqueta.text(etiqueta || modalEtiquetaDefault);
+        modalTextarea.attr('placeholder', placeholder || modalPlaceholderDefault);
+    }
+
+    function buildServicioNombreHtml(nombre) {
+        if (!nombre) {
+            return '—';
+        }
+        const lineas = String(nombre)
+            .split(/\r?\n/)
+            .map((linea) => linea.trim())
+            .filter(Boolean);
+        if (!lineas.length) {
+            return '—';
+        }
+        const items = lineas.map((linea) => `<li>${escapeHtml(linea)}</li>`).join('');
+        return `<ul style="margin:0; padding-left:18px; font-size:10px;">${items}</ul>`;
+    }
+
+    if (puedeEditarCaracteristica) {
+        $(document).on('click', '.editable-caracteristica', function () {
+            editableActual = $(this);
+            const tipo = editableActual.data('tipo');
+            const id = editableActual.data('id');
+            let valor = editableActual.data('valor');
+            if (!valor) {
+                const textoVisible = editableActual.text().trim();
+                valor = textoVisible === '-' ? '' : textoVisible;
+            }
+            setModalConfiguracion({
+                titulo: modalTituloDefault,
+                etiqueta: modalEtiquetaDefault,
+                placeholder: modalPlaceholderDefault,
+            });
+            $('#inputTipoCaracteristica').val(tipo);
+            $('#inputIdCaracteristica').val(id);
+            modalTextarea.val(valor || '');
+            $('#modalEditarCaracteristica').modal('show');
+        });
+
+        $(document).on('click', '.editable-servicio-nombre', function () {
+            editableActual = $(this);
+            const id = editableActual.data('id');
+            let valor = editableActual.data('valor');
+            if (!valor) {
+                const textoVisible = editableActual.text().trim();
+                valor = textoVisible === '—' ? '' : textoVisible;
+            }
+            setModalConfiguracion({
+                titulo: 'Editar nombre del servicio',
+                etiqueta: 'Nombre del servicio:',
+                placeholder: 'Ingrese el nombre del servicio',
+            });
+            $('#inputTipoCaracteristica').val('servicio_nombre');
+            $('#inputIdCaracteristica').val(id);
+            modalTextarea.val(valor || '');
+            $('#modalEditarCaracteristica').modal('show');
+        });
+
+        $('#btnGuardarCaracteristica').on('click', function () {
+            const tipo = $('#inputTipoCaracteristica').val();
+            const id = $('#inputIdCaracteristica').val();
+            const valor = modalTextarea.val().trim();
+
+            if (!tipo || !id) {
+                showModalAlert('No se pudo identificar el registro a editar.', 'Validación');
+                return;
+            }
+
+            let url = '';
+            let data = {};
+            if (tipo === 'servicio_nombre') {
+                url = '{% url "scompras:actualizar_nombre_servicio" pk=0 %}'.replace('0', id);
+                data = {
+                    nombre: valor,
+                    csrfmiddlewaretoken: csrftoken,
+                };
+            } else if (tipo === 'insumo') {
+                url = '{% url "scompras:actualizar_caracteristica_insumo" detalle_id=0 %}'.replace('0', id);
+                data = {
+                    caracteristica_especial: valor,
+                    csrfmiddlewaretoken: csrftoken,
+                };
+            } else if (tipo === 'servicio') {
+                url = '{% url "scompras:actualizar_caracteristica_servicio" servicio_id=0 %}'.replace('0', id);
+                data = {
+                    caracteristica_especial: valor,
+                    csrfmiddlewaretoken: csrftoken,
+                };
+            } else {
+                showModalAlert('Tipo de edición inválido.', 'Validación');
+                return;
+            }
+
+            $.ajax({
+                url,
+                type: 'POST',
+                data,
+                success: function (response) {
+                    if (response.success) {
+                        if (tipo === 'servicio_nombre') {
+                            const texto = response.nombre || '';
+                            if (editableActual) {
+                                editableActual
+                                    .html(buildServicioNombreHtml(texto))
+                                    .attr('data-valor', texto);
+                                initTooltips(editableActual.get(0));
+                            }
+                        } else {
+                            const texto = response.caracteristica_especial || '-';
+                            if (editableActual) {
+                                editableActual
+                                    .text(texto)
+                                    .attr('data-valor', response.caracteristica_especial || '');
+                                initTooltips(editableActual.get(0));
+                            }
+                        }
+                        $('#modalEditarCaracteristica').modal('hide');
+                        showModalAlertAutoClose('Actualizado correctamente.', 'Acción realizada');
+                        setTimeout(() => location.reload(), 900);
+                    } else {
+                        showModalAlert('Error: ' + response.error, 'No se pudo actualizar');
+                    }
+                },
+                error: function (xhr) {
+                    if (xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.error) {
+                        showModalAlert(xhr.responseJSON.error, 'Sin permiso');
+                        return;
+                    }
+                    showModalAlert('Error en el servidor. Código: ' + xhr.status, 'Error de conexión');
+                }
+            });
+        });
+    }
+
+    /* === IMPRIMIR PDF === */
+    const btnImprimir = document.getElementById("btnImprimir");
+    if (btnImprimir) {
+        btnImprimir.addEventListener("click", function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const content = document.querySelector(".page-body").cloneNode(true);
+            const tableToRemove = content.querySelector("#basic-1");
+            if (tableToRemove) tableToRemove.remove();
+
+            doc.html(content, {
+                callback: function (doc) { doc.save("solicitud_compra.pdf"); },
+                margin: [10, 10, 10, 10]
+            });
+        });
+    }
+
+    /* === RECHAZAR SOLICITUD === */
+    $('#btnRechazar').on('click', function() {
+        const solicitudId = $('#solicitud-id').val();
+        $.ajax({
+            url: '{% url "scompras:rechazar_solicitud" %}',
+            type: 'POST',
+            data: JSON.stringify({ solicitud_id: solicitudId }),
+            contentType: 'application/json',
+            headers: {'X-CSRFToken': csrftoken},
+            success: function(response) {
+                if (response.success) {
+                    showModalAlert('La solicitud fue anulada correctamente.', 'Acción realizada');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showModalAlert('Error: ' + response.error, 'No se pudo actualizar');
+                }
+            },
+            error: function(xhr) {
+                showModalAlert('Error en el servidor. Código: ' + xhr.status, 'Error de conexión');
+            }
+        });
+    });
+
+    /* === FINALIZAR SOLICITUD === */
+    $('#btnFinalizarSolicitud').on('click', function() {
+        const solicitudId = $('#solicitud-id').val();
+        $.ajax({
+            url: '{% url "scompras:finalizar_solicitud" %}',
+            type: 'POST',
+            headers: {'X-CSRFToken': csrftoken},
+            data: JSON.stringify({ solicitud_id: solicitudId }),
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.success) {
+                    showModalAlert('La solicitud fue finalizada correctamente.', 'Estado actualizado');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showModalAlert('No se pudo finalizar: ' + response.error, 'Error');
+                }
+            },
+            error: function() {
+                showModalAlert('Error en la conexión con el servidor.', 'Error');
+            }
+        });
+    });
+
+    /* === GUARDAR EDICIÓN === */
+    $('#btnGuardarEdicion').on('click', function() {
+        const formData = $('#formEditarSolicitud').serialize();
+        $.ajax({
+            url: '{% url "scompras:editar_solicitud" %}',
+            type: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    $('#modalEditarSolicitud').modal('hide');
+                    showModalAlert('La solicitud se actualizó correctamente.', 'Edición exitosa');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showModalAlert('Error: ' + response.error, 'No se pudo actualizar');
+                }
+            },
+            error: function(xhr) {
+                showModalAlert('Error en el servidor. Código: ' + xhr.status, 'Error de conexión');
+            }
+        });
+    });
+
+    /* === CARGAR SUBPRODUCTOS === */
+    $('#id_producto').on('change', function () {
+        const productoId = $(this).val();
+        const $subproductoSelect = $('#id_subproducto');
+        $subproductoSelect.empty().append('<option value="">Cargando...</option>');
+
+        if (productoId) {
+            $.ajax({
+                url: `/scompras/subproductos/${productoId}/`,
+                type: 'GET',
+                success: function (response) {
+                    $subproductoSelect.empty().append('<option value="">Seleccione un subproducto</option>');
+                    response.subproductos.forEach(sub => {
+                        $subproductoSelect.append(`<option value="${sub.id}">${sub.nombre}</option>`);
+                    });
+                },
+                error: function () {
+                    $subproductoSelect.empty().append('<option value="">Error al cargar</option>');
+                }
+            });
+        } else {
+            $subproductoSelect.empty().append('<option value="">Seleccione un producto primero</option>');
+        }
+    });
+
+    /* === DATATABLE === */
+const tablaInsumos = $('#basic-1').DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: {
+        url: '{% url "scompras:insumos_json" %}',
+        data: function (d) {
+            d.renglon = $('#searchRenglon').val();
+            d.codigo_insumo = $('#searchCodigoInsumo').val();
+            d.codigo_presentacion = $('#searchCodigoPresentacion').val();
+        }
+    },
+    columns: [
+        { data: 0 }, { data: 1 }, { data: 2 }, { data: 3 },
+        { data: 4 }, { data: 5 }, { data: 6 }, { data: null }
+    ],
+    columnDefs: [{
+        targets: 7,
+        orderable: false,
+        render: function (data, type, row) {
+            return `<button type="button" class="btn btn-primary btn-agregar-insumo"
+                        data-codigo-presentacion="${row[6]}">Agregar</button>`;
+        }
+    }],
+    language: { url: "{% static 'assets/js/datatable/spanish.json' %}" }
+});
+
+// Detectar cambios y refrescar tabla
+$('#searchRenglon, #searchCodigoInsumo, #searchCodigoPresentacion').on('keyup', function () {
+    tablaInsumos.ajax.reload();
+});
+// === LIMPIAR FILTROS ===
+$('#btnLimpiarFiltros').on('click', function () {
+    $('#searchRenglon').val('');
+    $('#searchCodigoInsumo').val('');
+    $('#searchCodigoPresentacion').val('');
+    tablaInsumos.search('').columns().search('').draw();
+    tablaInsumos.ajax.reload();
+});
+
+
+    // Filtros personalizados
+    $('#searchCodigoInsumo').on('keyup', function () {
+        tablaInsumos.column(1).search(this.value).draw();
+    });
+    $('#searchCodigoPresentacion').on('keyup', function () {
+        tablaInsumos.column(6).search(this.value).draw();
+    });
+
+    
+    /* === AGREGAR INSUMO === */
+    let codigoPresentacionSeleccionado = null;
+    let botonAgregarActual = null;
+
+    $('#basic-1 tbody').on('click', '.btn-agregar-insumo', function () {
+        codigoPresentacionSeleccionado = $(this).data('codigo-presentacion');
+        botonAgregarActual = $(this);
+        $('#inputCantidad').val(1);
+        $('#modalCantidad').modal('show');
+    });
+
+    $('#btnGuardarCantidad').on('click', function () {
+        const cantidad = parseInt($('#inputCantidad').val());
+        const caracteristica = $('#inputCaracteristica').val();
+        const solicitudId = $('#solicitud-id').val();
+
+        if (!cantidad || cantidad <= 0) {
+            showModalAlert('Ingrese una cantidad válida.', 'Validación');
+            return;
+        }
+
+        const btn = botonAgregarActual;
+        btn.prop('disabled', true).text('Agregando...');
+
+        $.ajax({
+            url: '{% url "scompras:agregar_insumo_solicitud" %}',
+            type: 'POST',
+            data: {
+                solicitud_id: solicitudId,
+                codigo_presentacion: codigoPresentacionSeleccionado,
+                cantidad,
+                caracteristica,
+                csrfmiddlewaretoken: csrftoken
+            },
+            success: function (response) {
+                if (response.success) {
+                    appendInsumoToAgregados(response.insumo, response.detalle_id);
+                    tablaInsumos.ajax.reload(null, false);
+                    btn.text('Agregado').css('background', '#6c757d');
+                     setTimeout(() => location.reload(), 10);
+                } else {
+                    showModalAlert('Error: ' + response.error, 'No se pudo agregar');
+                    btn.prop('disabled', false).text('Agregar');
+                }
+            },
+            error: function (xhr) {
+                showModalAlert('Error en el servidor. Código: ' + xhr.status, 'Error de conexión');
+                btn.prop('disabled', false).text('Agregar');
+            }
+        });
+        $('#modalCantidad').modal('hide');
+    });
+
+/* === ELIMINAR INSUMO === */
+$('#tabla-insumos-agregados').on('click', '.btn-eliminar', function () {
+    const btn = $(this);
+    const detalleId = btn.data('id');
+    const row = btn.closest('tr');
+
+    btn.prop('disabled', true).text('Eliminando...');
+
+    $.ajax({
+        url: '{% url "scompras:eliminar_detalle_solicitud" detalle_id=0 %}'.replace('0', detalleId),
+        type: 'POST',
+        data: { csrfmiddlewaretoken: csrftoken },
+        success: function (response) {
+            if (response.success) {
+                // Aplicar efecto de desvanecido antes de eliminar
+                row.fadeOut(400, function () {
+                    $(this).remove();
+                    checkEmptyTable();
+                    if (typeof tablaInsumos !== 'undefined' && tablaInsumos.ajax) {
+                        tablaInsumos.ajax.reload(null, false);
+                    }
+                });
+            } else {
+                showModalAlert('Error al eliminar: ' + response.error, 'Error');
+                btn.prop('disabled', false).text('Eliminar');
+            }
+        },
+        error: function (xhr) {
+            showModalAlert('Error al eliminar. Código: ' + xhr.status, 'Error de conexión');
+            btn.prop('disabled', false).text('Eliminar');
+        }
+    });
+});
+
+
+$('#tabla-insumos-agregados').on('click', '.eliminar-servicio', function () {
+    const btn = $(this);
+    const servicioId = btn.data('id');
+    const fila = btn.closest('tr');
+
+    btn.prop('disabled', true).text('Eliminando...');
+
+    $.ajax({
+        url: '{% url "scompras:eliminar_servicio_solicitud" servicio_id=0 %}'.replace('0', servicioId),
+        type: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        success: function (response) {
+            if (response.success) {
+                fila.fadeOut(300, function(){ $(this).remove(); });
+            } else {
+                console.error(response.error);
+                btn.prop('disabled', false).text('Eliminar');
+            }
+        },
+        error: function (xhr) {
+            console.error('Error:', xhr.status, xhr.responseText);
+            btn.prop('disabled', false).text('Eliminar');
+        }
+    });
+});
+
+
+
+    
+/* === AGREGAR SERVICIO (máximo 1 por solicitud) === */
+const servicioGuard = document.getElementById('servicio-guard');
+let hasServicio = servicioGuard && servicioGuard.dataset.hasServicio === '1';
+const formServicio = $('#form-servicio');
+const btnAbrirServicio = $('#btnAgregarServicio');
+const btnAgregarServicio = $('#btn-agregar-servicio');
+
+function ensureServicioUnicoModal() {
+    if (document.getElementById('modalServicioUnico')) {
+        return document.getElementById('modalServicioUnico');
+    }
+
+    const modalHtml = `
+      <div class="modal fade servicio-unico-modal" id="modalServicioUnico" tabindex="-1" aria-labelledby="modalServicioUnicoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md">
+          <div class="modal-content dark-sign-up modal-theme-upcv">
+            <div class="servicio-unico-shell">
+              <div class="modal-header p-0 mb-2">
+                <h5 class="modal-title d-flex align-items-center gap-2 servicio-unico-title" id="modalServicioUnicoLabel">
+                  <span class="servicio-unico-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M7.938 2.016A.13.13 0 0 1 8.063 2h.874c.07 0 .126.056.125.125l-.35 7a.125.125 0 0 1-.125.119h-.474a.125.125 0 0 1-.124-.12l-.35-7A.125.125 0 0 1 7.938 2.016z"/>
+                      <path d="M8.002 15a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2z"/>
+                      <path d="M1.53 13.18 7.12 2.39a1 1 0 0 1 1.76 0l5.59 10.79A1 1 0 0 1 13.59 14H2.41a1 1 0 0 1-.88-.82z" fill-opacity="0.2"/>
+                    </svg>
+                  </span>
+                  Servicio ya registrado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="servicio-unico-logo-wrap">
+                <img class="servicio-unico-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="Logo UPCV">
+              </div>
+              <div class="modal-body p-0 social-profile text-start p-4">
+                <p class="mb-0 text-center servicio-unico-copy">Esta solicitud ya tiene un servicio agregado. Solo se permite 1 servicio por solicitud.</p>
+              </div>
+              <div class="modal-footer p-0 pt-3 justify-content-center">
+                <button type="button" class="btn btn-primary btn-servicio-entendido" data-bs-dismiss="modal">Entendido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modalEl = document.getElementById('modalServicioUnico');
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        window.location.reload();
+    });
+    return modalEl;
+}
+
+function showServicioUnicoModal() {
+    const modalElement = ensureServicioUnicoModal();
+
+    if (window.bootstrap && window.bootstrap.Modal) {
+        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+        return;
+    }
+
+    showModalAlert(
+        'Esta solicitud ya tiene un servicio agregado. Solo se permite 1 servicio por solicitud.',
+        'Servicio ya registrado'
+    );
+}
+
+function applyServicioRestriction() {
+    if (!hasServicio) {
+        return;
+    }
+
+    btnAgregarServicio.prop('disabled', true).addClass('disabled');
+
+    if (!document.getElementById('badgeServicioMaximo')) {
+        btnAgregarServicio.after('<span id="badgeServicioMaximo" class="badge rounded-pill bg-warning text-dark ms-2">1 servicio máximo</span>');
+    }
+}
+
+function handleServicioBlocked(event) {
+    if (!hasServicio) {
+        return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    showServicioUnicoModal();
+    return true;
+}
+
+applyServicioRestriction();
+
+const servicioModalTrigger = document.getElementById('servicio-modal-trigger');
+if (servicioModalTrigger && servicioModalTrigger.dataset.servicioYaRegistrado === '1') {
+    showServicioUnicoModal();
+}
+
+btnAbrirServicio.on('click', function(event) {
+    if (handleServicioBlocked(event)) {
+        return;
+    }
+
+    formServicio[0].reset();
+    $('#modalAgregarServicio').modal('show');
+});
+
+formServicio.on('submit', function(event) {
+    if (handleServicioBlocked(event)) {
+        return;
+    }
+
+    event.preventDefault();
+    const formData = formServicio.serialize();
+
+    $.ajax({
+        url: '{% url "scompras:agregar_servicio_solicitud" %}',
+        type: 'POST',
+        data: formData,
+        headers: {'X-CSRFToken': csrftoken},
+        success: function(response) {
+            if (response.success) {
+                hasServicio = true;
+                $('#modalAgregarServicio').modal('hide');
+                showModalAlert('El servicio fue agregado correctamente.', 'Acción realizada');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showModalAlert('Error: ' + response.error, 'No se pudo agregar el servicio');
+            }
+        },
+        error: function(xhr) {
+            showModalAlert('Error en el servidor. Código: ' + xhr.status, 'Error de conexión');
+        }
+    });
+});
+
+    
+    /* === FUNCIONES AUXILIARES === */
+    function appendInsumoToAgregados(insumo, detalleId) {
+        const caracteristicaValor = insumo.caracteristica_especial || '';
+        const caracteristicaTexto = caracteristicaValor || '-';
+        let caracteristicaHtml = escapeHtml(caracteristicaTexto);
+        if (puedeEditarCaracteristica) {
+            caracteristicaHtml = `
+                <span class="editable-caracteristica caracteristica-editable"
+                      style="cursor:pointer;"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="Clic para editar"
+                      data-tipo="insumo"
+                      data-id="${detalleId}"
+                      data-valor="${escapeHtml(caracteristicaValor)}">
+                    ${escapeHtml(caracteristicaTexto)}
+                </span>`;
+        }
+        const row = `
+            <tr data-id="${detalleId}">
+                <td>${insumo.cantidad}</td>
+                <td>${insumo.renglon}</td>
+                <td>${insumo.codigo_insumo}</td>
+                <td>${insumo.nombre}</td>
+                <td>${insumo.caracteristicas}</td>
+                <td>${caracteristicaHtml}</td>
+                <td>${insumo.nombre_presentacion}</td>
+                <td>${insumo.cantidad_unidad_presentacion}</td>
+                <td>${insumo.codigo_presentacion}</td>
+                <td><button class="btn btn-primary btn-eliminar" data-id="${detalleId}">Eliminar</button></td>
+            </tr>`;
+        $('#tabla-insumos-agregados tbody').append(row);
+        initTooltips($('#tabla-insumos-agregados tbody').get(0));
+    }
+
+    function checkEmptyTable() {
+        if ($('#tabla-insumos-agregados tbody tr').length === 0) {
+            $('#tabla-insumos-agregados tbody').append(`
+                <tr><td colspan="10" class="text-center text-muted">No hay insumos agregados aún.</td></tr>
+            `);
+        }
+    }
+});
+</script>
+
+
+{% endblock %}

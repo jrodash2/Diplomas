@@ -1,0 +1,193 @@
+{% extends 'scompras/base.html' %}
+{% load humanize money %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Transferencias presupuestarias</h4>
+      {% if presupuesto_activo %}
+        <div class="d-flex gap-2">
+        <a class="btn btn-primary" href="{% url 'scompras:transferencia_crear' %}">Nueva transferencia</a>
+        <a class="btn btn-outline-primary" href="{% url 'scompras:transferencia_multiple_crear' %}">Transferencia múltiple</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if not presupuesto_activo %}
+      <div class="alert alert-warning">No hay presupuesto activo. Active un presupuesto para gestionar transferencias.</div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table datatable-std table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th class="text-end">Monto</th>
+                <th>Observación</th>
+                <th class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for transferencia in transferencias %}
+                <tr>
+                  <td>{{ transferencia.fecha|date:"d/m/Y H:i" }}</td>
+                  <td>{{ transferencia.renglon_origen.label_compacto }}</td>
+                  <td>{{ transferencia.renglon_destino.label_compacto }}</td>
+                  <td class="text-end">{{ transferencia.monto|money_gtq }}</td>
+                  <td>{{ transferencia.descripcion|default:'-' }}</td>
+                  <td class="text-end">
+                    {% if transferencia.id in transferencias_revertidas %}
+                      <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Revertida</button>
+                    {% else %}
+                      <form method="post" action="{% url 'scompras:reversar_transferencia' transferencia.id %}" class="d-inline-flex gap-2 align-items-center js-reversar-transferencia-form" data-transferencia-id="{{ transferencia.id }}">
+                        {% csrf_token %}
+                        <input type="text" name="motivo" class="form-control form-control-sm" style="max-width: 220px;" placeholder="Motivo" required>
+                        <button type="submit" class="btn btn-sm btn-outline-danger js-reversar-transferencia" data-transferencia-id="{{ transferencia.id }}">Reversar</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center">No hay transferencias registradas para el presupuesto activo.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .swal2-popup.swal-transferencia-modal {
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(22, 61, 117, 0.25);
+      border: 1px solid rgba(23, 86, 161, 0.15);
+    }
+
+    .swal2-title.swal-transferencia-title {
+      color: #1f4f8f;
+      font-weight: 700;
+    }
+
+    .swal2-actions .swal2-confirm.swal-transferencia-confirm {
+      background: linear-gradient(135deg, #1f4f8f 0%, #2d6ab3 100%) !important;
+      border: none !important;
+      box-shadow: 0 6px 14px rgba(31, 79, 143, 0.35);
+      border-radius: 10px !important;
+      font-weight: 600;
+    }
+
+    .swal2-actions .swal2-cancel.swal-transferencia-cancel {
+      background-color: #f4f6f9 !important;
+      color: #495057 !important;
+      border: 1px solid #d7dee7 !important;
+      border-radius: 10px !important;
+      font-weight: 500;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const getTransferForm = (element) => element.closest('.js-reversar-transferencia-form');
+
+      const confirmReversion = (form) => {
+        if (!form || form.dataset.swalOpen === 'true') {
+          return;
+        }
+
+        const transferenciaId = form.dataset.transferenciaId || '';
+        form.dataset.swalOpen = 'true';
+
+        Swal.fire({
+          title: 'Confirmar reversión',
+          text: `¿Está seguro de reversar la transferencia #${transferenciaId}? Esta acción restaurará los montos involucrados.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, reversar',
+          cancelButtonText: 'Cancelar',
+          reverseButtons: true,
+          focusCancel: true,
+          confirmButtonColor: '#1f4f8f',
+          cancelButtonColor: '#f4f6f9',
+          customClass: {
+            popup: 'swal-transferencia-modal',
+            title: 'swal-transferencia-title',
+            confirmButton: 'swal-transferencia-confirm',
+            cancelButton: 'swal-transferencia-cancel'
+          },
+          showClass: {
+            popup: 'animate__animated animate__fadeInDown animate__faster'
+          },
+          hideClass: {
+            popup: 'animate__animated animate__fadeOutUp animate__faster'
+          }
+        }).then((result) => {
+          form.dataset.swalOpen = 'false';
+          if (result.isConfirmed) {
+            form.dataset.swalConfirmed = 'true';
+            form.submit();
+          }
+        });
+      };
+
+      document.addEventListener('click', function (event) {
+        const button = event.target.closest('.js-reversar-transferencia');
+        if (!button) {
+          return;
+        }
+
+        const form = getTransferForm(button);
+        if (!form || form.dataset.swalConfirmed === 'true') {
+          return;
+        }
+
+        event.preventDefault();
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        if (!window.Swal || typeof Swal.fire !== 'function') {
+          if (window.confirm(`¿Confirma reversar la transferencia #${form.dataset.transferenciaId}?`)) {
+            form.dataset.swalConfirmed = 'true';
+            form.submit();
+          }
+          return;
+        }
+
+        confirmReversion(form);
+      });
+
+      document.addEventListener('submit', function (event) {
+        const form = getTransferForm(event.target);
+        if (!form) {
+          return;
+        }
+
+        if (form.dataset.swalConfirmed === 'true') {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (!window.Swal || typeof Swal.fire !== 'function') {
+          return;
+        }
+
+        confirmReversion(form);
+      });
+    });
+  </script>
+{% endblock %}

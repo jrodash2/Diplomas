@@ -1,0 +1,93 @@
+{% extends 'scompras/base.html' %}
+{% load static money %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <div>
+        <h4>{{ titulo_detallado }}</h4>
+        <p class="text-muted mb-0">Historial contable no editable.</p>
+        <p class="text-muted mb-0">{{ renglon.label_compacto }}</p>
+      </div>
+      <a class="btn btn-light" href="{% url 'scompras:presupuesto_anual_detalle' renglon.presupuesto_anual.id %}">Volver al presupuesto</a>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+          <div class="col-sm-4">
+            <label class="form-label">Filtrar por tipo</label>
+            <select name="tipo" class="form-select">
+              <option value="">Todos</option>
+              {% for value, label in tipos %}
+                <option value="{{ value }}" {% if value == tipo_filtrado %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-2">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Movimientos</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th class="text-end">Monto</th>
+                <th class="text-end">Saldo anterior</th>
+                <th class="text-end">Saldo nuevo</th>
+                <th>Solicitud</th>
+                <th>Referencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for movimiento in movimientos %}
+                <tr>
+                  <td>{{ movimiento.fecha|date:'Y-m-d H:i' }}</td>
+                  <td>{{ movimiento.get_tipo_display }}</td>
+                  <td class="text-end">{{ movimiento.monto|money_gtq }}</td>
+                  <td class="text-end">{{ movimiento.saldo_anterior|money_gtq }}</td>
+                  <td class="text-end">{{ movimiento.saldo_nuevo|money_gtq }}</td>
+                  <td>
+                    {% if movimiento.solicitud %}
+                      <a href="{% url 'scompras:detalle_solicitud' movimiento.solicitud.id %}">
+                        Solicitud {{ movimiento.solicitud.codigo_correlativo|default:movimiento.solicitud.id }}
+                      </a>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if movimiento.transferencia %}
+                      Transferencia #{{ movimiento.transferencia.id }}:
+                      {{ movimiento.transferencia.renglon_origen.label_compacto }}
+                      →
+                      {{ movimiento.transferencia.renglon_destino.label_compacto }}
+                    {% else %}
+                      {{ movimiento.referencia|default:'-' }} | {{ renglon.label_compacto }}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No hay movimientos registrados.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .editor-layout { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 16px; }
+  .editor-canvas-wrap { background: #f5f7fb; border: 1px solid #e5e7eb; border-radius: 10px; overflow: auto; padding: 14px; }
+  .editor-toolbar { display: flex; gap: 8px; justify-content: flex-end; }
+  .editor-canvas-scale { transform: scale(0.28); transform-origin: top left; width: 982px; height: 694px; user-select: none; }
+  .editor-canvas { position: relative; border: 1px solid #d1d5db; background-size: cover; background-repeat: no-repeat; border-radius: 4px; overflow: hidden; }
+  .canvas-element { position: absolute; border: 1px dashed rgba(13,110,253,0.35); background: rgba(255,255,255,0.12); cursor: move; overflow: hidden; }
+  .canvas-element.is-selected { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,0.22); }
+  .canvas-element > * { pointer-events: none; }
+  .editor-side .form-label { font-weight: 600; margin-bottom: 4px; }
+  .muted-help { color: #6b7280; font-size: 12px; }
+  .field-hidden { display:none; }
+</style>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Modificar diseño visual: {{ diseno.nombre }}</h4>
+      <div class="editor-toolbar">
+        <button class="btn btn-outline-secondary" type="button" id="btnReset">Restablecer</button>
+        <button class="btn btn-primary" type="button" id="btnGuardar">Guardar diseño</button>
+        <a class="btn btn-dark" href="{% url 'diplomas:disenos_lista' %}">Volver</a>
+      </div>
+    </div>
+
+    <div class="editor-layout mt-3">
+      <section class="editor-canvas-wrap">
+        <div class="editor-canvas-scale">
+          <div id="designCanvas" class="editor-canvas"
+               style="width:{{ canvas_width }}px; height:{{ canvas_height }}px; background-image:url('{% if diseno.imagen_fondo %}{{ diseno.imagen_fondo.url }}{% else %}{% static 'assets/svg/Diploma.svg' %}{% endif %}');">
+          </div>
+        </div>
+      </section>
+
+      <aside class="card editor-side">
+        <div class="card-body">
+          <h6 class="mb-3">Propiedades del elemento</h6>
+          <input type="hidden" id="selectedKey">
+
+          <div class="mb-2"><label class="form-label">Elemento</label><input id="prop_label" class="form-control" disabled></div>
+          <div class="mb-2"><label class="form-label">Tipo</label><input id="prop_type" class="form-control" disabled></div>
+          <div class="mb-2"><label class="form-label">Imagen URL</label><input id="prop_image_url" class="form-control" disabled></div>
+
+          <div class="mb-2" id="group-content"><label class="form-label">Texto / Token</label><textarea id="prop_content" class="form-control" rows="2"></textarea></div>
+
+          <div class="row g-2">
+            <div class="col-6"><label class="form-label">X</label><input id="prop_x" class="form-control" type="number"></div>
+            <div class="col-6"><label class="form-label">Y</label><input id="prop_y" class="form-control" type="number"></div>
+          </div>
+
+          <div class="row g-2 mt-1">
+            <div class="col-6"><label class="form-label">Ancho</label><input id="prop_width" class="form-control" type="number"></div>
+            <div class="col-6"><label class="form-label">Alto</label><input id="prop_height" class="form-control" type="number"></div>
+          </div>
+
+          <div class="row g-2 mt-1" id="group-text-styles">
+            <div class="col-6"><label class="form-label">Fuente</label><input id="prop_font_size" class="form-control" type="number"></div>
+            <div class="col-6"><label class="form-label">Color</label><input id="prop_color" class="form-control form-control-color" type="color"></div>
+          </div>
+
+          <div class="row g-2 mt-1" id="group-align-z">
+            <div class="col-6"><label class="form-label">Alineación</label>
+              <select id="prop_align" class="form-control">
+                <option value="left">Izquierda</option>
+                <option value="center">Centro</option>
+                <option value="right">Derecha</option>
+              </select>
+            </div>
+            <div class="col-6"><label class="form-label">Z-index</label><input id="prop_z_index" class="form-control" type="number"></div>
+          </div>
+
+          <p class="muted-help mt-3 mb-0">Tip: clic para seleccionar, arrastra con el mouse y luego guarda.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+{{ elementos_json|json_script:"editorElements" }}
+<script>
+(() => {
+  const SCALE = 0.28;
+  const CANVAS_WIDTH = {{ canvas_width }};
+  const CANVAS_HEIGHT = {{ canvas_height }};
+
+  const defaults = { key:'', label:'Elemento', type:'texto', x:0, y:0, width:220, height:80, font_size:24, color:'#111827', align:'left', z_index:10, token:'', texto:'', content:'', image_url:'', visible:true };
+
+  const raw = JSON.parse(document.getElementById('editorElements').textContent || '{}');
+  const state = {
+    elements: Object.fromEntries(Object.entries(raw).map(([k,v],i)=>[k,{...defaults,...v,key:k,label:(v.label||k)}])),
+    selectedKey: null,
+    drag: null,
+    maxZ: Math.max(...Object.values(raw).map(v=>parseInt(v?.z_index||1,10)),1),
+  };
+
+  const canvas = document.getElementById('designCanvas');
+  const props = {
+    selectedKey: document.getElementById('selectedKey'),
+    label: document.getElementById('prop_label'),
+    type: document.getElementById('prop_type'),
+    image_url: document.getElementById('prop_image_url'),
+    content: document.getElementById('prop_content'),
+    x: document.getElementById('prop_x'),
+    y: document.getElementById('prop_y'),
+    width: document.getElementById('prop_width'),
+    height: document.getElementById('prop_height'),
+    font_size: document.getElementById('prop_font_size'),
+    color: document.getElementById('prop_color'),
+    align: document.getElementById('prop_align'),
+    z_index: document.getElementById('prop_z_index'),
+  };
+
+  function clamp(n,min,max){ return Math.min(Math.max(n,min),max); }
+  function csrf(){ const m=document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/); return m?decodeURIComponent(m[2]):''; }
+
+  function normalize(el){
+    el.width = clamp(Number(el.width || el.ancho) || 20, 20, CANVAS_WIDTH);
+    el.height = clamp(Number(el.height || el.alto) || 20, 20, CANVAS_HEIGHT);
+    el.x = clamp(Number(el.x ?? el.left) || 0, 0, CANVAS_WIDTH - el.width);
+    el.y = clamp(Number(el.y ?? el.top) || 0, 0, CANVAS_HEIGHT - el.height);
+    el.font_size = clamp(Number(el.font_size || el.fontSize) || 8, 8, 400);
+    el.z_index = clamp(parseInt(el.z_index || el.zIndex || 10, 10), 0, 9999);
+    el.align = el.align || el.textAlign || el.alineacion || 'left';
+    el.color = el.color || '#111827';
+    el.content = el.content || el.texto || el.token || el.label || el.key;
+    el.type = el.type || 'texto';
+    el.visible = (el.visible !== false);
+  }
+
+  function elementMarkup(item){
+    const visibleText = item.content || item.token || item.label || item.key;
+    if (item.type === 'imagen') {
+      if (item.image_url) {
+        return `<img src="${item.image_url}" style="width:100%;height:100%;object-fit:contain;background:rgba(255,255,255,0.35);">`;
+      }
+      return `<div style="width:100%;height:100%;border:1px dashed #4b5563;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);font-weight:600;">${item.label}</div>`;
+    }
+    if (item.type === 'decorativo') {
+      return `<div class="el-content" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;white-space:pre-wrap;background:rgba(255,255,255,.25);">${visibleText}</div>`;
+    }
+    return `<div class="el-content" style="width:100%;height:100%;white-space:pre-wrap;background:rgba(255,255,255,.45);padding:4px 6px;">${visibleText}</div>`;
+  }
+
+  function renderCanvas(){
+    const html = Object.entries(state.elements).map(([key,item])=>{
+      normalize(item);
+      if (!item.visible) return '';
+      return `<div class="canvas-element ${state.selectedKey===key?'is-selected':''}" data-key="${key}" data-type="${item.type}" style="left:${item.x}px;top:${item.y}px;width:${item.width}px;height:${item.height}px;font-size:${item.font_size}px;color:${item.color};text-align:${item.align};z-index:${item.z_index};">${elementMarkup(item)}</div>`;
+    }).join('');
+    canvas.innerHTML = html;
+  }
+
+  function syncPanel(){
+    const key = state.selectedKey;
+    if (!key || !state.elements[key]) return;
+    const e = state.elements[key];
+    props.selectedKey.value = key;
+    props.label.value = e.label || key;
+    props.type.value = e.type || 'texto';
+    props.image_url.value = e.image_url || '';
+    props.content.value = e.content || '';
+    props.x.value = Math.round(e.x);
+    props.y.value = Math.round(e.y);
+    props.width.value = Math.round(e.width);
+    props.height.value = Math.round(e.height);
+    props.font_size.value = Math.round(e.font_size);
+    props.color.value = e.color || '#111827';
+    props.align.value = e.align || 'left';
+    props.z_index.value = parseInt(e.z_index || 1,10);
+
+    const isTextual = e.type !== 'imagen';
+    document.getElementById('group-content').classList.toggle('field-hidden', !isTextual);
+    document.getElementById('group-text-styles').classList.toggle('field-hidden', !isTextual);
+    document.getElementById('group-align-z').classList.toggle('field-hidden', false);
+  }
+
+  function selectElement(key, bringToFront=false){
+    if(!key || !state.elements[key]) return;
+    state.selectedKey = key;
+    if(bringToFront){ state.elements[key].z_index = ++state.maxZ; }
+    renderCanvas();
+    syncPanel();
+  }
+
+  function patchSelectedFromPanel(){
+    const key = state.selectedKey;
+    if(!key || !state.elements[key]) return;
+    const e = state.elements[key];
+    if (e.type !== 'imagen') {
+      e.content = props.content.value;
+      e.texto = props.content.value;
+      e.token = props.content.value || e.token;
+      e.font_size = Number(props.font_size.value || e.font_size);
+      e.color = props.color.value || '#111827';
+      e.align = props.align.value || 'left';
+    }
+    e.x = Number(props.x.value || e.x);
+    e.y = Number(props.y.value || e.y);
+    e.width = Number(props.width.value || e.width);
+    e.height = Number(props.height.value || e.height);
+    e.z_index = Number(props.z_index.value || e.z_index || 1);
+    normalize(e);
+    renderCanvas();
+    syncPanel();
+  }
+
+  canvas.addEventListener('mousedown',(ev)=>{
+    const target = ev.target.closest('.canvas-element');
+    if(!target) return;
+    ev.preventDefault();
+    const key = target.dataset.key;
+    selectElement(key,true);
+    const e = state.elements[key];
+    state.drag = { key, startClientX: ev.clientX, startClientY: ev.clientY, originX: e.x, originY: e.y };
+  });
+
+  window.addEventListener('mousemove',(ev)=>{
+    if(!state.drag) return;
+    const d = state.drag;
+    const e = state.elements[d.key];
+    if(!e) return;
+    const dx = (ev.clientX - d.startClientX) / SCALE;
+    const dy = (ev.clientY - d.startClientY) / SCALE;
+    e.x = d.originX + dx;
+    e.y = d.originY + dy;
+    normalize(e);
+    renderCanvas();
+    syncPanel();
+  });
+
+  window.addEventListener('mouseup',()=>{ state.drag=null; });
+
+  canvas.addEventListener('click',(ev)=>{
+    const target = ev.target.closest('.canvas-element');
+    if(!target) return;
+    selectElement(target.dataset.key,false);
+  });
+
+  [props.content,props.x,props.y,props.width,props.height,props.font_size,props.color,props.align,props.z_index].forEach((input)=>{
+    if(!input) return;
+    input.addEventListener('input', patchSelectedFromPanel);
+    input.addEventListener('change', patchSelectedFromPanel);
+  });
+
+  document.getElementById('btnReset').addEventListener('click',()=>{
+    const key = state.selectedKey;
+    if(!key || !state.elements[key]) return;
+    const keep = state.elements[key];
+    state.elements[key] = { ...defaults, key, label: keep.label, type: keep.type, image_url: keep.image_url, token: keep.token, content: keep.content, texto: keep.texto, visible: keep.visible };
+    renderCanvas();
+    syncPanel();
+  });
+
+  document.getElementById('btnGuardar').addEventListener('click', async ()=>{
+    const response = await fetch("{% url 'diplomas:guardar_diseno_visual' diseno.id %}", {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+      body: JSON.stringify({ elements: state.elements })
+    });
+    const data = await response.json();
+    if(data.success){ alert('Diseño guardado correctamente.'); }
+    else { alert(data.error || 'No se pudo guardar el diseño.'); }
+  });
+
+  renderCanvas();
+  const firstKey = Object.keys(state.elements).find(k => state.elements[k].visible !== false) || Object.keys(state.elements)[0];
+  if (firstKey) selectElement(firstKey,false);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends 'scompras/base.html' %}
+
+{% block content %}
+<div class="page-body">
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Nueva transferencia presupuestaria</h5>
+          <a class="btn btn-light" href="{% url 'scompras:transferencias_list' %}">Volver</a>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Presupuesto activo: {{ presupuesto_activo }}</p>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+              <div class="mb-3">
+                <label class="form-label" for="id_{{ field.name }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                  <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% for error in field.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">Guardar transferencia</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const endpoint = "{% url 'scompras:transferencia_buscar_renglones' %}";
+    const montoEndpoint = "{% url 'scompras:transferencia_renglon_monto' %}";
+
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+
+    function formatearMonto(monto) {
+      const valor = Number(monto);
+      if (!Number.isFinite(valor)) return '--';
+      return 'Q ' + valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function mostrarMontoRenglon(contenedor, monto) {
+      if (!contenedor) return;
+      contenedor.textContent = 'Monto actual: ' + (monto === null || monto === undefined || monto === '' ? '--' : formatearMonto(monto));
+    }
+
+    function cargarMontoRenglon(renglonId, targetElement) {
+      if (!targetElement) return;
+      if (!renglonId) {
+        mostrarMontoRenglon(targetElement, null);
+        return;
+      }
+      fetch(montoEndpoint + '?id=' + encodeURIComponent(renglonId), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then((response) => response.ok ? response.json() : Promise.reject())
+        .then((data) => mostrarMontoRenglon(targetElement, data.monto_disponible))
+        .catch(() => mostrarMontoRenglon(targetElement, null));
+    }
+
+    function initAjaxRenglonSelect(select) {
+      if (!select || select.dataset.ajaxReady === '1') {
+        return;
+      }
+      select.dataset.ajaxReady = '1';
+
+      const originalName = select.name;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'renglon-search-box';
+
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'form-control mb-2';
+      searchInput.placeholder = 'Buscar renglón por código, nombre o descripción';
+
+      const status = document.createElement('small');
+      status.className = 'text-muted d-block';
+      status.textContent = 'Escriba al menos 2 caracteres para buscar.';
+
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.appendChild(searchInput);
+      wrapper.appendChild(status);
+
+      const montoInfo = document.createElement('small');
+      montoInfo.className = 'text-info d-block mt-1';
+      mostrarMontoRenglon(montoInfo, null);
+      wrapper.appendChild(montoInfo);
+
+      const loadResults = debounce(function () {
+        const q = searchInput.value.trim();
+        if (q.length < 2) {
+          status.textContent = 'Escriba al menos 2 caracteres para buscar.';
+          return;
+        }
+
+        status.textContent = 'Buscando...';
+        fetch(endpoint + '?q=' + encodeURIComponent(q) + '&limit=20', {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+          .then((response) => response.ok ? response.json() : Promise.reject())
+          .then((data) => {
+            const currentValue = select.value;
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = '---------';
+
+            select.innerHTML = '';
+            select.appendChild(emptyOption);
+
+            (data.results || []).forEach((item) => {
+              const option = document.createElement('option');
+              option.value = item.id;
+              option.textContent = item.text;
+              option.dataset.montoDisponible = item.monto_disponible;
+              if (String(item.id) === String(currentValue)) {
+                option.selected = true;
+              }
+              select.appendChild(option);
+            });
+
+            const seleccionActual = select.querySelector('option[value="' + currentValue + '"]');
+            if (!seleccionActual && select.dataset.selectedText && currentValue) {
+              const fallback = document.createElement('option');
+              fallback.value = currentValue;
+              fallback.textContent = select.dataset.selectedText;
+              fallback.selected = true;
+              select.appendChild(fallback);
+            }
+
+            status.textContent = (data.results || []).length
+              ? 'Mostrando ' + (data.results || []).length + ' resultados.'
+              : 'Sin resultados para su búsqueda.';
+          })
+          .catch(() => {
+            status.textContent = 'No se pudo completar la búsqueda.';
+          });
+      }, 250);
+
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption && selectedOption.value) {
+        select.dataset.selectedText = selectedOption.textContent;
+      }
+
+      select.addEventListener('change', function () {
+        const current = select.options[select.selectedIndex];
+        if (current && current.value) {
+          select.dataset.selectedText = current.textContent;
+          if (current.dataset.montoDisponible !== undefined && current.dataset.montoDisponible !== '') {
+            mostrarMontoRenglon(montoInfo, current.dataset.montoDisponible);
+          } else {
+            cargarMontoRenglon(current.value, montoInfo);
+          }
+        } else {
+          mostrarMontoRenglon(montoInfo, null);
+        }
+      });
+
+      searchInput.addEventListener('input', loadResults);
+      if (select.value) {
+        cargarMontoRenglon(select.value, montoInfo);
+      }
+      select.name = originalName;
+    }
+
+    document.querySelectorAll('select.js-renglon-ajax').forEach(initAjaxRenglonSelect);
+  })();
+</script>
+{% endblock %}

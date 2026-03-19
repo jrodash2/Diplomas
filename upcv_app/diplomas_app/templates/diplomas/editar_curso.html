@@ -1,0 +1,69 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container d-flex justify-content-center mt-5" style="padding-top: 40px;">
+
+    <div class="card shadow p-4" style="width: 80%; max-width: 850px;">
+        <h4 class="text-center mb-4">Editar Curso: {{ curso.nombre }}</h4>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="row">
+
+                <div class="col-md-4 mb-3">
+                    {{ form.codigo.label_tag }}
+                    {{ form.codigo }}
+                </div>
+
+                <div class="col-md-8 mb-3">
+                    {{ form.nombre.label_tag }}
+                    {{ form.nombre }}
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    {{ form.descripcion.label_tag }}
+                    {{ form.descripcion }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.fecha_inicio.label_tag }}
+                    {{ form.fecha_inicio }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.fecha_fin.label_tag }}
+                    {{ form.fecha_fin }}
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    {{ form.diseno_diploma.label_tag }}
+                    {{ form.diseno_diploma }}
+                </div>
+
+                <!-- FIRMAS MÚLTIPLES -->
+                <div class="col-md-12 mb-3">
+                    {{ form.firmas.label_tag }}
+                    {{ form.firmas }}
+                    <small class="form-text text-muted">
+                        Mantenga presionado <strong>Ctrl</strong> para seleccionar varias firmas.
+                    </small>
+                </div>
+
+            </div>
+
+            <div class="text-end mt-3">
+                <button class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'diplomas:cursos_lista' %}" class="btn btn-dark">Cancelar</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Espacio adicional para que el footer no se superponga -->
+<div style="height: 120px;"></div>
+
+{% endblock %}

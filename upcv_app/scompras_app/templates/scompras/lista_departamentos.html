@@ -1,0 +1,83 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Departamentos</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Departamentos</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    {% if departamentos %}
+      <div class="row">
+       {% for departamento in departamentos %}
+  <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-4">
+    {% if departamento.id in departamentos_usuario_ids %}
+      <!-- Departamento con acceso -->
+      <a href="{% url 'scompras:detalle_departamento' departamento.pk %}" class="text-decoration-none text-dark">
+        <div class="feature-box common-card bg-feature card-hover">
+          <div class="feature-icon">
+            <img src="{% static 'assets/images/landing/feature-icon/4.svg' %}" alt="icon">
+          </div>
+          <h5 class="text-center">{{ departamento.nombre }}</h5>
+        </div>
+      </a>
+    {% else %}
+      <!-- Departamento sin acceso -->
+      <div class="feature-box common-card bg-light text-muted border" style="pointer-events: none; opacity: 0.5;">
+        <div class="feature-icon">
+          <img src="{% static 'assets/images/landing/feature-icon/4.svg' %}" alt="icon" style="opacity: 0.5;">
+        </div>
+        <h5 class="text-center">{{ departamento.nombre }}</h5>
+        <p class="text-center small">Sin acceso</p>
+      </div>
+    {% endif %}
+  </div>
+{% endfor %}
+
+      </div>
+    {% else %}
+      <div class="alert alert-info">No hay departamentos registrados.</div>
+    {% endif %}
+
+    <style>
+      .card-hover:hover {
+        transform: scale(1.03);
+        transition: transform 0.3s ease;
+        z-index: 2;
+      }
+      .feature-box {
+        padding: 20px;
+        border-radius: 8px;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .feature-icon img {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 10px;
+      }
+    </style>
+  </div>
+</div>
+{% endblock %}

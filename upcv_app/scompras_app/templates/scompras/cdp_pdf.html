@@ -1,0 +1,458 @@
+{% load static %}
+{% load money %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>CDP</title>
+
+  <style>
+    /* =========================
+       PDF LAYOUT (xhtml2pdf)
+    ========================== */
+    @page{
+      size: letter;
+      margin: 18px;
+
+      @frame content_frame{
+        left: 18px; right: 18px;
+        top: 18px; bottom: 155px;
+      }
+
+      @frame footer_frame{
+        left: 18px; right: 18px;
+        bottom: 18px;
+        height: 135px;
+        -pdf-frame-content: footer_content;
+      }
+    }
+
+    body{
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      margin: 0;
+      color:#0f172a;
+      background:#ffffff;
+    }
+
+    img{ max-width:100%; height:auto; }
+
+    /* Helpers */
+    .small{ font-size:8.5px; color:#64748b; }
+    .wrap{ white-space:normal; word-wrap:break-word; }
+    .center{ text-align:center; }
+    .right{ text-align:right; }
+
+    /* =========================
+       HEADER
+    ========================== */
+    .hdr{ width:100%; border-collapse:collapse; margin-bottom:8px; }
+    .hdr td{ vertical-align:middle; padding:0.3; }
+
+    .logos{ white-space:nowrap; }
+    .logos img{
+      height:70px;
+      width:auto;
+      margin-right:8px;
+      vertical-align:middle;
+    }
+
+    /* Header card */
+    .header-right{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border:1px solid #e2e8f0;
+      background:#ffffff;
+      border-radius:9px;
+      overflow:hidden;
+    }
+    .header-right th{
+      background:#4496d0;
+      color:#ffffff;
+      text-align:left;
+      padding:7px 8px;
+      font-size:10px;
+      letter-spacing:.2px;
+    }
+    .header-right td{
+      padding:5px 8px;
+      border-top:1px solid #e2e8f0;
+      font-size:9px;
+    }
+    .header-right .lbl{ color:#64748b; width:45%; }
+    .header-right .val{ color:#0b1220; font-weight:700; }
+
+    /* =========================
+       INFO GENERAL (MÁS COMPACTO)
+    ========================== */
+    .box-title{
+      background:#f8fafc;
+      font-weight:800;
+      font-size:9px;
+      padding:6px 8px;
+      border:1px solid #e2e8f0;
+      border-bottom:none;
+      border-radius:9px 9px 0 0;
+      color:#0b1220;
+    }
+    .section-card{
+      border:1px solid #e2e8f0;
+      border-top:none;
+      border-radius:0 0 9px 9px;
+      padding:8px;
+      background:#ffffff;
+    }
+
+    /* ✅ menos separación vertical */
+    .field-row{
+      border:1px solid #e2e8f0;
+      background:#ffffff;
+      padding:4px 6px;      /* 🔽 antes 6px 8px */
+      border-radius:6px;    /* 🔽 antes 7px */
+      margin-top:4px;       /* 🔽 antes 6px */
+    }
+    .field-label{
+      font-weight:800;
+      display:inline-block;
+      width:80px;
+      color:#64748b;
+      font-size:8.8px;
+    }
+    .field-value{
+      display:inline-block;
+      color:#0b1220;
+      font-weight:700;
+      font-size:8.8px;
+    }
+
+    /* ✅ menos aire en justificación */
+    .just-box{
+      margin-top:4px;       /* 🔽 antes 6px */
+      border:1px dashed #e2e8f0;
+      padding:4px 6px;      /* 🔽 antes 6px 8px */
+      border-radius:6px;    /* 🔽 antes 7px */
+      background:#f8fafc;
+      color:#0b1220;
+      line-height:1.20;     /* 🔽 antes 1.35 */
+      font-size:9px;
+    }
+
+    /* =========================
+       TABLA CDP (MÁS COMPACTA)
+    ========================== */
+    .tbl{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      table-layout:fixed;
+      border:1px solid #e2e8f0;
+      border-radius:9px;
+      overflow:hidden;
+      background:#ffffff;
+    }
+    .tbl th{
+      background:#4496d0;
+      color:#ffffff;
+      font-weight:800;
+      text-align:left;
+      padding:4px 6px;      /* 🔽 antes 6px 8px */
+      font-size:8.8px;      /* 🔽 leve */
+      border-right:1px solid #2b7fbe;
+    }
+    .tbl th:last-child{ border-right:none; }
+    .tbl td{
+      padding:4px 6px;      /* 🔽 antes 6px 8px */
+      font-size:8.6px;      /* 🔽 leve */
+      vertical-align:top;
+      line-height:1.15;     /* 🔽 antes 1.25 */
+      border-top:1px solid #e2e8f0;
+    }
+
+    /* Estados CDP */
+    .cdp-badge{
+      border-radius:.35rem;
+      font-weight:600;
+      padding:.45rem .8rem;
+      font-size:8.6px;
+      display:inline-block;
+      line-height:1;
+      border:1px solid #e2e8f0;
+      background:#f8fafc;
+      color:#111;
+    }
+    .cdp-badge--reservado{ background:#fff8c4; border-color:#f2d600; }
+    .cdp-badge--ejecutado{ background:#daf7d7; border-color:#2eb82e; }
+    .cdp-badge--liberado{ background:#fadbd8; border-color:#c0392b; }
+
+    /* =========================
+       FOOTER FIRMAS
+    ========================== */
+    .sig-title{
+      font-size:9px;
+      font-weight:900;
+      color:#64748b;
+      text-transform:uppercase;
+      letter-spacing:.6px;
+      margin-bottom:18px;
+    }
+    .sig-line{
+      height:3px;
+      width:82%;
+      margin:0 auto;
+      background:#0068ab;
+      border-radius:999px;
+    }
+    .sig-name{
+      margin-top:6px;
+      font-size:10px;
+      font-weight:900;
+      color:#0b1220;
+      text-transform:uppercase;
+    }
+    .sig-role{
+      font-size:8.5px;
+      color:#64748b;
+      margin-top:2px;
+    }
+
+    .footer-bar-1{ height:6px; background:#0068ab; border-radius:8px; }
+    .footer-bar-2{ height:2px; background:#e2e8f0; margin-top:4px; border-radius:8px; }
+
+    /* ====== TITULO INSTITUCIONAL ====== */
+    .inst-title{
+      margin: 4px 0 8px 0;
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #f8fafc;
+      text-align: center;
+    }
+    .inst-title .l1{
+      font-size: 11px;
+      font-weight: 900;
+      color:#0b1220;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .inst-title .l2{
+      font-size: 9px;
+      font-weight: 700;
+      color:#64748b;
+      margin: 2px 0 0 0;
+      line-height: 1.2;
+    }
+  </style>
+</head>
+
+<body>
+<!-- FOOTER FIJO (NO mover estilos aquí) -->
+<div id="footer_content">
+
+  <table width="100%" style="border-collapse:collapse; text-align:center;">
+
+    <!-- TÍTULO -->
+    <tr>
+      <td align="center" valign="top">
+        <b class="sig-title">Aprobado por</b>
+      </td>
+    </tr>
+
+    <!-- ESPACIO PARA FIRMA -->
+    <tr>
+      <td style="height:65px;"></td>
+    </tr>
+
+    <!-- LÍNEA DE FIRMA -->
+    <tr>
+      <td align="center">
+        <div class="sig-line" style="width:80%;"></div>
+      </td>
+    </tr>
+
+    <!-- PEQUEÑO ESPACIO -->
+    <tr>
+      <td style="height:4px;"></td>
+    </tr>
+<!-- LÍNEA DE FIRMA -->
+<tr>
+  <td align="center">
+  f.___________________________
+  </td>
+</tr>
+
+    <!-- NOMBRE -->
+    <tr>
+      <td align="center">
+        <div class="sig-name">{{ autorizado_por_nombre }}</div>
+      </td>
+    </tr>
+
+    <!-- CARGO -->
+    <tr>
+      <td align="center">
+        <div class="sig-role">{{ autorizado_por_cargo }}</div>
+      </td>
+    </tr>
+
+  </table>
+
+  <div style="margin-top:12px;">
+    <div class="footer-bar-1"></div>
+    <div class="footer-bar-2"></div>
+  </div>
+
+</div>
+<!-- /FOOTER FIJO -->
+
+
+  <!-- HEADER -->
+  <table class="hdr" width="100%">
+    <tr>
+      <td class="logos" style="width:65%; vertical-align:middle;">
+        {% if logo2_url %}<img src="{{ logo2_url }}" alt="Logo 2" />{% endif %}
+        {% if logo1_url %}<img src="{{ logo1_url }}" alt="Logo 1" />{% endif %}
+      </td>
+
+      <td style="width:35%; vertical-align:top;">
+        <table class="header-right" width="100%">
+          <tr>
+            <th colspan="2">Constancia de Disponibilidad Presupuestaria</th>
+          </tr>
+         
+          <tr>
+            <td class="lbl">Constancia No.:</td>
+            <td class="val">{{ correlativo_constancia }}{% if ejercicio_fiscal %}-{{ ejercicio_fiscal }}{% endif %}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Fecha impresión:</td>
+            <td class="val">{{ fecha_impresion }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Ejercicio Fiscal:</td>
+            <td class="val">{{ ejercicio_fiscal }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="inst-title">
+    <div class="l1">Unidad para la Prevención Comunitaria de la Violencia</div>
+
+  </div>
+
+  <!-- INFO GENERAL -->
+ 
+  <div class="section-card">
+    <table width="100%" style="border-collapse:collapse;">
+      <tr>
+        <td style="width:50%; padding-right:6px; vertical-align:top;">
+          <div class="field-row">
+            <span class="field-label">Solicitud:</span>
+            <span class="field-value">
+              {% if solicitud %}
+                {% if solicitud.codigo_correlativo %}
+                  {{ solicitud.codigo_correlativo }}
+                {% else %}
+                  {{ solicitud.id }}
+                {% endif %}
+              {% else %}-{% endif %}
+            </span>
+          </div>
+
+          <div class="field-row">
+            <span class="field-label">Fecha de la Solicitud:</span>
+            <span class="field-value">
+              {% if solicitud %}
+                {{ solicitud.fecha_solicitud|date:"d \\d\\e F \\d\\e Y" }}
+              {% else %}-{% endif %}
+            </span>
+          </div>
+        </td>
+
+        <td style="width:50%; padding-left:6px; vertical-align:top;">
+          <div class="field-row">
+            <span class="field-label"></span>
+            <span class="field-value">
+              {% if solicitud and solicitud.seccion and solicitud.seccion.departamento %}
+                {{ solicitud.seccion.departamento.nombre }}
+              {% else %}-{% endif %}
+            </span>
+          </div>
+
+         {% if solicitud and solicitud.seccion %}
+  {% if solicitud.seccion.departamento and solicitud.seccion.departamento.nombre|lower == solicitud.seccion.nombre|lower %}
+    {# ✅ Si Depto == Sección, NO mostrar la Sección #}
+  {% else %}
+    <div class="field-row">
+      <span class="field-label"></span>
+      <span class="field-value">{{ solicitud.seccion.nombre }}</span>
+    </div>
+  {% endif %}
+{% endif %}
+
+        </td>
+      </tr>
+    </table>
+
+    <div class="field-row" style="margin-top:4px;">
+  
+      <div class="just-box">
+       <span class="field-label" style="width:auto;">Justificación:</span> {{ solicitud.descripcion|default:"Ninguna" }}
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA CDP -->
+  <table class="tbl" style="margin-top:10px;">
+    <tr>
+      <th style="width:10%;">CDP No.</th>
+      <th style="width:62%;">Renglón</th>
+      <th style="width:16%;">Monto</th>
+      <th style="width:12%;">Estado</th>
+    </tr>
+
+    {% if detalles_cdp %}
+      {% for item in detalles_cdp %}
+      <tr>
+        <td class="center">{{ item.cdp_numero }}</td>
+        <td class="wrap">{{ item.renglon_compacto }}</td>
+        <td class="right"><b>{{ item.monto|money_gtq }}</b></td>
+        <td class="center">
+          <span class="cdp-badge {% if item.estado == 'RESERVADO' %}cdp-badge--reservado{% elif item.estado == 'EJECUTADO' %}cdp-badge--ejecutado{% elif item.estado == 'LIBERADO' %}cdp-badge--liberado{% endif %}">{{ item.estado }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+
+      <tr>
+        <td colspan="2" class="right"><b>Total general</b></td>
+        <td class="right"><b>{{ total_reservado|money_gtq }}</b></td>
+        <td class="center"><span class="cdp-badge">—</span></td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="4" class="center">No hay CDP reservados para esta solicitud.</td>
+      </tr>
+    {% endif %}
+  </table>
+<div style="margin-top:20px; text-align:left;">
+
+  <div style="font-size:9px; font-weight:500; color:#64748b; margin-bottom:6px;">
+    Solicitado por
+  </div>
+
+  <div style="font-size:11px; font-weight:700; color:#0b1220; text-transform:uppercase;">
+    {{ solicitado_por_nombre }}
+  </div>
+
+  <div style="font-size:9px; color:#64748b; margin-top:2px;">
+    {{ solicitado_por_cargo }}
+  </div>
+
+</div>
+
+</body>
+</html>

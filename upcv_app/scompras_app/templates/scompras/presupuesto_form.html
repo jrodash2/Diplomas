@@ -1,0 +1,59 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title d-flex justify-content-between align-items-center">
+      <div>
+        <h4>Crear presupuesto anual</h4>
+        <p class="text-muted mb-0">Defina el año fiscal antes de cargar sus renglones.</p>
+      </div>
+      <a class="btn btn-light" href="{% url 'scompras:presupuesto_anual_list' %}">Volver al listado</a>
+    </div>
+
+    <div class="row">
+      <div class="col-xl-6 col-lg-8">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Datos del año</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" novalidate>
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                  {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="mb-3">
+                <label class="form-label">Año</label>
+                {{ form.anio }}
+                {% for error in form.anio.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                {{ form.descripcion }}
+                {% for error in form.descripcion.errors %}
+                  <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <a class="btn btn-light" href="{% url 'scompras:presupuesto_anual_list' %}">Cancelar</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

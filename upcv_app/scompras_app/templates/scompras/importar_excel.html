@@ -1,0 +1,109 @@
+{% extends 'scompras/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Importar Catálogo de Insumos</h4>
+        </div>
+        <div class="col-6"> 
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="index.html">                                       
+                <svg class="stroke-icon">
+                  <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                </svg></a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Importar Datos</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Container-fluid starts-->
+<div class="container-fluid">
+  <div class="edit-profile">
+    <div class="row">
+      <!-- Formulario para importar datos y registrar fecha -->
+      <div class="col-xl-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Formulario de Importación</h5>
+          </div>
+          <div class="card-body">
+            <!-- Mostramos los mensajes de éxito o error si existen -->
+            {% if messages %}
+              <ul>
+                {% for message in messages %}
+                  <li class="message">{{ message }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <!-- Formulario para importar archivo Excel y registrar fecha -->
+            <form method="POST" enctype="multipart/form-data">
+              {% csrf_token %}
+              <div class="row">
+                
+                <!-- Formulario para la fecha -->
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="id_fechainsumo" class="form-label">Fecha </label>
+                    {{ fecha_form.fechainsumo }} <!-- Campo de fecha que el usuario puede completar -->
+                  </div>
+                </div>
+
+                <!-- Formulario para importar archivo Excel -->
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="id_archivo_excel" class="form-label">Archivo Excel</label>
+                    {{ form.archivo_excel }} <!-- Campo para subir el archivo Excel -->
+                  </div>
+                </div>
+              </div>
+              <div class="form-footer text-end">
+                <button class="btn btn-primary" type="submit">Importar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <span style="display: flex; justify-content: end; gap: 15px;">
+          <a style="background: rgba(0, 102, 102, 0.2); color: #006666; border-radius: 10px; padding: 18px 27px; font-size: 16px; font-weight: 600; outline: 0; border: 0; text-decoration: none;" 
+          href="{% url 'scompras:catalogo_insumos_view' %}" 
+          target="_blank">
+          Ver Catálogo <i class="icon-arrow-right" style="font-size:13px;font-weight:bold; margin-left: 10px;"></i>
+       </a>
+       
+                  </div>
+    </div>
+    <br>
+    <div class="alert alert-dark" role="alert">
+      <strong>Instrucciones:</strong> Para importar el catálogo de insumos, por favor siga estos pasos:
+      <br><strong>Importante:</strong> Asegúrese de que el archivo Excel contenga las siguientes columnas exactamente con estos nombres <u>en la primera fila del archivo</u>:
+      <ul>
+        <li>RENGLÓN</li>
+        <li>CÓDIGO DE INSUMO</li>
+        <li>NOMBRE</li>
+        <li>CARACTERÍSTICAS</li>
+        <li>NOMBRE DE LA PRESENTACIÓN</li>
+        <li>CANTIDAD Y UNIDAD DE MEDIDA DE LA PRESENTACIÓN</li>
+        <li>CÓDIGO DE PRESENTACIÓN</li>
+      </ul>
+      
+      <p><strong>Nota:</strong> La <u>primera fila</u> del archivo debe contener los nombres exactos de las columnas listadas anteriormente. El resto de las filas deben contener los datos correspondientes.</p>
+      
+      <p>El archivo debe estar en formato .xlsx y no debe contener fórmulas o formatos especiales. Asegúrese de que los datos estén correctamente organizados y sin celdas vacías.</p>
+      <p>Si el archivo cumple con estos requisitos, haga clic en el botón "Importar" para cargar los datos.</p>
+      <p>Si necesita un ejemplo de cómo debe estar estructurado el archivo, puede descargar la plantilla de ejemplo a continuación:</p> 
+      <p>La plantilla de ejemplo está diseñada para ayudarle a estructurar correctamente su archivo Excel. Asegúrese de seguir el formato indicado en la plantilla.</p>
+      <p>En el campo de fecha debe agregar la fecha hasta la cual están actualizados los datos.</p>
+    </div>
+    
+    <h5>Plantilla de ejemplo: <a href="{% static 'assets/archivos/plantilla_insumos.xlsx' %}" download>Descargar aquí</a></h5>
+  </div>
+</div>
+<!-- Container-fluid Ends--> 
+
+{% endblock %}

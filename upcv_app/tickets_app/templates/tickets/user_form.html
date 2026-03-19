@@ -1,0 +1,209 @@
+{% extends 'tickets/base.html' %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">
+            {% if form.instance.pk %}Editar Usuario{% else %}Crear Usuario{% endif %}
+          </h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="#">
+                <svg class="stroke-icon">
+                  <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                </svg>
+              </a>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts -->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+
+        <!-- Formulario -->
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+
+              <!-- Mensajes -->
+              {% if messages %}
+                <ul>
+                  {% for message in messages %}
+                    <li class="message">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+
+              {% if form.errors %}
+              <div class="alert alert-danger">
+                <ul>
+                  {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:', ' }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+
+              <!-- FORMULARIO -->
+              <form method="POST">
+                {% csrf_token %}
+
+                <div class="row">
+
+                  <!-- COLUMNA IZQUIERDA -->
+                  <div class="col-md-6">
+
+                    <div class="form-group">
+                      <label>DPI del empleado</label>
+                      {{ form.dpi }}
+                    </div>
+
+                    <div id="foto-wrapper" style="display:none;">
+                      <label>Fotografía</label><br>
+                      <img id="foto-empleado" src="" width="150" class="img-thumbnail mb-3">
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.username.id_for_label }}">Nombre de usuario</label>
+                      {{ form.username }}
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.first_name.id_for_label }}">Nombre</label>
+                      {{ form.first_name }}
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.last_name.id_for_label }}">Apellido</label>
+                      {{ form.last_name }}
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.group.id_for_label }}">Grupo</label>
+                      {{ form.group }}
+                    </div>
+
+                  </div>
+
+                  <!-- COLUMNA DERECHA -->
+                  <div class="col-md-6">
+
+                    <div class="form-group">
+                      <label for="{{ form.email.id_for_label }}">Email</label>
+                      {{ form.email }}
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.new_password.id_for_label }}">Contraseña</label>
+                      {{ form.new_password }}
+                    </div>
+
+                    <div class="form-group">
+                      <label for="{{ form.confirm_password.id_for_label }}">Confirmar Contraseña</label>
+                      {{ form.confirm_password }}
+                    </div>
+
+                  </div>
+                </div>
+
+                <div class="form-footer text-end mt-3">
+                  <button class="btn btn-primary" type="submit">
+                    {% if form.instance.pk %}Actualizar Usuario{% else %}Crear Usuario{% endif %}
+                  </button>
+                </div>
+
+              </form>
+
+              <!-- TABLA DE USUARIOS -->
+              <div class="mt-4">
+                <h5>Usuarios Creados</h5>
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Usuario</th>
+                      <th>Nombre</th>
+                      <th>Apellido</th>
+                      <th>Correo</th>
+                      <th>Grupo</th>
+                      <th>Acciones</th>
+                      <th>Accesos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for user in users %}
+                      <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.first_name }}</td>
+                        <td>{{ user.last_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.groups.all|join:", " }}</td>
+                        <td>
+                          <a href="{% url 'tickets:user_delete' user.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                        </td>
+<td>
+  <a href="{% url 'tickets:user_edit' user.id %}" 
+     class="btn btn-warning btn-sm">
+    Editar
+  </a>
+</td>
+
+
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== -->
+<!-- JAVASCRIPT DPI + AUTO -->
+<!-- ===================== -->
+<script>
+document.getElementById("id_dpi").addEventListener("change", function () {
+    const dpi = this.value.trim();
+    if (!dpi) return;
+    fetch(`/empleados/buscar-empleado/?dpi=${dpi}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert("Empleado no encontrado");
+                return;
+            }
+
+            document.getElementById("id_first_name").value = data.nombres;
+            document.getElementById("id_last_name").value = data.apellidos;
+            document.getElementById("id_username").value = data.username;
+
+if (data.foto) {
+    document.getElementById("foto-empleado").src = data.foto;
+    document.getElementById("foto-wrapper").style.display = "block";
+}
+
+        })
+        .catch(err => console.error(err));
+});
+</script>
+
+{% endblock %}

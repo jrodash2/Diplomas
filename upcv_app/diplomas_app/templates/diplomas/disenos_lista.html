@@ -1,0 +1,105 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Diseños de Diplomas</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 text-align-left">
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearDiseno">+ Crear Diseño</button>
+    </div>
+
+    <div class="container-fluid mt-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive custom-scrollbar">
+            <table class="display" id="tabla-disenos">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                  <th>Fondo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for d in disenos %}
+                <tr>
+                  <td>{{ d.id }}</td>
+                  <td>{{ d.nombre }}</td>
+                  <td>{% if d.activo %}Activo{% else %}Inactivo{% endif %}</td>
+                  <td>{% if d.imagen_fondo %}<a href="{{ d.imagen_fondo.url }}" target="_blank">Ver fondo</a>{% else %}<span class="text-muted">Sin fondo</span>{% endif %}</td>
+                  <td>
+                    <ul class="action">
+                      <li class="view me-2">
+                        {% if d.imagen_fondo %}
+                        <a href="{{ d.imagen_fondo.url }}" target="_blank" title="Ver"><i class="icon-eye"></i></a>
+                        {% endif %}
+                      </li>
+                      <li class="edit me-2"><a href="{% url 'diplomas:editar_diseno' d.id %}" title="Editar datos"><i class="icon-pencil-alt"></i></a></li>
+                      <li class="view me-2"><a href="{% url 'diplomas:modificar_diseno_visual' d.id %}" title="Modificar diseño"><i class="fa fa-object-group"></i></a></li>
+                      <li class="delete">
+                        <form method="post" action="{% url 'diplomas:eliminar_diseno' d.id %}" onsubmit="return confirm('¿Eliminar diseño?');">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
+                        </form>
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCrearDiseno" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nuevo Diseño</h5>
+        </div>
+        <form method="POST" enctype="multipart/form-data" action="{% url 'diplomas:crear_diseno' %}">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-12 mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
+            <div class="col-md-12 mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}</div>
+            <div class="col-md-12 mb-3">{{ form.imagen_fondo.label_tag }}{{ form.imagen_fondo }}</div>
+            <div class="col-md-12 mb-3 form-check">{{ form.activo }} <label class="form-check-label" for="id_activo">Activo</label></div>
+          </div>
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar Diseño</button>
+            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#tabla-disenos').DataTable({
+        "pageLength": 10,
+        "language": {"url": "{% static 'assets/js/datatable/datatables/spanish.json' %}"}
+    });
+});
+</script>
+{% endblock %}

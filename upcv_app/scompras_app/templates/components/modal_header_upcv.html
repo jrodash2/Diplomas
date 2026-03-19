@@ -1,0 +1,15 @@
+{% load static %}
+<div class="d-flex justify-content-end">
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+
+<div class="title-wrapper pb-3 modal-heading text-center">
+  <h5 class="theme-name mb-0"{% if title_id %} id="{{ title_id }}"{% endif %}>
+    {% if title_prefix %}<span>{{ title_prefix }}</span>{% endif %}{{ title }}
+  </h5>
+  {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+</div>
+
+<div class="overflow-hidden text-center mb-4 upcv-logo-wrap">
+  <img class="img-fluid" src="{% static logo_path|default:'assets/images/logo/logo.png' %}" alt="Logo" style="max-width:120px;">
+</div>

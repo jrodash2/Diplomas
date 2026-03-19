@@ -1,0 +1,245 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- JS -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+
+    <!-- ENCABEZADO -->
+    <div class="page-title">
+      <div class="row">
+
+        <!-- 🔹 COLUMNA: FIRMAS DEL CURSO -->
+        <div class="col-8">
+
+          <div class="card mt-3">
+            <div class="card-body">
+
+              <h5 class="mb-1">Firmas del Curso</h5>
+              <p class="text-muted mb-3">Diseño asignado: <strong>{{ curso.diseno_diploma.nombre|default:'Sin diseño (usa configuración histórica del curso)' }}</strong></p>
+
+              {% if curso.firmas.all %}
+              <div class="row">
+                {% for firma in curso.firmas.all %}
+                <div class="col-md-4 text-center mb-3">
+
+                  {% if firma.firma %}
+                  <img src="{{ firma.firma.url }}"
+                       alt="Firma de {{ firma.nombre }}"
+                       style="max-width: 180px; height:auto;">
+                  {% else %}
+                  <span class="text-muted">Sin firma</span>
+                  {% endif %}
+
+                  <div class="mt-2">
+                    <strong>{{ firma.nombre }}</strong><br>
+                    <span class="text-muted">{{ firma.rol }}</span>
+                  </div>
+
+                </div>
+                {% endfor %}
+              </div>
+
+              {% else %}
+              <p class="text-muted">No hay firmas asignadas a este curso.</p>
+              {% endif %}
+
+            </div>
+          </div><!-- card -->
+        </div><!-- col-8 -->
+
+
+        <!-- 🔹 COLUMNA: CARD TOTAL PARTICIPANTES -->
+        <div class="col-4">
+
+          <div class="card mt-3 shadow-sm" style="border-left: 4px solid #042250ff;">
+            <div class="card-body text-center">
+
+              <h5 class="mb-2">Participantes</h5>
+
+              <div style="
+                font-size: 48px;
+                font-weight: 700;
+                line-height: 1;
+                color: #02193bff;">
+                {{ total_participantes }}
+              </div>
+
+             
+
+            </div>
+          </div>
+
+        </div><!-- col-4 -->
+
+      </div><!-- row -->
+    </div><!-- page-title -->
+
+
+    <!-- BOTÓN AGREGAR PARTICIPANTE -->
+    <div class="col-4 text-align-left">
+      <button class="btn btn-primary mt-3"
+              data-bs-toggle="modal"
+              data-bs-target="#modalAgregarEmpleado">
+        + Agregar Participante
+      </button>
+    </div>
+
+
+    <!-- TARJETA DE PARTICIPANTES -->
+    <div class="card mt-3">
+      <div class="card-body">
+
+        <h5 class="mb-3">Participantes del Curso</h5>
+
+        <div class="table-responsive custom-scrollbar">
+          <table class="display" id="basic-9">
+            <thead>
+              <tr>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>DPI</th>
+                <th>Fecha Asignación</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for p in participantes %}
+              <tr>
+                <td>
+                  {% if p.empleado.imagen %}
+                  <img src="{{ p.empleado.imagen.url }}"
+                       style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
+                  {% else %}
+                  <span class="text-muted">Sin foto</span>
+                  {% endif %}
+                </td>
+
+                <td>{{ p.empleado.nombres }} {{ p.empleado.apellidos }}</td>
+                <td>{{ p.empleado.dpi }}</td>
+                <td>{{ p.fecha_asignacion|date:"d/m/Y H:i" }}</td>
+
+                <td>
+                  <ul class="action">
+
+<li class="view me-2">
+  <a href="{% url 'diplomas:ver_diploma' curso.id p.id %}"
+     title="Ver diploma del participante"
+     target="_blank">
+    <i class="icon-eye"></i>
+  </a>
+</li>
+
+
+                    <li class="delete">
+                      <a href="{% url 'diplomas:eliminar_participante' curso.id p.id %}"
+                         onclick="return confirm('¿Eliminar este participante del curso?');"
+                         class="text-danger"
+                         title="Eliminar participante">
+                        <i class="icon-trash"></i>
+                      </a>
+                    </li>
+
+                  </ul>
+                </td>
+
+              </tr>
+              {% endfor %}
+            </tbody>
+
+            <tfoot>
+              <tr>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>DPI</th>
+                <th>Fecha Asignación</th>
+                <th>Acciones</th>
+              </tr>
+            </tfoot>
+
+          </table>
+        </div><!-- table -->
+
+      </div>
+    </div><!-- card -->
+
+  </div><!-- container -->
+</div><!-- page-body -->
+
+
+
+<!-- ========================= -->
+<!--   MODAL AGREGAR EMPLEADO  -->
+<!-- ========================= -->
+<div class="modal fade" id="modalAgregarEmpleado" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content dark-sign-up">
+
+      <div class="modal-body social-profile text-start p-4">
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0">Agregar Participante</h5>
+          <p>Ingrese el DPI del empleado para agregarlo al curso.</p>
+        </div>
+
+        <div class="overflow-hidden text-center mb-3">
+          <img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="">
+        </div>
+
+        <form method="POST" action="{% url 'diplomas:agregar_empleado_detalle' curso.id %}">
+          {% csrf_token %}
+
+          <label>DPI del empleado</label>
+          <input type="text" id="dpiInput" name="dpi" class="form-control mb-2">
+
+          <label>Empleado</label>
+          <input type="text" id="nombreEmpleado" class="form-control mb-3" disabled>
+
+          <button class="btn btn-primary w-100">Agregar</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ========================= -->
+<!--   AJAX DPI LOOKUP         -->
+<!-- ========================= -->
+<script>
+$(document).ready(function () {
+
+  $("#dpiInput").on("keyup", function () {
+    var dpi = $(this).val();
+
+    if (dpi.length < 5) {
+      $("#nombreEmpleado").val("");
+      return;
+    }
+
+    $.ajax({
+      url: "{% url 'diplomas:buscar_empleado_por_dpi' %}",
+      data: { dpi: dpi },
+      success: function (data) {
+        if (data.existe) {
+          $("#nombreEmpleado").val(data.nombre_completo);
+        } else {
+          $("#nombreEmpleado").val("No encontrado");
+        }
+      }
+    });
+  });
+
+});
+</script>
+
+{% endblock %}

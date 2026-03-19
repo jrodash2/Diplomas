@@ -1,0 +1,36 @@
+<div class="modal fade" id="modalSubtipo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up modal-theme-upcv">
+      <div class="modal-body social-profile text-start p-4">
+        {% include 'components/modal_header_upcv.html' with title='Nuevo subtipo' title_id='subtipoModalTitle' subtitle='Complete los datos del subtipo asociado al tipo seleccionado.' %}
+
+        <form id="subtipoForm" data-url="">
+          {% csrf_token %}
+          <input type="hidden" name="tipo" id="subtipoTipo" value="{{ tipo.id }}">
+          <div class="alert alert-danger d-none" id="subtipoFormErrors"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <input type="text" class="form-control" value="{{ tipo.nombre }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="subtipoNombre">Nombre</label>
+            <input type="text" class="form-control" id="subtipoNombre" name="nombre" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="subtipoCodigo">Código</label>
+            <input type="text" class="form-control" id="subtipoCodigo" name="codigo">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="subtipoActivo" name="activo" checked>
+            <label class="form-check-label" for="subtipoActivo">Activo</label>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0 mt-4">
+            <button type="submit" form="subtipoForm" class="btn btn-primary px-4">Guardar</button>
+            <button type="button" class="btn btn-cancel-upcv" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

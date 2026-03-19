@@ -1,0 +1,341 @@
+{% extends 'scompras/base.html' %}
+{% load static money %}
+
+{% block content %}
+<div class="page-body">
+  <style>
+    .renglones-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    .renglones-toolbar .form-control,
+    .renglones-toolbar .form-select {
+      min-width: 220px;
+    }
+    .renglones-table tbody tr {
+      cursor: pointer;
+      transition: background-color .2s ease, opacity .2s ease, box-shadow .2s ease;
+    }
+    .renglones-table tbody tr:hover {
+      background: rgba(79, 70, 229, .08);
+    }
+    .renglones-table tbody tr.row-disabled {
+      opacity: .35;
+    }
+    .renglones-table tbody tr.row-valid {
+      background: rgba(34, 197, 94, .08);
+    }
+    .renglones-table tbody tr.row-selected {
+      box-shadow: inset 0 0 0 2px rgba(79, 70, 229, .35);
+    }
+    .renglones-empty-state {
+      display: none;
+      margin-top: .5rem;
+    }
+    .renglon-search-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: .5rem;
+      padding: .75rem;
+      margin-bottom: .75rem;
+    }
+    .renglon-search-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: .4rem;
+      gap: .5rem;
+    }
+    .renglon-search-meta .small {
+      margin-bottom: 0;
+    }
+    @media (max-width: 576px) {
+      .renglones-toolbar .form-control,
+      .renglones-toolbar .form-select {
+        min-width: 100%;
+      }
+      .renglon-search-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4>Crear CDP para Solicitud #{{ solicitud.id }}</h4>
+          <p class="text-muted">{{ solicitud.codigo_correlativo }} - {{ solicitud.seccion.departamento.nombre }}</p>
+        </div>
+        <div class="col-6 text-end">
+          <a class="btn btn-light" href="{% url 'scompras:detalle_solicitud' solicitud.id %}">Volver al detalle</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    {% if messages %}
+      <div class="row">
+        <div class="col-12">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Datos de la reserva</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Renglón presupuestario</label>
+                <div class="renglon-search-box">
+                  <input type="text" id="buscarRenglonSelect" class="form-control" placeholder="Buscar renglón...">
+                  <div class="renglon-search-meta">
+                    <p id="contadorRenglones" class="small text-muted">Mostrando 0 de 0</p>
+                    <button type="button" id="limpiarBusquedaRenglon" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+                  </div>
+                  <p id="sinResultadosSelect" class="small text-danger mt-2 mb-0" style="display:none;">Sin resultados.</p>
+                </div>
+                {{ form.renglon }}
+                {% if form.renglon.errors %}
+                  <div class="text-danger small">{{ form.renglon.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Monto a reservar</label>
+                {{ form.monto }}
+                {% if form.monto.errors %}
+                  <div class="text-danger small">{{ form.monto.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+              <button type="submit" class="btn btn-primary">Crear CDP</button>
+              <a class="btn btn-link" href="{% url 'scompras:detalle_solicitud' solicitud.id %}">Cancelar</a>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Disponibilidad por renglón ({{ solicitud.fecha_solicitud|date:'Y' }})</h5>
+          </div>
+          <div class="card-body">
+            <div class="renglones-toolbar">
+              <input type="text" id="filtroRenglon" class="form-control" placeholder="Buscar renglón, producto o subproducto">
+              <select id="filtroDisponibilidad" class="form-select">
+                <option value="all">Todos</option>
+                <option value="disponible">Con disponibilidad</option>
+                <option value="suficiente">Disponible &gt;= monto</option>
+              </select>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered renglones-table" id="tablaRenglonesDisponibles">
+                <thead>
+                  <tr>
+                    <th>Renglón</th>
+                    <th>Disponible</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for renglon in renglones_disponibles %}
+                    <tr
+                      data-renglon-id="{{ renglon.id }}"
+                      data-codigo="{{ renglon.codigo|default:'' }}"
+                      data-texto="{{ renglon.label_compacto|default:'' }}"
+                      data-disponible="{{ renglon.monto_disponible|default:'0' }}"
+                    >
+                      <td>{{ renglon.label_compacto }}</td>
+                      <td>{{ renglon.monto_disponible|money_gtq }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr id="filaRenglonesVacios">
+                      <td colspan="2" class="text-center text-muted">No hay renglones disponibles para el año de la solicitud.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <p id="sinResultadosRenglones" class="text-muted small renglones-empty-state mb-0">No se encontraron renglones con los filtros actuales.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const filtroRenglon = document.getElementById('filtroRenglon');
+    const filtroDisponibilidad = document.getElementById('filtroDisponibilidad');
+    const montoInput = document.getElementById('id_monto');
+    const selectRenglon = document.getElementById('id_renglon');
+    const buscarRenglonSelect = document.getElementById('buscarRenglonSelect');
+    const limpiarBusquedaRenglon = document.getElementById('limpiarBusquedaRenglon');
+    const contadorRenglones = document.getElementById('contadorRenglones');
+    const sinResultadosSelect = document.getElementById('sinResultadosSelect');
+    const tablaRenglones = document.getElementById('tablaRenglonesDisponibles');
+    const emptyState = document.getElementById('sinResultadosRenglones');
+
+    if (!tablaRenglones || !filtroRenglon || !filtroDisponibilidad) {
+      return;
+    }
+
+    const filasRenglones = Array.from(tablaRenglones.querySelectorAll('tbody tr[data-renglon-id]'));
+
+    const extraerCodigoRenglon = (texto) => {
+      const textoNormalizado = String(texto || '');
+      const matchRenglon = textoNormalizado.match(/rengl[oó]n\s*(\d+)/i);
+      if (matchRenglon && matchRenglon[1]) {
+        return matchRenglon[1].trim();
+      }
+      const matchNumerico = textoNormalizado.match(/\b(\d{2,4})\b/);
+      return matchNumerico ? matchNumerico[1].trim() : '';
+    };
+
+    const opcionesOriginales = selectRenglon
+      ? Array.from(selectRenglon.options).map((option) => ({
+          value: option.value,
+          text: option.text,
+          codigo: extraerCodigoRenglon(option.text),
+          selected: option.selected,
+        }))
+      : [];
+
+    const toNumber = (value) => {
+      if (!value) return 0;
+      const normalized = String(value).replace(/[^\d.,-]/g, '').replace(/,/g, '');
+      const parsed = parseFloat(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const filtrarSelectRenglones = () => {
+      if (!selectRenglon || !buscarRenglonSelect) {
+        return;
+      }
+
+      const texto = buscarRenglonSelect.value.trim().toLowerCase();
+      const valorSeleccionado = selectRenglon.value;
+      const opcionesFiltradas = opcionesOriginales.filter((option) => {
+        if (!option.value) {
+          return true;
+        }
+        return !texto || String(option.codigo || '').toLowerCase().includes(texto);
+      });
+
+      selectRenglon.innerHTML = '';
+      opcionesFiltradas.forEach((option) => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        if (option.value === valorSeleccionado) {
+          optionElement.selected = true;
+        }
+        selectRenglon.appendChild(optionElement);
+      });
+
+      const total = Math.max(opcionesOriginales.length - 1, 0);
+      const visibles = Math.max(opcionesFiltradas.filter((option) => option.value).length, 0);
+      if (contadorRenglones) {
+        contadorRenglones.textContent = 'Mostrando ' + visibles + ' de ' + total;
+      }
+      if (sinResultadosSelect) {
+        sinResultadosSelect.style.display = visibles === 0 ? 'block' : 'none';
+      }
+    };
+
+    const aplicarFiltros = () => {
+      const textoBusqueda = filtroRenglon.value.trim().toLowerCase();
+      const tipoFiltro = filtroDisponibilidad.value;
+      const montoIngresado = toNumber(montoInput ? montoInput.value : 0);
+      let visibles = 0;
+
+      filasRenglones.forEach((fila) => {
+        const codigo = (fila.dataset.codigo || '').toLowerCase();
+        const texto = (fila.dataset.texto || '').toLowerCase();
+        const disponible = toNumber(fila.dataset.disponible);
+        const coincideTexto = !textoBusqueda || codigo.includes(textoBusqueda) || texto.includes(textoBusqueda);
+        const tieneDisponibilidad = disponible > 0;
+        const disponibilidadSuficiente = disponible >= montoIngresado;
+
+        let coincideDisponibilidad = true;
+        if (tipoFiltro === 'disponible') {
+          coincideDisponibilidad = tieneDisponibilidad;
+        } else if (tipoFiltro === 'suficiente') {
+          coincideDisponibilidad = disponibilidadSuficiente;
+        }
+
+        const mostrar = coincideTexto && coincideDisponibilidad;
+        fila.style.display = mostrar ? '' : 'none';
+        fila.classList.toggle('row-disabled', !disponibilidadSuficiente);
+        fila.classList.toggle('row-valid', disponibilidadSuficiente && montoIngresado > 0);
+
+        if (mostrar) {
+          visibles += 1;
+        }
+      });
+
+      if (emptyState) {
+        emptyState.style.display = visibles === 0 ? 'block' : 'none';
+      }
+    };
+
+    filasRenglones.forEach((fila) => {
+      fila.addEventListener('click', function () {
+        if (!selectRenglon) return;
+
+        const renglonId = fila.dataset.renglonId;
+        const opcion = selectRenglon.querySelector('option[value="' + renglonId + '"]');
+        if (!opcion) return;
+
+        selectRenglon.value = renglonId;
+        selectRenglon.dispatchEvent(new Event('change', { bubbles: true }));
+
+        filasRenglones.forEach((item) => item.classList.remove('row-selected'));
+        fila.classList.add('row-selected');
+
+        const formulario = selectRenglon.closest('form');
+        if (formulario) {
+          formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    filtroRenglon.addEventListener('input', aplicarFiltros);
+    filtroDisponibilidad.addEventListener('change', aplicarFiltros);
+    if (buscarRenglonSelect) {
+      buscarRenglonSelect.addEventListener('input', filtrarSelectRenglones);
+    }
+    if (limpiarBusquedaRenglon) {
+      limpiarBusquedaRenglon.addEventListener('click', function () {
+        if (!buscarRenglonSelect) return;
+        buscarRenglonSelect.value = '';
+        filtrarSelectRenglones();
+        buscarRenglonSelect.focus();
+      });
+    }
+    if (montoInput) {
+      montoInput.addEventListener('input', aplicarFiltros);
+    }
+
+    aplicarFiltros();
+    filtrarSelectRenglones();
+  });
+</script>
+{% endblock %}

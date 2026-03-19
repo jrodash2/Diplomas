@@ -1,0 +1,537 @@
+{% extends 'empleados/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+<!-- =======================================
+     CARD DATOS DEL EMPLEADO (FOTO + INFO)
+======================================= -->
+
+<div class="card mb-4">
+  <div class="card-body">
+
+    <div class="row align-items-center">
+
+      <!-- FOTO -->
+      <div class="col-md-3 text-center">
+        {% if empleado.imagen %}
+          <img src="{{ empleado.imagen.url }}" class="img-thumbnail" style="max-width: 180px;">
+        {% else %}
+          <img src="{% static 'assets/images/user/default.jpg' %}" class="img-thumbnail" style="max-width: 180px;">
+        {% endif %}
+      </div>
+
+      <!-- INFORMACIÓN -->
+      <div class="col-md-9">
+
+        <h4>{{ empleado.nombres }} {{ empleado.apellidos }}</h4>
+        <p class="mb-1"><strong>DPI:</strong> {{ empleado.dpi }}</p>
+        <p class="mb-1"><strong>Cargo:</strong> {{ empleado.tipoc }}</p>
+
+        <!-- ESTADO SEGÚN CONTRATO -->
+        {% if empleado.contrato_activo %}
+            <p class="mb-1">
+              <strong>Estado:</strong> 
+              <span class="badge bg-success">Activo</span>
+            </p>
+
+            <p class="mb-1">
+              <strong>Contrato vigente:</strong>
+              {{ empleado.contrato_activo.fecha_inicio|date:"d/m/Y" }} →
+              {{ empleado.contrato_activo.fecha_vencimiento|date:"d/m/Y" }}
+            </p>
+             <p class="mb-1">
+              <strong>Sede:</strong>
+              {{ empleado.contrato_activo.sede }}
+            </p>
+                         <p class="mb-1">
+              <strong>Puesto:</strong>
+              {{ empleado.contrato_activo.puesto }}
+            </p>
+
+        {% else %}
+            <p class="mb-1">
+              <strong>Estado:</strong> 
+              <span class="badge bg-danger">Inactivo</span>
+            </p>
+
+            <p class="mb-1">
+              <strong>Contrato vigente:</strong>
+              <span class="text-danger">Sin contrato vigente</span>
+            </p>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- =======================================
+     CARD DATOS BÁSICOS (Mejorado)
+======================================= -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Datos Básicos</h5>
+
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalDatosBasicos">
+      {% if empleado.datos_basicos %}Editar{% else %}Agregar{% endif %}
+    </button>
+  </div>
+
+  <div class="card-body" id="contenedor-datos-basicos">
+
+    {% if empleado.datos_basicos %}
+    <div class="row g-3">
+
+      <!-- ---------------- FECHA & IDENTIDAD ---------------- -->
+      <div class="col-md-4">
+        <strong>Fecha de nacimiento:</strong><br>
+        {{ empleado.datos_basicos.fecha_nacimiento|date:"d/m/Y" }}
+      </div>
+
+      <div class="col-md-4">
+        <strong>Sexo:</strong><br>
+        {{ empleado.datos_basicos.get_sexo_display }}
+      </div>
+
+      <div class="col-md-4">
+        <strong>Estado civil:</strong><br>
+        {{ empleado.datos_basicos.get_estado_civil_display }}
+      </div>
+
+      <!-- ---------------- NACIONALIDAD & CULTURA ---------------- -->
+      <div class="col-md-4">
+        <strong>Nacionalidad:</strong><br>
+        {{ empleado.datos_basicos.nacionalidad }}
+      </div>
+
+      <div class="col-md-4">
+        <strong>Grupo étnico:</strong><br>
+        {{ empleado.datos_basicos.get_grupo_etnico_display }}
+      </div>
+
+      <div class="col-md-4">
+        <strong>Idiomas:</strong><br>
+        {{ empleado.datos_basicos.idiomas }}
+      </div>
+
+      <!-- ---------------- DIRECCIÓN ---------------- -->
+      <div class="col-md-12">
+        <strong>Dirección de residencia:</strong><br>
+        {{ empleado.datos_basicos.direccion_residencia }}
+      </div>
+
+      <!-- ---------------- TELÉFONOS ---------------- -->
+      <div class="col-md-6">
+        <strong>Teléfono personal:</strong><br>
+        {{ empleado.datos_basicos.telefono_personal }}
+      </div>
+
+      <div class="col-md-6">
+        <strong>Teléfono emergencia:</strong><br>
+        {{ empleado.datos_basicos.telefono_emergencia }}
+      </div>
+
+      <!-- ---------------- CONTACTO EMERGENCIA ---------------- -->
+     
+      <div class="col-md-6">
+        <strong>Correo institucional:</strong><br>
+        {{ empleado.datos_basicos.correo_institucional }}
+      </div>
+
+       <div class="col-md-6">
+        <strong>Persona contacto emergencia:</strong><br>
+        {{ empleado.datos_basicos.persona_contacto_emergencia }}
+      </div>
+
+    </div>
+    {% else %}
+    <p class="text-muted">No hay datos básicos registrados.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+
+
+
+    <!-- =======================================
+          CARD FORMACIÓN ACADÉMICA
+    ======================================== -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5>Formación Académica</h5>
+
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFormacionNuevo">
+          Agregar
+        </button>
+      </div>
+
+      <div class="card-body" id="contenedor-formaciones">
+
+        {% if formaciones %}
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Nivel</th>
+              <th>Título</th>
+              <th>Centro</th>
+              <th>Fecha</th>
+              <th style="width:120px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for f in formaciones %}
+            <tr>
+              <td>{{ f.get_nivel_display }}</td>
+              <td>{{ f.titulo_obtenido }}</td>
+              <td>{{ f.centro_estudio }}</td>
+              <td>{{ f.fecha }}</td>
+
+<td class="text-end">
+
+  <!-- EDITAR -->
+  <a href="#" 
+     data-bs-toggle="modal"
+     data-bs-target="#modalFormacionEditar{{f.id}}"
+     class="text-warning me-2"
+     title="Editar formación">
+      <i class="icon-pencil-alt" style="font-size:18px;"></i>
+  </a>
+
+  <!-- ELIMINAR -->
+  <a href="#" 
+     class="text-danger btn-eliminar-formacion"
+     data-url="{% url 'empleados:eliminar_formacion' f.id %}"
+     title="Eliminar">
+      <i class="icon-trash" style="font-size:18px;"></i>
+  </a>
+
+</td>
+
+            </tr>
+            {% endfor %}
+
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No hay formación registrada.</p>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- ===========================================================
+     MODAL DATOS BÁSICOS — ESTILO PREMIUM
+=========================================================== -->
+<div class="modal fade" id="modalDatosBasicos" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- ENCABEZADO -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0">
+            <span>{% if empleado.datos_basicos %}Editar{% else %}Agregar{% endif %} - </span>Datos Básicos
+          </h5>
+          <p>Complete o actualice la información general del empleado.</p>
+        </div>
+
+        <!-- IMAGEN DECORATIVA -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" 
+               alt="Decorativo" style="max-width:140px;">
+        </div>
+
+        <!-- FORMULARIO -->
+        <form method="POST" class="ajax-form"
+              action="{% url 'empleados:guardar_datos_basicos' empleado.id %}">
+          {% csrf_token %}
+
+          <div class="row">
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Fecha de nacimiento</label>
+              {{ form_datos_basicos.fecha_nacimiento }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Sexo</label>
+              {{ form_datos_basicos.sexo }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Estado civil</label>
+              {{ form_datos_basicos.estado_civil }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nacionalidad</label>
+              {{ form_datos_basicos.nacionalidad }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Grupo étnico</label>
+              {{ form_datos_basicos.grupo_etnico }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Idiomas</label>
+              {{ form_datos_basicos.idiomas }}
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Dirección de residencia</label>
+              {{ form_datos_basicos.direccion_residencia }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Teléfono personal</label>
+              {{ form_datos_basicos.telefono_personal }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Teléfono emergencia</label>
+              {{ form_datos_basicos.telefono_emergencia }}
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Contacto emergencia</label>
+              {{ form_datos_basicos.persona_contacto_emergencia }}
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Correo institucional</label>
+              {{ form_datos_basicos.correo_institucional }}
+            </div>
+
+          </div>
+
+          <!-- BOTONES -->
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn" 
+                    style="background-color: #0068ab; color: white;"
+                    data-bs-dismiss="modal">Cancelar</button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===========================================================
+     MODAL NUEVA FORMACIÓN — ESTILO PREMIUM
+=========================================================== -->
+<div class="modal fade" id="modalFormacionNuevo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- ENCABEZADO -->
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Agregar - </span>Formación Académica</h5>
+          <p>Ingrese los datos del estudio realizado por el empleado.</p>
+        </div>
+
+        <!-- IMAGEN -->
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}" 
+               alt="Decorativo" style="max-width:140px;">
+        </div>
+
+        <!-- FORM -->
+        <form method="POST" class="ajax-form"
+              action="{% url 'empleados:guardar_formacion' empleado.id %}">
+          {% csrf_token %}
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nivel</label>
+              {{ form_formacion.nivel }}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Fecha</label>
+              {{ form_formacion.fecha }}
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Título obtenido</label>
+              {{ form_formacion.titulo_obtenido }}
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Centro de estudio</label>
+              {{ form_formacion.centro_estudio }}
+            </div>
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn" 
+                    style="background-color: #0068ab; color: white;"
+                    data-bs-dismiss="modal">Cancelar</button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===========================================================
+     MODALES EDITAR FORMACIÓN (1 por fila)
+=========================================================== -->
+{% for f in formaciones %}
+<div class="modal fade" id="modalFormacionEditar{{f.id}}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+
+      <div class="modal-body social-profile text-start p-4">
+
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Editar - </span>Formación</h5>
+          <p>Actualice la información del registro seleccionado.</p>
+        </div>
+
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid" src="{% static 'assets/images/logo/logo.png' %}">
+        </div>
+
+        <form method="POST" class="ajax-form"
+              action="{% url 'empleados:actualizar_formacion' f.id %}">
+          {% csrf_token %}
+
+          <div class="row">
+            {{ f.form_editar.as_p }}
+          </div>
+
+          <div class="modal-footer justify-content-center border-top-0">
+            <button class="btn btn-primary">Actualizar</button>
+            <button type="button" class="btn" 
+                    style="background-color:#0068ab;color:white;"
+                    data-bs-dismiss="modal">Cancelar</button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+
+<!-- ===========================================================
+     AJAX
+=========================================================== -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+/* GUARDAR FORMULARIOS AJAX */
+$(document).on("submit", ".ajax-form", function (e) {
+    e.preventDefault();
+    const form = $(this);
+    const url = form.attr("action");
+
+    $.post(url, form.serialize(), function (response) {
+
+        if (response.status === "ok") {
+
+            if (response.update_section === "datos_basicos") {
+                $("#contenedor-datos-basicos").html(response.html);
+            }
+
+            if (response.update_section === "formaciones") {
+                $("#contenedor-formaciones").html(response.html);
+            }
+
+            $(".modal").modal("hide");
+        }
+
+        location.reload();
+
+
+    });
+});
+
+
+
+// ELIMINAR FORMACIÓN (SweetAlert2)
+$(document).on("click", ".btn-eliminar-formacion", function () {
+    const url = $(this).data("url");
+
+    Swal.fire({
+        title: "¿Eliminar registro?",
+        text: "Esta acción no se puede deshacer.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+
+        if (result.isConfirmed) {
+            $.post(url, {
+                csrfmiddlewaretoken: "{{ csrf_token }}"
+            }, function (response) {
+
+                if (response.status === "ok") {
+
+                    // Actualizar tabla
+                    $("#contenedor-formaciones").html(response.html);
+
+                    Swal.fire({
+                        title: "Eliminado",
+                        text: "El registro fue eliminado correctamente.",
+                        icon: "success",
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        }
+
+    });
+});
+
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chosen-js@1.8.7/chosen.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chosen-js@1.8.7/chosen.jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<script>
+  $(document).ready(function () {
+      $(".chosen-select").chosen({
+          width: "100%",
+          no_results_text: "No encontrado",
+          placeholder_text_single: "Seleccione..."
+      });
+  });
+</script>
+</body>
+
+{% endblock %}

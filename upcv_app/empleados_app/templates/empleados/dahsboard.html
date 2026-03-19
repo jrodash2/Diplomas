@@ -1,0 +1,234 @@
+{% extends 'empleados/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+ <div class="container-fluid">
+  <!-- Fila 2: Gráfica + Tabla -->
+  <div class="row mt-4 ">
+    <!-- Empleados por Sede -->
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Empleados por Sede</h4>
+        </div>
+        <div class="card-body">
+          <div id="empleadosPorSedeChart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de últimos contratos -->
+    <div class="col-md-7 ">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Últimos Contratos Registrados</h4>
+        </div>
+        <div class="card-body table-responsive">
+         <table id="ultimosContratosTable" class="table table-striped align-middle" style="font-size: 14px;">
+
+            <thead>
+              <tr>
+                <th>Foto</th>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Inicio</th>
+                <th>Vencimiento</th>
+                <th>Renglón</th>
+                <th>Sede</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for contrato in ultimos_contratos %}
+              <tr>
+                <td>
+                  {% if contrato.empleado.imagen %}
+                    <img src="{{ contrato.empleado.imagen.url }}" alt="Foto de {{ contrato.empleado.nombres }}" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%;">
+                  {% else %}
+                    <p><em>Sin foto disponible</em></p>
+                  {% endif %}
+                </td>
+                <td>{{ contrato.empleado.nombres }}</td>
+                <td>{{ contrato.empleado.apellidos }}</td>
+                <td>{{ contrato.fecha_inicio|date:"d/m/Y" }}</td>
+                <td>{{ contrato.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td>{{ contrato.renglon}}</td>
+                <td>{{ contrato.sede}}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Fila 1: Dos gráficas arriba -->
+  <div class="row mt-4">
+    <!-- Contratos Vigentes -->
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Contratos Vigentes</h4>
+        </div>
+        <div class="card-body">
+          <div id="contratosVigentesChart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contratos por Año -->
+    <div class="col-md-7">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Contratos por Año</h4>
+        </div>
+        <div class="card-body">
+          <div id="contratosPorAnioChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+{% block extra_js %}
+
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+  
+  document.addEventListener("DOMContentLoaded", function () {
+    // === Datos ===
+    const empleadosPorSede = {{ empleados_por_sede|safe }};
+    const sedeLabels = empleadosPorSede.map(item => item.sede__nombre || 'Sin Sede');
+    const sedeData = empleadosPorSede.map(item => item.total);
+
+    const contratosPorAnio = {{ contratos_por_anio|safe }};
+    const contratosLabels = contratosPorAnio.map(item => item.anio);
+    const contratosData = contratosPorAnio.map(item => item.total);
+
+    // === Gráfico 1: Contratos Vigentes ===
+    const chartVigentes = new ApexCharts(document.querySelector("#contratosVigentesChart"), {
+      chart: { id: 'contratosVigentesChart', type: 'donut', height: 350 },
+      series: [{{ datos_empleados.contratos_vigentes }}, {{ datos_empleados.contratos_no_vigentes }}],
+      labels: ['Vigentes', 'No Vigentes'],
+      colors: ['#0c4a6e', '#4cb8a4'],
+      tooltip: {
+        y: { formatter: val => val + ' contratos' }
+      }
+    });
+    chartVigentes.render();
+
+    // === Gráfico 2: Contratos por Año ===
+    const chartAnio = new ApexCharts(document.querySelector("#contratosPorAnioChart"), {
+      chart: { id: 'contratosPorAnioChart', type: 'bar', height: 350, toolbar: { show: false } },
+      series: [{ name: 'Contratos', data: contratosData }],
+      xaxis: { categories: contratosLabels },
+      colors: ['#0c4a6e'],
+      tooltip: {
+        y: { formatter: val => val + ' contratos' }
+      }
+    });
+    chartAnio.render();
+
+    // === Gráfico 3: Empleados por Sede ===
+    const chartSede = new ApexCharts(document.querySelector("#empleadosPorSedeChart"), {
+      chart: {
+        id: 'empleadosPorSedeChart',
+        type: 'bar',
+        height: 350,
+        toolbar: { show: false },
+        background: '#f4f4f4'
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '60%',
+          endingShape: 'rounded',
+        }
+      },
+      series: [{
+        name: 'Empleados',
+        data: sedeData
+      }],
+      xaxis: {
+        categories: sedeLabels,
+        labels: { rotate: -45, style: { colors: '#333' } }
+      },
+      yaxis: {
+        labels: { style: { colors: '#0f0f0f' } }
+      },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          type: 'vertical',
+          shadeIntensity: 0.3,
+          opacityFrom: 0.5,
+          opacityTo: 1,
+          stops: [0, 100],
+        }
+      },
+      colors: ['#4cb8a4'],
+      tooltip: {
+        y: { formatter: val => val + ' empleados' }
+      },
+      grid: { borderColor: '#f1f1f1' },
+      dataLabels: { enabled: false },
+      legend: { show: true, position: 'top' }
+    });
+    chartSede.render();
+
+    // === Redimensionamiento ===
+    window.addEventListener('resize', function () {
+      ApexCharts.exec('contratosVigentesChart', 'resize');
+      ApexCharts.exec('contratosPorAnioChart', 'resize');
+      ApexCharts.exec('empleadosPorSedeChart', 'resize');
+    });
+  });
+</script>
+
+<style>
+  #contratosVigentesChart,
+  #contratosPorAnioChart,
+  #empleadosPorSedeChart {
+    max-width: 100%;
+    height: 350px;
+    margin: 0 auto;
+  }
+</style>
+
+
+<script>
+  $(document).ready(function () {
+
+    // === Función para mover la última fila al principio con animación ===
+    function rotateRows() {
+      let lastRow = $('#ultimosContratosTable tbody tr:last');
+      lastRow.fadeOut(500, function () {
+        $(this).prependTo('#ultimosContratosTable tbody').fadeIn(500);
+      });
+    }
+
+    // === Función para mezclar las filas de la tabla aleatoriamente ===
+    function shuffleRows() {
+      let rows = $('#ultimosContratosTable tbody tr').get();
+      rows.sort(function () {
+        return 0.5 - Math.random(); // Orden aleatorio
+      });
+      $.each(rows, function (index, row) {
+        $('#ultimosContratosTable tbody').append(row);
+      });
+    }
+
+    // === Ejecutar las animaciones cada cierto tiempo ===
+    setInterval(rotateRows, 7000);   // rota cada 7 segundos
+    setInterval(shuffleRows, 15000); // baraja cada 15 segundos (opcional)
+  });
+</script>
+{% endblock %}
+
+{% endblock %}
