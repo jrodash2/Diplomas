@@ -13,22 +13,15 @@ from .forms import AgregarEmpleadoCursoForm, CursoForm, DisenoDiplomaForm, Firma
 from .models import Curso, CursoEmpleado, DisenoDiploma, Firma
 
 
-DEFAULT_DIPLOMA_ELEMENTS = {
-    "logo1": {"x": 1200, "y": 20, "width": 150, "height": 150, "font_size": 20, "color": "#000000", "align": "left", "content": "{{ logo_1 }}", "type": "logo", "z_index": 1},
-    "logo2": {"x": 1650, "y": 20, "width": 150, "height": 150, "font_size": 20, "color": "#000000", "align": "left", "content": "{{ logo_2 }}", "type": "logo", "z_index": 2},
-    "institucion": {"x": 1200, "y": 120, "width": 1100, "height": 120, "font_size": 100, "color": "#000000", "align": "center", "content": "{{ institucion_nombre }}", "type": "text", "z_index": 3},
-    "titulo": {"x": 1050, "y": 450, "width": 1400, "height": 100, "font_size": 55, "color": "#000000", "align": "center", "content": "OTORGA EL PRESENTE DIPLOMA A:", "type": "text", "z_index": 4},
-    "nombre": {"x": 1150, "y": 580, "width": 1300, "height": 160, "font_size": 120, "color": "#000000", "align": "center", "content": "{{ participante_nombre }}", "type": "text", "z_index": 5},
-    "curso": {"x": 1250, "y": 780, "width": 1000, "height": 100, "font_size": 55, "color": "#000000", "align": "center", "content": "{{ curso_nombre }}", "type": "text", "z_index": 6},
-    "horas": {"x": 1260, "y": 900, "width": 1000, "height": 80, "font_size": 40, "color": "#000000", "align": "center", "content": "{{ horas }}", "type": "text", "z_index": 7},
-    "fecha": {"x": 1300, "y": 1050, "width": 900, "height": 80, "font_size": 33, "color": "#000000", "align": "center", "content": "Guatemala, {{ fecha }} © UPCV", "type": "text", "z_index": 8},
-    "codigo": {"x": 1400, "y": 760, "width": 900, "height": 80, "font_size": 33, "color": "#000000", "align": "left", "content": "Código- {{ codigo }}", "type": "text", "z_index": 9},
-    "firmas": {"x": 800, "y": 1300, "width": 1900, "height": 500, "font_size": 28, "color": "#000000", "align": "center", "content": "{{ firmas }}", "type": "firmas", "z_index": 10},
-}
-
-
 CANVAS_WIDTH = 3508
 CANVAS_HEIGHT = 2480
+
+
+def _media_url(file_field):
+    try:
+        return file_field.url if file_field else ""
+    except Exception:
+        return ""
 
 
 def _clamp_number(value, default, min_value=0):
@@ -42,6 +35,8 @@ def _clamp_number(value, default, min_value=0):
 def _normalize_element_defaults(key, source, fallback):
     # Base mínimo seguro para evitar KeyError con configuraciones antiguas/incompletas
     base = {
+        "key": key,
+        "label": key.replace("_", " ").title(),
         "x": 0,
         "y": 0,
         "width": 200,
@@ -53,7 +48,9 @@ def _normalize_element_defaults(key, source, fallback):
         "content": "",
         "texto": "",
         "token": "",
-        "type": "text",
+        "type": "texto",
+        "image_url": "",
+        "visible": True,
     }
 
     data = {**base, **(fallback if isinstance(fallback, dict) else {})}
@@ -70,6 +67,8 @@ def _normalize_element_defaults(key, source, fallback):
     data["font_size"] = _clamp_number(source.get("font_size", source.get("fontSize")), data.get("font_size", 24), min_value=1)
     data["color"] = source.get("color") or data.get("color", "#000000")
     data["align"] = source.get("align", source.get("textAlign", source.get("alineacion"))) or data.get("align", "left")
+    data["label"] = source.get("label") or data.get("label", key.replace("_", " ").title())
+    data["key"] = source.get("key") or key
 
     content_value = (
         source.get("content")
@@ -84,31 +83,91 @@ def _normalize_element_defaults(key, source, fallback):
     data["token"] = source.get("token") or content_value
 
     data["z_index"] = int(_clamp_number(source.get("z_index", source.get("zIndex")), data.get("z_index", 1), min_value=1))
-    data["type"] = source.get("type") or data.get("type", "text")
+    data["type"] = source.get("type") or data.get("type", "texto")
+    data["image_url"] = source.get("image_url") or data.get("image_url", "")
+    data["visible"] = bool(source.get("visible", data.get("visible", True)))
 
     data["x"] = min(max(data["x"], 0), CANVAS_WIDTH - data["width"])
     data["y"] = min(max(data["y"], 0), CANVAS_HEIGHT - data["height"])
     return data
 
 
-def _build_elements_from_positions(posiciones):
-    elementos = {
-        key: _normalize_element_defaults(key, {}, value.copy())
-        for key, value in DEFAULT_DIPLOMA_ELEMENTS.items()
+LEGACY_ELEMENT_KEY_MAP = {
+    "logo1": "logo_gobierno",
+    "logo2": "logo_upcv",
+    "institucion": "titulo_institucional",
+    "titulo": "subtitulo_diploma",
+    "nombre": "participante_nombre",
+    "curso": "nombre_curso",
+    "fecha": "fecha_texto",
+    "firmas": "firmas_bloque",
+}
+
+
+def _real_editor_elements(diseno):
+    config = ConfiguracionGeneral.objects.first()
+    firmas = list(Firma.objects.order_by("id")[:2])
+    firma1 = firmas[0] if len(firmas) > 0 else None
+    firma2 = firmas[1] if len(firmas) > 1 else None
+
+    base = {
+        "fondo_diploma": {"key": "fondo_diploma", "label": "Fondo diploma", "type": "imagen", "x": 0, "y": 0, "width": CANVAS_WIDTH, "height": CANVAS_HEIGHT, "font_size": 20, "color": "#111827", "align": "center", "z_index": 0, "token": "[[fondo_diploma]]", "texto": "", "content": "", "image_url": _media_url(getattr(diseno, "imagen_fondo", None)), "visible": True},
+        "logo_gobierno": {"key": "logo_gobierno", "label": "Logo Gobierno", "type": "imagen", "x": 1280, "y": 30, "width": 180, "height": 180, "font_size": 22, "color": "#111827", "align": "center", "z_index": 15, "token": "{{ logo_gobierno }}", "texto": "", "content": "", "image_url": _media_url(getattr(config, "logotipo2", None)), "visible": True},
+        "logo_upcv": {"key": "logo_upcv", "label": "Logo UPCV", "type": "imagen", "x": 1580, "y": 30, "width": 180, "height": 180, "font_size": 22, "color": "#111827", "align": "center", "z_index": 16, "token": "{{ logo_upcv }}", "texto": "", "content": "", "image_url": _media_url(getattr(config, "logotipo", None)), "visible": True},
+        "titulo_institucional": {"key": "titulo_institucional", "label": "Título institucional", "type": "texto", "x": 980, "y": 220, "width": 1500, "height": 120, "font_size": 56, "color": "#0f172a", "align": "center", "z_index": 20, "token": "{{ institucion_nombre }}", "texto": getattr(config, "nombre_institucion", "") or "Unidad para la Prevención Comunitaria de la Violencia", "content": getattr(config, "nombre_institucion", "") or "Unidad para la Prevención Comunitaria de la Violencia", "image_url": "", "visible": True},
+        "subtitulo_diploma": {"key": "subtitulo_diploma", "label": "Subtítulo diploma", "type": "texto", "x": 1020, "y": 430, "width": 1450, "height": 100, "font_size": 50, "color": "#111827", "align": "center", "z_index": 21, "token": "{{ subtitulo_diploma }}", "texto": "OTORGA EL PRESENTE DIPLOMA A:", "content": "OTORGA EL PRESENTE DIPLOMA A:", "image_url": "", "visible": True},
+        "adorno_central": {"key": "adorno_central", "label": "Adorno central", "type": "decorativo", "x": 1050, "y": 540, "width": 1380, "height": 50, "font_size": 40, "color": "#6b7280", "align": "center", "z_index": 22, "token": "{{ adorno_central }}", "texto": "──────────── ✦ ────────────", "content": "──────────── ✦ ────────────", "image_url": "", "visible": True},
+        "participante_nombre": {"key": "participante_nombre", "label": "Nombre participante", "type": "texto", "x": 900, "y": 620, "width": 1700, "height": 170, "font_size": 110, "color": "#111827", "align": "center", "z_index": 25, "token": "{{ participante_nombre }}", "texto": "{{ participante_nombre }}", "content": "{{ participante_nombre }}", "image_url": "", "visible": True},
+        "codigo": {"key": "codigo", "label": "Código", "type": "texto", "x": 1410, "y": 760, "width": 850, "height": 70, "font_size": 33, "color": "#111827", "align": "left", "z_index": 23, "token": "{{ codigo }}", "texto": "Código- {{ codigo }}", "content": "Código- {{ codigo }}", "image_url": "", "visible": True},
+        "nombre_curso": {"key": "nombre_curso", "label": "Nombre curso", "type": "texto", "x": 1060, "y": 860, "width": 1400, "height": 100, "font_size": 54, "color": "#111827", "align": "center", "z_index": 24, "token": "{{ curso_nombre }}", "texto": "{{ curso_nombre }}", "content": "{{ curso_nombre }}", "image_url": "", "visible": True},
+        "fecha_texto": {"key": "fecha_texto", "label": "Fecha", "type": "texto", "x": 1230, "y": 1060, "width": 1100, "height": 70, "font_size": 33, "color": "#111827", "align": "center", "z_index": 26, "token": "{{ fecha }}", "texto": "Guatemala, {{ fecha }} © UPCV", "content": "Guatemala, {{ fecha }} © UPCV", "image_url": "", "visible": True},
+        "firma_1_imagen": {"key": "firma_1_imagen", "label": "Firma 1 Imagen", "type": "imagen", "x": 900, "y": 1320, "width": 280, "height": 120, "font_size": 20, "color": "#111827", "align": "center", "z_index": 30, "token": "{{ firma_1_imagen }}", "texto": "", "content": "", "image_url": _media_url(getattr(firma1, "firma", None)), "visible": True},
+        "firma_1_nombre": {"key": "firma_1_nombre", "label": "Firma 1 Nombre", "type": "texto", "x": 860, "y": 1450, "width": 360, "height": 50, "font_size": 28, "color": "#111827", "align": "center", "z_index": 31, "token": "{{ firma_1_nombre }}", "texto": getattr(firma1, "nombre", "") or "Nombre Firma 1", "content": getattr(firma1, "nombre", "") or "Nombre Firma 1", "image_url": "", "visible": True},
+        "firma_1_cargo": {"key": "firma_1_cargo", "label": "Firma 1 Cargo", "type": "texto", "x": 860, "y": 1505, "width": 360, "height": 50, "font_size": 24, "color": "#374151", "align": "center", "z_index": 32, "token": "{{ firma_1_cargo }}", "texto": getattr(firma1, "rol", "") or "Cargo Firma 1", "content": getattr(firma1, "rol", "") or "Cargo Firma 1", "image_url": "", "visible": True},
+        "firma_2_imagen": {"key": "firma_2_imagen", "label": "Firma 2 Imagen", "type": "imagen", "x": 2240, "y": 1320, "width": 280, "height": 120, "font_size": 20, "color": "#111827", "align": "center", "z_index": 33, "token": "{{ firma_2_imagen }}", "texto": "", "content": "", "image_url": _media_url(getattr(firma2, "firma", None)), "visible": True},
+        "firma_2_nombre": {"key": "firma_2_nombre", "label": "Firma 2 Nombre", "type": "texto", "x": 2200, "y": 1450, "width": 360, "height": 50, "font_size": 28, "color": "#111827", "align": "center", "z_index": 34, "token": "{{ firma_2_nombre }}", "texto": getattr(firma2, "nombre", "") or "Nombre Firma 2", "content": getattr(firma2, "nombre", "") or "Nombre Firma 2", "image_url": "", "visible": True},
+        "firma_2_cargo": {"key": "firma_2_cargo", "label": "Firma 2 Cargo", "type": "texto", "x": 2200, "y": 1505, "width": 360, "height": 50, "font_size": 24, "color": "#374151", "align": "center", "z_index": 35, "token": "{{ firma_2_cargo }}", "texto": getattr(firma2, "rol", "") or "Cargo Firma 2", "content": getattr(firma2, "rol", "") or "Cargo Firma 2", "image_url": "", "visible": True},
+        "sello_medalla": {"key": "sello_medalla", "label": "Sello / Medalla", "type": "imagen", "x": 2600, "y": 980, "width": 220, "height": 220, "font_size": 20, "color": "#111827", "align": "center", "z_index": 36, "token": "{{ sello_medalla }}", "texto": "", "content": "", "image_url": "", "visible": True},
     }
+
+    firmas_bloque = {
+        "key": "firmas_bloque",
+        "label": "Bloque de firmas legado",
+        "type": "grupo_firmas",
+        "x": 800,
+        "y": 1300,
+        "width": 1900,
+        "height": 500,
+        "font_size": 28,
+        "color": "#000000",
+        "align": "center",
+        "z_index": 10,
+        "token": "{{ firmas }}",
+        "texto": "",
+        "content": "{{ firmas }}",
+        "image_url": "",
+        "visible": False,
+    }
+    base["firmas_bloque"] = firmas_bloque
+    return {key: _normalize_element_defaults(key, value, value) for key, value in base.items()}
+
+
+def _build_elements_from_positions(posiciones):
+    elementos = _real_editor_elements(None)
     if not isinstance(posiciones, dict):
         return elementos
 
     for key, value in posiciones.items():
-        if key not in elementos:
+        mapped_key = LEGACY_ELEMENT_KEY_MAP.get(key, key)
+        if mapped_key not in elementos:
             continue
-        elementos[key] = _normalize_element_defaults(key, value, elementos[key])
-    return elementos
-
+        elementos[mapped_key] = _normalize_element_defaults(mapped_key, value, elementos[mapped_key])
     return elementos
 
 def _build_diseno_elements(diseno, fallback_posiciones):
     elementos = _build_elements_from_positions(fallback_posiciones)
+    if diseno:
+        elementos["fondo_diploma"]["image_url"] = _media_url(getattr(diseno, "imagen_fondo", None))
     if not diseno or not isinstance(diseno.estilos, dict):
         return elementos
 
@@ -118,9 +177,10 @@ def _build_diseno_elements(diseno, fallback_posiciones):
         return elementos
 
     for key, value in source_elements.items():
-        if key not in elementos:
+        mapped_key = LEGACY_ELEMENT_KEY_MAP.get(key, key)
+        if mapped_key not in elementos:
             continue
-        elementos[key] = _normalize_element_defaults(key, value, elementos[key])
+        elementos[mapped_key] = _normalize_element_defaults(mapped_key, value, elementos[mapped_key])
 
     return elementos
 
@@ -137,25 +197,8 @@ def _resolve_content(template_content, curso_empleado, config):
         "{{ institucion_nombre }}": config.nombre_institucion if config else "",
         "{{ logo_1 }}": "",
         "{{ logo_2 }}": "",
-        "{{ firmas }}": "",
-    }
-    resolved = template_content
-    for token, value in context_map.items():
-        resolved = resolved.replace(token, value)
-    return resolved
-
-def _resolve_content(template_content, curso_empleado, config):
-    empleado = curso_empleado.empleado
-    curso = curso_empleado.curso
-    context_map = {
-        "{{ participante_nombre }}": f"{empleado.nombres} {empleado.apellidos}",
-        "{{ curso_nombre }}": curso.nombre,
-        "{{ fecha }}": timezone.now().strftime("%Y"),
-        "{{ horas }}": "",
-        "{{ codigo }}": f"{curso_empleado.id:04d}-UPCV",
-        "{{ institucion_nombre }}": config.nombre_institucion if config else "",
-        "{{ logo_1 }}": "",
-        "{{ logo_2 }}": "",
+        "{{ logo_gobierno }}": "",
+        "{{ logo_upcv }}": "",
         "{{ firmas }}": "",
     }
     resolved = template_content
@@ -205,7 +248,11 @@ def crear_diseno(request):
         if form.is_valid():
             diseno = form.save(commit=False)
             if not diseno.estilos:
-                diseno.estilos = {"elements": DEFAULT_DIPLOMA_ELEMENTS}
+                diseno.save()
+                diseno.estilos = {"elements": _real_editor_elements(diseno)}
+                diseno.save(update_fields=["estilos", "actualizado_en"])
+                messages.success(request, "Diseño de diploma creado correctamente.")
+                return redirect("diplomas:disenos_lista")
             diseno.save()
             messages.success(request, "Diseño de diploma creado correctamente.")
         else:
@@ -227,64 +274,10 @@ def editar_diseno(request, diseno_id):
     return render(request, "diplomas/editar_diseno.html", {"form": form, "diseno": diseno})
 
 
-def _media_url(file_field):
-    try:
-        return file_field.url if file_field else ""
-    except Exception:
-        return ""
-
-
-def _real_editor_elements(diseno):
-    config = ConfiguracionGeneral.objects.first()
-    firmas = list(Firma.objects.order_by('id')[:2])
-    firma1 = firmas[0] if len(firmas) > 0 else None
-    firma2 = firmas[1] if len(firmas) > 1 else None
-
-    base = {
-        "logo_gobierno": {"key": "logo_gobierno", "label": "Logo Gobierno", "type": "imagen", "x": 1280, "y": 30, "width": 180, "height": 180, "font_size": 22, "color": "#111827", "align": "center", "z_index": 15, "token": "[[logo_gobierno]]", "texto": "", "image_url": _media_url(getattr(config, 'logotipo2', None)), "visible": True},
-        "logo_upcv": {"key": "logo_upcv", "label": "Logo UPCV", "type": "imagen", "x": 1580, "y": 30, "width": 180, "height": 180, "font_size": 22, "color": "#111827", "align": "center", "z_index": 16, "token": "[[logo_upcv]]", "texto": "", "image_url": _media_url(getattr(config, 'logotipo', None)), "visible": True},
-        "titulo_institucional": {"key": "titulo_institucional", "label": "Título institucional", "type": "texto", "x": 980, "y": 220, "width": 1500, "height": 120, "font_size": 56, "color": "#0f172a", "align": "center", "z_index": 20, "token": "[[institucion]]", "texto": getattr(config, 'nombre_institucion', '') or 'Unidad para la Prevención Comunitaria de la Violencia', "image_url": "", "visible": True},
-        "subtitulo_diploma": {"key": "subtitulo_diploma", "label": "Subtítulo diploma", "type": "texto", "x": 1020, "y": 430, "width": 1450, "height": 100, "font_size": 50, "color": "#111827", "align": "center", "z_index": 21, "token": "[[subtitulo_diploma]]", "texto": "OTORGA EL PRESENTE DIPLOMA A:", "image_url": "", "visible": True},
-        "adorno_central": {"key": "adorno_central", "label": "Adorno central", "type": "decorativo", "x": 1050, "y": 540, "width": 1380, "height": 50, "font_size": 40, "color": "#6b7280", "align": "center", "z_index": 22, "token": "[[adorno_central]]", "texto": "──────────── ✦ ────────────", "image_url": "", "visible": True},
-        "codigo": {"key": "codigo", "label": "Código", "type": "texto", "x": 1410, "y": 760, "width": 850, "height": 70, "font_size": 33, "color": "#111827", "align": "left", "z_index": 23, "token": "[[codigo]]", "texto": "Código-0002-UPCV", "image_url": "", "visible": True},
-        "nombre_curso": {"key": "nombre_curso", "label": "Nombre curso", "type": "texto", "x": 1060, "y": 860, "width": 1400, "height": 100, "font_size": 54, "color": "#111827", "align": "center", "z_index": 24, "token": "[[curso_nombre]]", "texto": "Nombre del Curso", "image_url": "", "visible": True},
-        "participante_nombre": {"key": "participante_nombre", "label": "Nombre participante", "type": "texto", "x": 900, "y": 620, "width": 1700, "height": 170, "font_size": 110, "color": "#111827", "align": "center", "z_index": 25, "token": "[[participante_nombre]]", "texto": "Oscar Javier Peinado Monroy", "image_url": "", "visible": True},
-        "fecha_texto": {"key": "fecha_texto", "label": "Fecha", "type": "texto", "x": 1230, "y": 1060, "width": 1100, "height": 70, "font_size": 33, "color": "#111827", "align": "center", "z_index": 26, "token": "[[fecha]]", "texto": "Guatemala, 2026 © UPCV", "image_url": "", "visible": True},
-        "firma_1_imagen": {"key": "firma_1_imagen", "label": "Firma 1 Imagen", "type": "imagen", "x": 900, "y": 1320, "width": 280, "height": 120, "font_size": 20, "color": "#111827", "align": "center", "z_index": 30, "token": "[[firma_1_imagen]]", "texto": "", "image_url": _media_url(getattr(firma1, 'firma', None)), "visible": True},
-        "firma_1_nombre": {"key": "firma_1_nombre", "label": "Firma 1 Nombre", "type": "texto", "x": 860, "y": 1450, "width": 360, "height": 50, "font_size": 28, "color": "#111827", "align": "center", "z_index": 31, "token": "[[firma_1_nombre]]", "texto": getattr(firma1, 'nombre', '') or 'Nombre Firma 1', "image_url": "", "visible": True},
-        "firma_1_cargo": {"key": "firma_1_cargo", "label": "Firma 1 Cargo", "type": "texto", "x": 860, "y": 1505, "width": 360, "height": 50, "font_size": 24, "color": "#374151", "align": "center", "z_index": 32, "token": "[[firma_1_cargo]]", "texto": getattr(firma1, 'rol', '') or 'Cargo Firma 1', "image_url": "", "visible": True},
-        "firma_2_imagen": {"key": "firma_2_imagen", "label": "Firma 2 Imagen", "type": "imagen", "x": 2240, "y": 1320, "width": 280, "height": 120, "font_size": 20, "color": "#111827", "align": "center", "z_index": 33, "token": "[[firma_2_imagen]]", "texto": "", "image_url": _media_url(getattr(firma2, 'firma', None)), "visible": True},
-        "firma_2_nombre": {"key": "firma_2_nombre", "label": "Firma 2 Nombre", "type": "texto", "x": 2200, "y": 1450, "width": 360, "height": 50, "font_size": 28, "color": "#111827", "align": "center", "z_index": 34, "token": "[[firma_2_nombre]]", "texto": getattr(firma2, 'nombre', '') or 'Nombre Firma 2', "image_url": "", "visible": True},
-        "firma_2_cargo": {"key": "firma_2_cargo", "label": "Firma 2 Cargo", "type": "texto", "x": 2200, "y": 1505, "width": 360, "height": 50, "font_size": 24, "color": "#374151", "align": "center", "z_index": 35, "token": "[[firma_2_cargo]]", "texto": getattr(firma2, 'rol', '') or 'Cargo Firma 2', "image_url": "", "visible": True},
-        "sello_medalla": {"key": "sello_medalla", "label": "Sello / Medalla", "type": "imagen", "x": 2600, "y": 980, "width": 220, "height": 220, "font_size": 20, "color": "#111827", "align": "center", "z_index": 36, "token": "[[sello_medalla]]", "texto": "", "image_url": "", "visible": True},
-        "fondo_diploma": {"key": "fondo_diploma", "label": "Fondo diploma", "type": "imagen", "x": 0, "y": 0, "width": CANVAS_WIDTH, "height": CANVAS_HEIGHT, "font_size": 20, "color": "#111827", "align": "center", "z_index": 0, "token": "[[fondo_diploma]]", "texto": "", "image_url": _media_url(getattr(diseno, 'imagen_fondo', None)), "visible": False},
-    }
-
-    existing = diseno.estilos.get("elements") if isinstance(diseno.estilos, dict) and isinstance(diseno.estilos.get("elements"), dict) else {}
-    for key, base_el in base.items():
-        source = existing.get(key) if isinstance(existing.get(key), dict) else {}
-        merged = {**base_el, **source}
-        merged["x"] = _clamp_number(source.get("x", source.get("left", merged.get("x", 0))), merged.get("x", 0))
-        merged["y"] = _clamp_number(source.get("y", source.get("top", merged.get("y", 0))), merged.get("y", 0))
-        merged["width"] = _clamp_number(source.get("width", source.get("ancho", merged.get("width", 200))), merged.get("width", 200), min_value=20)
-        merged["height"] = _clamp_number(source.get("height", source.get("alto", merged.get("height", 80))), merged.get("height", 80), min_value=20)
-        merged["font_size"] = _clamp_number(source.get("font_size", source.get("fontSize", merged.get("font_size", 24))), merged.get("font_size", 24), min_value=1)
-        merged["align"] = source.get("align", source.get("textAlign", source.get("alineacion", merged.get("align", "left"))))
-        merged["z_index"] = int(_clamp_number(source.get("z_index", source.get("zIndex", merged.get("z_index", 1))), merged.get("z_index", 1), min_value=0))
-        merged["token"] = source.get("token") or merged.get("token")
-        merged["texto"] = source.get("texto", source.get("content", merged.get("texto", "")))
-        merged["content"] = source.get("content", merged.get("content", merged.get("texto", "")))
-        merged["image_url"] = source.get("image_url") or merged.get("image_url", "")
-        merged["visible"] = bool(source.get("visible", merged.get("visible", True)))
-        merged["key"] = key
-        base[key] = merged
-
-    return base
-
 
 def modificar_diseno_visual(request, diseno_id):
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
-    elementos = _real_editor_elements(diseno)
+    elementos = _build_diseno_elements(diseno, {})
     context = {
         "diseno": diseno,
         "elementos": elementos,
