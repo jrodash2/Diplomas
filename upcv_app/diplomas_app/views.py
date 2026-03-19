@@ -100,23 +100,36 @@ def modificar_diseno_visual(request, diseno_id):
 
 def guardar_diseno_visual(request, diseno_id):
     if request.method != "POST":
-        return JsonResponse({"error": "Método no permitido"}, status=405)
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
 
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "JSON inválido"}, status=400)
+        return JsonResponse({"success": False, "error": "JSON inválido"}, status=400)
 
-    incoming_elements = payload.get("elements") if isinstance(payload, dict) else None
+    incoming_elements = None
+    if isinstance(payload, dict):
+        if isinstance(payload.get("elements"), dict):
+            incoming_elements = payload.get("elements")
+        elif isinstance(payload.get("definition"), dict) and isinstance(payload["definition"].get("elements"), dict):
+            incoming_elements = payload["definition"]["elements"]
     if not isinstance(incoming_elements, dict):
-        return JsonResponse({"error": "Estructura de elementos inválida"}, status=400)
+        return JsonResponse({"success": False, "error": "Estructura de elementos inválida"}, status=400)
 
-    normalized_definition = normalize_definition_from_elements(diseno, incoming_elements)
+    try:
+        normalized_definition = normalize_definition_from_elements(diseno, incoming_elements)
+        diseno.estilos = normalized_definition
+        diseno.save(update_fields=["estilos", "actualizado_en"])
+        diseno.refresh_from_db(fields=["estilos", "actualizado_en"])
+    except Exception as exc:
+        return JsonResponse({"success": False, "error": f"No se pudo guardar el diseño: {exc}"}, status=500)
 
-    diseno.estilos = normalized_definition
-    diseno.save(update_fields=["estilos", "actualizado_en"])
-    return JsonResponse({"success": True, "definition": normalized_definition})
+    return JsonResponse({
+        "success": True,
+        "message": "Diseño guardado correctamente.",
+        "definition": diseno.estilos,
+    })
 
 
 def eliminar_diseno(request, diseno_id):

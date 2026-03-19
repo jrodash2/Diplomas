@@ -305,24 +305,46 @@
   });
 
   ui.save.addEventListener("click", async function () {
-    const response = await fetch(state.saveUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken(),
-      },
-      body: JSON.stringify({ elements: state.elements }),
-    });
-    const payload = await response.json();
-    if (!response.ok || !payload.success) {
-      window.alert(payload.error || "No se pudo guardar el diseño.");
-      return;
+    const originalLabel = ui.save.textContent;
+    ui.save.disabled = true;
+    ui.save.textContent = "Guardando...";
+
+    try {
+      const response = await fetch(state.saveUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken(),
+        },
+        body: JSON.stringify({
+          definition: {
+            version: definition.version || 2,
+            canvas: {
+              width: state.canvasWidth,
+              height: state.canvasHeight,
+            },
+            elements: state.elements,
+          },
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        window.alert(payload.error || "No se pudo guardar el diseño.");
+        return;
+      }
+
+      state.elements = payload.definition.elements || state.elements;
+      state.pristine = JSON.parse(JSON.stringify(state.elements));
+      renderCanvas();
+      syncSidebar();
+      window.alert(payload.message || "Diseño guardado correctamente.");
+    } catch (error) {
+      window.alert("Ocurrió un error al guardar el diseño.");
+    } finally {
+      ui.save.disabled = false;
+      ui.save.textContent = originalLabel;
     }
-    state.elements = payload.definition.elements || state.elements;
-    state.pristine = JSON.parse(JSON.stringify(state.elements));
-    renderCanvas();
-    syncSidebar();
-    window.alert("Diseño guardado correctamente.");
   });
 
   renderCanvas();
