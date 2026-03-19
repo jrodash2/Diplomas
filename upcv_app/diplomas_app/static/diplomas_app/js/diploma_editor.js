@@ -7,14 +7,48 @@
 
   const SCALE = 0.28;
   const definition = JSON.parse(payloadNode.textContent || "{}");
+
+  function hydrateElementsFromDom() {
+    const hydrated = {};
+    canvas.querySelectorAll(".diploma-editor-element").forEach(function (node) {
+      const style = window.getComputedStyle(node);
+      const key = node.dataset.key;
+      if (!key) {
+        return;
+      }
+      hydrated[key] = {
+        key,
+        label: node.dataset.label || key,
+        type: node.dataset.type || "texto",
+        visible: node.dataset.visible !== "false",
+        x: parseFloat(node.style.left || 0),
+        y: parseFloat(node.style.top || 0),
+        width: parseFloat(node.style.width || 200),
+        height: parseFloat(node.style.height || 80),
+        font_size: parseFloat(node.dataset.fontSize || node.style.fontSize || 24),
+        color: node.dataset.color || style.color || "#111827",
+        align: node.dataset.align || style.textAlign || "center",
+        z_index: parseInt(node.dataset.zIndex || style.zIndex || 1, 10),
+        token: node.dataset.token || "",
+        texto: node.dataset.texto || "",
+        image_url: node.dataset.imageUrl || "",
+      };
+    });
+    return hydrated;
+  }
+
+  const initialElements = definition.elements && Object.keys(definition.elements).length
+    ? definition.elements
+    : hydrateElementsFromDom();
+
   const state = {
     canvasWidth: Number(canvas.dataset.canvasWidth || 3508),
     canvasHeight: Number(canvas.dataset.canvasHeight || 2480),
     saveUrl: canvas.dataset.saveUrl,
-    elements: definition.elements || {},
+    elements: initialElements,
     selectedKey: null,
     drag: null,
-    pristine: JSON.parse(JSON.stringify(definition.elements || {})),
+    pristine: JSON.parse(JSON.stringify(initialElements)),
   };
 
   const ui = {
