@@ -86,10 +86,12 @@ def editar_diseno(request, diseno_id):
 def modificar_diseno_visual(request, diseno_id):
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
     definition = ensure_design_definition(diseno)
+    editor_elements = sorted(definition["elements"].values(), key=lambda item: item["z_index"])
     context = {
         "diseno": diseno,
         "design_definition": definition,
         "design_definition_json": json.dumps(definition),
+        "editor_elements": editor_elements,
         "canvas_width": CANVAS_WIDTH,
         "canvas_height": CANVAS_HEIGHT,
     }

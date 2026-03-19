@@ -37,7 +37,28 @@
                 class="diploma-editor-canvas"
                 data-save-url="{% url 'diplomas:guardar_diseno_visual' diseno.id %}"
                 data-canvas-width="{{ canvas_width }}"
-                data-canvas-height="{{ canvas_height }}">
+                data-canvas-height="{{ canvas_height }}"
+                style="background-image:url('{% if design_definition.elements.fondo_diploma.image_url %}{{ design_definition.elements.fondo_diploma.image_url }}{% endif %}');">
+                {% for item in editor_elements %}
+                  {% if item.key != 'fondo_diploma' and item.visible %}
+                  <div
+                    class="diploma-editor-element {% if item.type == 'imagen' %}is-image{% elif item.type == 'decorativo' %}is-decorative{% else %}is-text{% endif %}"
+                    data-key="{{ item.key }}"
+                    style="left:{{ item.x }}px; top:{{ item.y }}px; width:{{ item.width }}px; height:{{ item.height }}px; font-size:{{ item.font_size }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index }};">
+                    {% if item.type == 'imagen' %}
+                      <div class="editor-element-content">
+                        {% if item.image_url %}
+                          <img src="{{ item.image_url }}" alt="{{ item.label }}">
+                        {% else %}
+                          <div class="editor-image-placeholder">{{ item.label }}</div>
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <div class="editor-element-content align-{{ item.align }}">{{ item.texto|default:item.token }}</div>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                {% endfor %}
               </div>
             </div>
           </div>
