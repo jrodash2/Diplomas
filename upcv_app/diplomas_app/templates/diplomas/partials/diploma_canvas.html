@@ -1,0 +1,27 @@
+{% load l10n %}
+<div
+  id="{{ container_id }}"
+  class="diploma-container"
+  style="--diploma-base-width: {{ design_definition.canvas.width|unlocalize }}px; --diploma-base-height: {{ design_definition.canvas.height|unlocalize }}px; background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');">
+  {% for item in render_elements %}
+    {% if item.key != 'fondo_diploma' and item.visible %}
+    <div
+      class="diploma-item{% if item.shape == 'circle' %} is-circle diploma-photo-circle{% endif %}"
+      style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; font-family:{{ item.font_family }}; font-weight:{{ item.font_weight }}; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
+      {% if item.type == 'imagen' %}
+        {% if item.image_url %}
+          <img src="{{ item.image_url }}" alt="{{ item.label }}"{% if item.shape == 'circle' %} class="diploma-photo-media"{% endif %}>
+        {% else %}
+          <div class="image-fallback{% if item.shape == 'circle' %} diploma-photo-placeholder{% endif %}">{{ item.label }}</div>
+        {% endif %}
+      {% else %}
+        {% if item.render_as_html %}
+          <div class="diploma-text-element align-{{ item.align }}">{{ item.rendered_html|safe }}</div>
+        {% else %}
+          <div class="diploma-text-element align-{{ item.align }}">{{ item.rendered_value }}</div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
