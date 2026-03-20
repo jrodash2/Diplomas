@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 
 from django.utils import timezone
 
@@ -95,22 +96,141 @@ def _base_element(
         "image_url": image_url,
     }
 
+SIGNATURE_KEY_PATTERN = re.compile(r"^firma_(\d+)_(imagen|nombre|cargo)$")
 
-def get_signature_pair(curso=None):
+
+def _signature_indexes_from_elements(raw_map):
+    indexes = set()
+    if not isinstance(raw_map, dict):
+        return indexes
+
+    for raw_key in raw_map.keys():
+        match = SIGNATURE_KEY_PATTERN.match(str(raw_key))
+        if match:
+            indexes.add(int(match.group(1)))
+    return indexes
+
+
+def _signature_slot_count(raw_map=None, firmas=None, minimum=2):
+    existing_slots = _signature_indexes_from_elements(raw_map)
+    return max(len(firmas or []), max(existing_slots, default=0), minimum)
+
+
+def get_course_signatures(curso=None):
     if curso is not None:
-        curso_firmas = list(curso.firmas.all().order_by("id")[:2])
+        curso_firmas = list(curso.firmas.all().order_by("id"))
         if curso_firmas:
             return curso_firmas
     return list(Firma.objects.order_by("id")[:2])
 
 
-def build_base_elements(diseno=None, firmas=None):
-    config = ConfiguracionGeneral.objects.first()
-    firmas = firmas if firmas is not None else get_signature_pair()
-    firma_1 = firmas[0] if len(firmas) > 0 else None
-    firma_2 = firmas[1] if len(firmas) > 1 else None
+def get_design_signatures(diseno=None):
+    if diseno is not None and hasattr(diseno, "cursos"):
+        firma_ids = []
+        seen = set()
+        cursos = diseno.cursos.prefetch_related("firmas").all().order_by("id")
+        for curso in cursos:
+            for firma in curso.firmas.all().order_by("id"):
+                if firma.id in seen:
+                    continue
+                seen.add(firma.id)
+                firma_ids.append(firma.id)
+        if firma_ids:
+            firmas_by_id = Firma.objects.in_bulk(firma_ids)
+            return [firmas_by_id[firma_id] for firma_id in firma_ids if firma_id in firmas_by_id]
+    return get_course_signatures()
+
+
+def _build_signature_layout(index, total):
+    if total <= 1:
+        base_x_positions = [1544]
+        x = base_x_positions[0]
+        image_y = 1550
+    elif total == 2:
+        base_x_positions = [760, 2328]
+        x = base_x_positions[index]
+        image_y = 1550
+    else:
+        max_columns = 3
+        row_gap = 280
+        image_width = 420
+        side_margin = 280
+        row = index // max_columns
+        position_in_row = index % max_columns
+        row_count = min(max_columns, total - (row * max_columns))
+        usable_width = CANVAS_WIDTH - (side_margin * 2) - image_width
+        gap = usable_width / max(row_count - 1, 1)
+        x = side_margin + (gap * position_in_row if row_count > 1 else usable_width / 2)
+        image_y = 1420 + (row * row_gap)
 
     return {
+        "image_x": round(x),
+        "image_y": image_y,
+        "name_x": round(max(x - 90, 0)),
+        "name_y": image_y + 150,
+        "cargo_x": round(max(x - 140, 0)),
+        "cargo_y": image_y + 210,
+    }
+
+
+def build_signature_elements(firmas, signature_slots):
+    elements = {}
+    total = max(signature_slots, 1)
+
+    for index in range(signature_slots):
+        signature_number = index + 1
+        firma = firmas[index] if index < len(firmas) else None
+        layout = _build_signature_layout(index, total)
+        elements[f"firma_{signature_number}_imagen"] = _base_element(
+            key=f"firma_{signature_number}_imagen",
+            label=f"Firma {signature_number}",
+            element_type="imagen",
+            x=layout["image_x"],
+            y=layout["image_y"],
+            width=420,
+            height=150,
+            z_index=30 + (index * 3),
+            token=f"{{{{ firma_{signature_number}_imagen }}}}",
+            image_url=media_url(getattr(firma, "firma", None)),
+            visible=True,
+        )
+        elements[f"firma_{signature_number}_nombre"] = _base_element(
+            key=f"firma_{signature_number}_nombre",
+            label=f"Nombre firma {signature_number}",
+            element_type="texto",
+            x=layout["name_x"],
+            y=layout["name_y"],
+            width=600,
+            height=50,
+            z_index=31 + (index * 3),
+            token=f"{{{{ firma_{signature_number}_nombre }}}}",
+            texto=getattr(firma, "nombre", "") or f"{{{{ firma_{signature_number}_nombre }}}}",
+            font_size=28,
+            visible=True,
+        )
+        elements[f"firma_{signature_number}_cargo"] = _base_element(
+            key=f"firma_{signature_number}_cargo",
+            label=f"Cargo firma {signature_number}",
+            element_type="texto",
+            x=layout["cargo_x"],
+            y=layout["cargo_y"],
+            width=700,
+            height=50,
+            z_index=32 + (index * 3),
+            token=f"{{{{ firma_{signature_number}_cargo }}}}",
+            texto=getattr(firma, "rol", "") or f"{{{{ firma_{signature_number}_cargo }}}}",
+            font_size=24,
+            color="#374151",
+            visible=True,
+        )
+    return elements
+
+
+def build_base_elements(diseno=None, firmas=None, signature_slots=2):
+    config = ConfiguracionGeneral.objects.first()
+    firmas = firmas if firmas is not None else get_design_signatures(diseno)
+
+    base_elements = {
         "fondo_diploma": _base_element(
             key="fondo_diploma",
             label="Fondo diploma",
@@ -241,84 +361,6 @@ def build_base_elements(diseno=None, firmas=None):
             texto="Guatemala, {{ fecha }} © UPCV",
             font_size=32,
         ),
-        "firma_1_imagen": _base_element(
-            key="firma_1_imagen",
-            label="Firma 1",
-            element_type="imagen",
-            x=760,
-            y=1550,
-            width=420,
-            height=150,
-            z_index=30,
-            token="{{ firma_1_imagen }}",
-            image_url=media_url(getattr(firma_1, "firma", None)),
-        ),
-        "firma_1_nombre": _base_element(
-            key="firma_1_nombre",
-            label="Nombre firma 1",
-            element_type="texto",
-            x=670,
-            y=1700,
-            width=600,
-            height=50,
-            z_index=31,
-            token="{{ firma_1_nombre }}",
-            texto=getattr(firma_1, "nombre", "") or "{{ firma_1_nombre }}",
-            font_size=28,
-        ),
-        "firma_1_cargo": _base_element(
-            key="firma_1_cargo",
-            label="Cargo firma 1",
-            element_type="texto",
-            x=620,
-            y=1760,
-            width=700,
-            height=50,
-            z_index=32,
-            token="{{ firma_1_cargo }}",
-            texto=getattr(firma_1, "rol", "") or "{{ firma_1_cargo }}",
-            font_size=24,
-            color="#374151",
-        ),
-        "firma_2_imagen": _base_element(
-            key="firma_2_imagen",
-            label="Firma 2",
-            element_type="imagen",
-            x=2328,
-            y=1550,
-            width=420,
-            height=150,
-            z_index=33,
-            token="{{ firma_2_imagen }}",
-            image_url=media_url(getattr(firma_2, "firma", None)),
-        ),
-        "firma_2_nombre": _base_element(
-            key="firma_2_nombre",
-            label="Nombre firma 2",
-            element_type="texto",
-            x=2238,
-            y=1700,
-            width=600,
-            height=50,
-            z_index=34,
-            token="{{ firma_2_nombre }}",
-            texto=getattr(firma_2, "nombre", "") or "{{ firma_2_nombre }}",
-            font_size=28,
-        ),
-        "firma_2_cargo": _base_element(
-            key="firma_2_cargo",
-            label="Cargo firma 2",
-            element_type="texto",
-            x=2188,
-            y=1760,
-            width=700,
-            height=50,
-            z_index=35,
-            token="{{ firma_2_cargo }}",
-            texto=getattr(firma_2, "rol", "") or "{{ firma_2_cargo }}",
-            font_size=24,
-            color="#374151",
-        ),
         "sello_medalla": _base_element(
             key="sello_medalla",
             label="Sello / Medalla",
@@ -332,6 +374,8 @@ def build_base_elements(diseno=None, firmas=None):
             image_url="",
         ),
     }
+    base_elements.update(build_signature_elements(firmas, signature_slots))
+    return base_elements
 
 
 
@@ -388,7 +432,6 @@ def _normalize_elements_map(raw_map, base_elements):
 
 
 def build_design_definition(diseno, legacy_positions=None, firmas=None):
-    base_elements = build_base_elements(diseno, firmas=firmas)
     current_payload = diseno.estilos if diseno and isinstance(diseno.estilos, dict) else {}
 
     raw_elements = {}
@@ -400,6 +443,10 @@ def build_design_definition(diseno, legacy_positions=None, firmas=None):
     if isinstance(legacy_positions, dict):
         raw_elements = {**legacy_positions, **raw_elements}
 
+    firmas = firmas if firmas is not None else get_design_signatures(diseno)
+    signature_slots = _signature_slot_count(raw_elements, firmas)
+    base_elements = build_base_elements(diseno, firmas=firmas, signature_slots=signature_slots)
+
     return {
         "version": DESIGN_VERSION,
         "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
@@ -408,8 +455,13 @@ def build_design_definition(diseno, legacy_positions=None, firmas=None):
 
 
 def normalize_definition_from_elements(diseno, raw_elements, firmas=None):
+    firmas = firmas if firmas is not None else get_design_signatures(diseno)
+    signature_slots = _signature_slot_count(raw_elements, firmas)
     definition = build_design_definition(diseno, None, firmas=firmas)
-    definition["elements"] = _normalize_elements_map(raw_elements, build_base_elements(diseno, firmas=firmas))
+    definition["elements"] = _normalize_elements_map(
+        raw_elements,
+        build_base_elements(diseno, firmas=firmas, signature_slots=signature_slots),
+    )
     return definition
 
 
@@ -432,9 +484,7 @@ def resolve_text(text_value, context_map):
 
 def build_token_context_map(*, curso=None, curso_empleado=None, config=None, firmas=None, sample=False):
     config = config if config is not None else ConfiguracionGeneral.objects.first()
-    firmas = firmas if firmas is not None else get_signature_pair(curso)
-    firma_1 = firmas[0] if len(firmas) > 0 else None
-    firma_2 = firmas[1] if len(firmas) > 1 else None
+    firmas = firmas if firmas is not None else get_course_signatures(curso)
 
     participante_nombre = "NOMBRE DEL PARTICIPANTE"
     curso_nombre = getattr(curso, "nombre", "NOMBRE DEL CURSO") or "NOMBRE DEL CURSO"
@@ -444,7 +494,7 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
         curso_nombre = curso_empleado.curso.nombre
         codigo = f"{curso_empleado.id:04d}-UPCV"
 
-    return {
+    context = {
         "{{ participante_nombre }}": participante_nombre,
         "{{ curso_nombre }}": curso_nombre,
         "{{ codigo }}": codigo,
@@ -452,18 +502,20 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
         "{{ institucion_nombre }}": config.nombre_institucion if config else "",
         "{{ subtitulo_diploma }}": "OTORGA EL PRESENTE DIPLOMA A:",
         "{{ adorno_central }}": "──────────── ✦ ────────────",
-        "{{ firma_1_nombre }}": getattr(firma_1, "nombre", "") if firma_1 else "",
-        "{{ firma_1_cargo }}": getattr(firma_1, "rol", "") if firma_1 else "",
-        "{{ firma_2_nombre }}": getattr(firma_2, "nombre", "") if firma_2 else "",
-        "{{ firma_2_cargo }}": getattr(firma_2, "rol", "") if firma_2 else "",
         "{{ logo_gobierno }}": "",
         "{{ logo_upcv }}": "",
         "{{ sello_medalla }}": "",
         "{{ fondo_diploma }}": "",
     }
+    for index, firma in enumerate(firmas, start=1):
+        context[f"{{{{ firma_{index}_nombre }}}}"] = getattr(firma, "nombre", "") or ""
+        context[f"{{{{ firma_{index}_cargo }}}}"] = getattr(firma, "rol", "") or ""
+        context[f"{{{{ firma_{index}_imagen }}}}"] = media_url(getattr(firma, "firma", None))
+    return context
 
 
 def build_design_editor_payload(diseno, firmas=None):
+    firmas = firmas if firmas is not None else get_design_signatures(diseno)
     definition = build_design_definition(diseno, None, firmas=firmas)
     preview_context = build_token_context_map(config=ConfiguracionGeneral.objects.first(), firmas=firmas, sample=True)
     return {
@@ -472,13 +524,17 @@ def build_design_editor_payload(diseno, firmas=None):
     }
 
 def build_course_design_definition(curso, firmas=None):
-    firmas = firmas if firmas is not None else get_signature_pair(curso)
+    firmas = firmas if firmas is not None else get_course_signatures(curso)
     if curso.diseno_diploma_id:
         return build_design_definition(curso.diseno_diploma, None, firmas=firmas)
+    signature_slots = _signature_slot_count(curso.posiciones or {}, firmas)
     return {
         "version": DESIGN_VERSION,
         "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
-        "elements": _normalize_elements_map(curso.posiciones or {}, build_base_elements(None, firmas=firmas)),
+        "elements": _normalize_elements_map(
+            curso.posiciones or {},
+            build_base_elements(None, firmas=firmas, signature_slots=signature_slots),
+        ),
     }
 
 
@@ -490,6 +546,11 @@ def build_render_elements(definition, context_map):
             item["rendered_value"] = resolve_text(item["texto"], context_map)
         else:
             item["rendered_value"] = ""
+        if SIGNATURE_KEY_PATTERN.match(item["key"]):
+            if item["type"] == "imagen" and not item.get("image_url"):
+                item["visible"] = False
+            elif item["type"] != "imagen" and not item["rendered_value"].strip():
+                item["visible"] = False
         render_elements.append(item)
     return render_elements
 
@@ -497,7 +558,7 @@ def build_render_elements(definition, context_map):
 def build_diploma_render_context(curso_empleado):
     curso = curso_empleado.curso
     config = ConfiguracionGeneral.objects.first()
-    firmas = get_signature_pair(curso)
+    firmas = get_course_signatures(curso)
     definition = build_course_design_definition(curso, firmas=firmas)
     context_map = build_token_context_map(
         curso=curso,
