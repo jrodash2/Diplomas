@@ -382,6 +382,19 @@
     syncSidebar();
   }
 
+  function refreshFontInCanvas(fontFamily) {
+    if (!fontFamily || !document.fonts || typeof document.fonts.load !== "function") {
+      return;
+    }
+    document.fonts.load(`32px ${fontFamily}`).then(function () {
+      renderCanvas();
+      renderLayerPanel();
+      syncSidebar();
+    }).catch(function () {
+      // Ignore font loading failures and keep current render/fallback stack.
+    });
+  }
+
   function updateSelectedFromSidebar() {
     const element = state.elements[state.selectedKey];
     if (!element) {
@@ -408,6 +421,9 @@
     renderCanvas();
     renderLayerPanel();
     syncSidebar();
+    if (element.type !== "imagen") {
+      refreshFontInCanvas(state.elements[state.selectedKey].font_family);
+    }
   }
 
   canvas.addEventListener("mousedown", function (event) {
