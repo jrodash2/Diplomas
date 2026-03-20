@@ -404,6 +404,29 @@ def resolve_text(text_value, context_map):
     return resolved
 
 
+def build_course_design_definition(curso, firmas=None):
+    firmas = firmas if firmas is not None else get_signature_pair(curso)
+    if curso.diseno_diploma_id:
+        return build_design_definition(curso.diseno_diploma, None, firmas=firmas)
+    return {
+        "version": DESIGN_VERSION,
+        "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
+        "elements": _normalize_elements_map(curso.posiciones or {}, build_base_elements(None, firmas=firmas)),
+    }
+
+
+def build_render_elements(definition, context_map):
+    render_elements = []
+    for element in sorted(definition["elements"].values(), key=lambda item: item["z_index"]):
+        item = deepcopy(element)
+        if item["type"] in {"texto", "decorativo"}:
+            item["rendered_value"] = resolve_text(item["texto"], context_map)
+        else:
+            item["rendered_value"] = ""
+        render_elements.append(item)
+    return render_elements
+
+
 def build_diploma_render_context(curso_empleado):
     curso = curso_empleado.curso
     empleado = curso_empleado.empleado
@@ -411,15 +434,7 @@ def build_diploma_render_context(curso_empleado):
     firmas = get_signature_pair(curso)
     firma_1 = firmas[0] if len(firmas) > 0 else None
     firma_2 = firmas[1] if len(firmas) > 1 else None
-
-    if curso.diseno_diploma_id:
-        definition = build_design_definition(curso.diseno_diploma, None, firmas=firmas)
-    else:
-        definition = {
-            "version": DESIGN_VERSION,
-            "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
-            "elements": _normalize_elements_map(curso.posiciones or {}, build_base_elements(None, firmas=firmas)),
-        }
+    definition = build_course_design_definition(curso, firmas=firmas)
 
     context_map = {
         "{{ participante_nombre }}": f"{empleado.nombres} {empleado.apellidos}",
@@ -439,14 +454,7 @@ def build_diploma_render_context(curso_empleado):
         "{{ fondo_diploma }}": "",
     }
 
-    render_elements = []
-    for element in sorted(definition["elements"].values(), key=lambda item: item["z_index"]):
-        item = deepcopy(element)
-        if item["type"] in {"texto", "decorativo"}:
-            item["rendered_value"] = resolve_text(item["texto"], context_map)
-        else:
-            item["rendered_value"] = ""
-        render_elements.append(item)
+    render_elements = build_render_elements(definition, context_map)
 
     return {
         "curso": curso,
