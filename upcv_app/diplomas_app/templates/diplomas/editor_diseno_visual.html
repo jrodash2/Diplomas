@@ -11,11 +11,6 @@
         <h4 class="mb-1">Modificar diseño visual</h4>
         <p class="mb-0 text-muted">Edita la configuración real del diploma para <strong>{{ diseno.nombre }}</strong>.</p>
       </div>
-      <div class="diploma-editor-actions">
-        <button type="button" class="btn btn-outline-secondary" id="editorReset">Restablecer</button>
-        <button type="button" class="btn btn-primary" id="editorSave">Guardar diseño</button>
-        <a href="{% url 'diplomas:disenos_lista' %}" class="btn btn-dark">Volver</a>
-      </div>
     </div>
 
     <div class="diploma-editor-layout mt-3">
@@ -27,7 +22,14 @@
               <span><i class="legend-dot is-image"></i> Imagen</span>
               <span><i class="legend-dot is-decorative"></i> Decorativo</span>
             </div>
-            <p class="mb-0 text-muted small">Clic para seleccionar. Arrastra con el mouse para mover.</p>
+            <div class="diploma-stage-toolbar-actions">
+              <p class="mb-0 text-muted small">Clic para seleccionar. Arrastra con el mouse para mover.</p>
+              <div class="diploma-editor-actions">
+                <button type="button" class="btn btn-outline-secondary" id="editorReset">Restablecer</button>
+                <button type="button" class="btn btn-primary" id="editorSave">Guardar diseño</button>
+                <a href="{% url 'diplomas:disenos_lista' %}" class="btn btn-dark">Volver</a>
+              </div>
+            </div>
           </div>
 
           <div class="diploma-canvas-shell">

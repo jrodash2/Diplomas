@@ -94,7 +94,7 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 12px;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
 }
 
@@ -104,6 +104,15 @@
   align-items: center;
   color: #475569;
   font-size: 13px;
+}
+
+.diploma-stage-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
 }
 
 .legend-dot {
@@ -563,5 +572,9 @@
   .diploma-editor-sidebar,
   .diploma-editor-sidebar-body {
     min-height: auto;
+  }
+
+  .diploma-stage-toolbar-actions {
+    flex-basis: 100%;
   }
 }

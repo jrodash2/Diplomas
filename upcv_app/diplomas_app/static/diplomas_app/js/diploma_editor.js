@@ -426,6 +426,20 @@
     }
   }
 
+  function commitNumericField(input) {
+    if (!input) {
+      return;
+    }
+    input.addEventListener("change", updateSelectedFromSidebar);
+    input.addEventListener("blur", updateSelectedFromSidebar);
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      }
+    });
+  }
+
   canvas.addEventListener("mousedown", function (event) {
     const target = event.target.closest(".diploma-editor-element");
     if (!target) {
@@ -512,13 +526,15 @@
     });
   });
 
-  [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.fontFamily, ui.bold, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
+  [ui.texto, ui.fontSize, ui.fontFamily, ui.bold, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
     }
     input.addEventListener("input", updateSelectedFromSidebar);
     input.addEventListener("change", updateSelectedFromSidebar);
   });
+
+  [ui.x, ui.y, ui.width, ui.height].forEach(commitNumericField);
 
   ui.reset.addEventListener("click", function () {
     state.elements = JSON.parse(JSON.stringify(state.pristine));
