@@ -1,4 +1,5 @@
 from copy import deepcopy
+from html import escape
 import re
 import string
 
@@ -111,6 +112,7 @@ def _base_element(
     }
 
 SIGNATURE_KEY_PATTERN = re.compile(r"^firma_(\d+)_(imagen|nombre|cargo)$")
+BOLD_MARKUP_PATTERN = re.compile(r"(\*\*|__)(.+?)\1")
 
 
 def _signature_indexes_from_elements(raw_map):
@@ -528,6 +530,30 @@ def resolve_image_url(image_value, context_map):
     return resolved
 
 
+def render_safe_inline_bold(text_value):
+    escaped = escape(text_value or "")
+
+    def replace(match):
+        content = match.group(2)
+        return f"<strong>{content}</strong>"
+
+    return BOLD_MARKUP_PATTERN.sub(replace, escaped)
+
+
+def render_text_content(element_key, resolved_text):
+    if element_key == "descripcion_curso":
+        return {
+            "rendered_value": resolved_text,
+            "rendered_html": render_safe_inline_bold(resolved_text),
+            "render_as_html": True,
+        }
+    return {
+        "rendered_value": resolved_text,
+        "rendered_html": escape(resolved_text or ""),
+        "render_as_html": False,
+    }
+
+
 
 
 def build_token_context_map(*, curso=None, curso_empleado=None, config=None, firmas=None, sample=False):
@@ -597,9 +623,15 @@ def build_render_elements(definition, context_map):
     for element in sorted(definition["elements"].values(), key=lambda item: item["z_index"]):
         item = deepcopy(element)
         if item["type"] in {"texto", "decorativo"}:
-            item["rendered_value"] = resolve_text(item["texto"], context_map)
+            resolved_text = resolve_text(item["texto"], context_map)
+            rendered = render_text_content(item["key"], resolved_text)
+            item["rendered_value"] = rendered["rendered_value"]
+            item["rendered_html"] = rendered["rendered_html"]
+            item["render_as_html"] = rendered["render_as_html"]
         else:
             item["rendered_value"] = ""
+            item["rendered_html"] = ""
+            item["render_as_html"] = False
             item["image_url"] = resolve_image_url(item.get("image_url"), context_map)
         if SIGNATURE_KEY_PATTERN.match(item["key"]):
             if item["type"] == "imagen" and not item.get("image_url"):

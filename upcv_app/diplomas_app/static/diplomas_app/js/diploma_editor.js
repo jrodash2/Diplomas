@@ -188,6 +188,32 @@
     return resolved;
   }
 
+  function renderSafeBoldHtml(text) {
+    const escaped = String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    return escaped.replace(/(\*\*|__)(.+?)\1/g, "<strong>$2</strong>");
+  }
+
+  function previewTextPayload(element) {
+    const resolved = previewText(element);
+    if (element.key === "descripcion_curso") {
+      return {
+        text: resolved,
+        html: renderSafeBoldHtml(resolved),
+        asHtml: true,
+      };
+    }
+
+    return {
+      text: resolved,
+      html: "",
+      asHtml: false,
+    };
+  }
+
   function typeLabel(type) {
     const labels = {
       texto: "Texto",
@@ -214,7 +240,12 @@
     }
 
     const klass = `editor-element-content diploma-text-element align-${element.align || "center"}`;
-    return `<div class="${klass}">${previewText(element)}</div>`;
+    const preview = previewTextPayload(element);
+    if (preview.asHtml) {
+      return `<div class="${klass}">${preview.html}</div>`;
+    }
+
+    return `<div class="${klass}">${preview.text}</div>`;
   }
 
   function renderCanvas() {
