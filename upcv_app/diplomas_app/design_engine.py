@@ -13,12 +13,30 @@ DESIGN_VERSION = 2
 
 LEGACY_ELEMENT_KEY_MAP = {
     "logo1": "logo_gobierno",
+    "logo_1": "logo_gobierno",
     "logo2": "logo_upcv",
+    "logo_2": "logo_upcv",
     "institucion": "titulo_institucional",
     "titulo": "subtitulo_diploma",
     "nombre": "participante_nombre",
+    "nombre_participante": "participante_nombre",
+    "participant_name": "participante_nombre",
     "curso": "nombre_curso",
+    "curso_nombre": "nombre_curso",
+    "course_name": "nombre_curso",
     "fecha": "fecha_texto",
+}
+
+LEGACY_ELEMENT_TYPE_MAP = {
+    "text": "texto",
+    "texto": "texto",
+    "image": "imagen",
+    "imagen": "imagen",
+    "img": "imagen",
+    "logo": "imagen",
+    "decorative": "decorativo",
+    "decorativo": "decorativo",
+    "decoration": "decorativo",
 }
 
 
@@ -316,6 +334,12 @@ def build_base_elements(diseno=None, firmas=None):
     }
 
 
+
+
+def canonical_element_type(raw_type, fallback_type):
+    candidate = str(raw_type or fallback_type or "texto").strip().lower()
+    return LEGACY_ELEMENT_TYPE_MAP.get(candidate, fallback_type or "texto")
+
 def normalize_element(key, raw_element, fallback_element):
     fallback = deepcopy(fallback_element)
     raw = raw_element if isinstance(raw_element, dict) else {}
@@ -328,7 +352,7 @@ def normalize_element(key, raw_element, fallback_element):
     normalized = {
         "key": key,
         "label": raw.get("label") or fallback["label"],
-        "type": raw.get("type") or fallback["type"],
+        "type": canonical_element_type(raw.get("type"), fallback["type"]),
         "visible": bool(raw.get("visible", fallback["visible"])),
         "x": clamp_number(raw.get("x", raw.get("left")), fallback["x"], min_value=0, max_value=max_x),
         "y": clamp_number(raw.get("y", raw.get("top")), fallback["y"], min_value=0, max_value=max_y),
