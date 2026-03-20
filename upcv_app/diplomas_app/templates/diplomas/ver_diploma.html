@@ -1,21 +1,22 @@
-{% load static %}
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Diploma</title>
 <style>
-body { margin:0; padding:0; background:#f3f3f3; font-family:Arial, Helvetica, sans-serif; overflow:hidden; }
-.toolbar { padding:10px; display:flex; gap:12px; background:#fff; border-bottom:1px solid #ddd; justify-content:center; }
+body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sans-serif; overflow:hidden; }
+.toolbar { padding:10px; display:flex; gap:12px; background:#fff; border-bottom:1px solid #dbe2ea; justify-content:center; }
 .btn { background:#0d6efd; color:#fff; padding:8px 14px; border:none; border-radius:6px; cursor:pointer; }
 .btn:hover { background:#084bcc; }
 .canvas-area { width:100vw; height:calc(100vh - 60px); display:flex; justify-content:center; align-items:center; overflow:auto; }
 .canvas-content { transform-origin:center center; transition: transform .2s ease; }
-.diploma-container { width:3508px; height:2480px; position:relative; background-size:cover; background-repeat:no-repeat; background-image:url('{% if fondo_url %}{{ fondo_url }}{% else %}{% static 'assets/svg/Diploma.svg' %}{% endif %}'); box-shadow:0 10px 30px rgba(0,0,0,.15); border-radius:10px; overflow:hidden; }
+.diploma-container { width:3508px; height:2480px; position:relative; background:#fff center center / cover no-repeat; box-shadow:0 10px 30px rgba(15,23,42,.16); border-radius:10px; overflow:hidden; }
 .diploma-item { position:absolute; white-space:pre-wrap; }
-.logo-block { border:1px dashed #666; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; }
-.firmas-row { display:flex; gap:60px; justify-content:center; }
+.diploma-item img { width:100%; height:100%; object-fit:contain; }
+.text-block { width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:4px 8px; white-space:pre-wrap; }
+.text-block.align-left { justify-content:flex-start; }
+.text-block.align-right { justify-content:flex-end; }
+.image-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border:1px dashed #64748b; background:rgba(255,255,255,.78); color:#475569; font-weight:600; }
 </style>
 </head>
 <body>
@@ -29,58 +30,37 @@ body { margin:0; padding:0; background:#f3f3f3; font-family:Arial, Helvetica, sa
 
 <div class="canvas-area" id="canvasArea">
   <div class="canvas-content" id="canvasContent">
-    <div id="diploma" class="diploma-container">
-      {% for id, item in elementos.items %}
-      <div class="diploma-item"
-           style="left:{{ item.x }}px; top:{{ item.y }}px; width:{{ item.width }}px; height:{{ item.height }}px; font-size:{{ item.font_size }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|default:1 }};">
-        {% if item.type == 'logo' %}
-          {% if id == 'logo1' and config.logotipo %}
-            <img src="{{ config.logotipo.url }}" style="width:100%;height:100%;object-fit:contain;">
-          {% elif id == 'logo2' and config.logotipo2 %}
-            <img src="{{ config.logotipo2.url }}" style="width:100%;height:100%;object-fit:contain;">
-          {% else %}
-            <div class="logo-block" style="width:100%;height:100%;">{{ id|upper }}</div>
-          {% endif %}
-        {% elif item.type == 'firmas' %}
-          <div class="firmas-row">
-            {% for firma in curso.firmas.all %}
-              <div style="text-align:center;">
-                {% if firma.firma %}<img src="{{ firma.firma.url }}" style="max-width:260px;">{% endif %}
-                <p><strong>{{ firma.nombre }}</strong></p>
-                <p style="font-size:28px;">{{ firma.rol }}</p>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          {{ item.rendered_content }}
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
+    {% include 'diplomas/partials/diploma_canvas.html' with container_id='diplomaPreviewCanvas' %}
   </div>
 </div>
 
-<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:3508px;height:2480px;"></div>
+<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:3508px;height:2480px;overflow:hidden;">
+  {% include 'diplomas/partials/diploma_canvas.html' with container_id='diplomaExportCanvas' %}
+</div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 let zoom = 0.28;
 const canvasContent = document.getElementById('canvasContent');
-const canvasArea = document.getElementById('canvasArea');
 
-function applyZoom(){
+function applyZoom() {
   canvasContent.style.transform = `scale(${zoom})`;
 }
 
-document.getElementById('zoomIn').onclick = ()=>{ zoom += 0.05; applyZoom(); };
-document.getElementById('zoomOut').onclick = ()=>{ zoom = Math.max(0.1, zoom-0.05); applyZoom(); };
-document.getElementById('fitScreen').onclick = ()=>{ zoom = Math.min(window.innerWidth/3600, window.innerHeight/2550); applyZoom(); };
-document.getElementById('fullscreenBtn').onclick = ()=>{ if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); } else { document.exitFullscreen(); } };
+document.getElementById('zoomIn').onclick = () => { zoom += 0.05; applyZoom(); };
+document.getElementById('zoomOut').onclick = () => { zoom = Math.max(0.1, zoom - 0.05); applyZoom(); };
+document.getElementById('fitScreen').onclick = () => { zoom = Math.min(window.innerWidth / 3600, window.innerHeight / 2550); applyZoom(); };
+document.getElementById('fullscreenBtn').onclick = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+};
 
 document.getElementById('btnDescargarJPG').onclick = async () => {
-  const exportDiv = document.getElementById('diploma_export');
-  exportDiv.innerHTML = document.getElementById('diploma').outerHTML;
+  const exportCanvasNode = document.getElementById('diplomaExportCanvas');
 
-  const cloneImgs = exportDiv.querySelectorAll('img');
+  const cloneImgs = exportCanvasNode.querySelectorAll('img');
   for (const img of cloneImgs) {
     try {
       const temp = new Image();
@@ -88,22 +68,23 @@ document.getElementById('btnDescargarJPG').onclick = async () => {
       temp.src = img.src;
       await temp.decode();
       const c = document.createElement('canvas');
-      c.width = temp.width; c.height = temp.height;
+      c.width = temp.width;
+      c.height = temp.height;
       c.getContext('2d').drawImage(temp, 0, 0);
       img.src = c.toDataURL('image/png');
     } catch (e) {}
   }
 
-  const tempCanvas = await html2canvas(exportDiv.firstElementChild, {scale:1, useCORS:true, backgroundColor:null});
+  const tempCanvas = await html2canvas(exportCanvasNode, { scale: 1, useCORS: true, backgroundColor: null });
   const finalCanvas = document.createElement('canvas');
   finalCanvas.width = 3508;
   finalCanvas.height = 2480;
   finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, 3508, 2480);
 
-  const a = document.createElement('a');
-  a.href = finalCanvas.toDataURL('image/jpeg', 1.0);
-  a.download = 'Diploma_{{ curso_empleado.empleado.nombres }}_{{ curso_empleado.empleado.apellidos }}.jpg';
-  a.click();
+  const link = document.createElement('a');
+  link.href = finalCanvas.toDataURL('image/jpeg', 1.0);
+  link.download = 'Diploma_{{ curso_empleado.empleado.nombres }}_{{ curso_empleado.empleado.apellidos }}.jpg';
+  link.click();
 };
 
 applyZoom();
