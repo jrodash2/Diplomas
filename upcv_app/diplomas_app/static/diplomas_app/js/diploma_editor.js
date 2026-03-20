@@ -198,11 +198,13 @@
   function elementMarkup(element) {
     if (element.type === "imagen") {
       const imageUrl = previewImageUrl(element);
-      const shapeClass = element.shape === "circle" ? " is-circle" : "";
+      const shapeClass = element.shape === "circle" ? " is-circle diploma-photo-circle" : "";
+      const imageClass = element.shape === "circle" ? "diploma-photo-media" : "";
+      const placeholderClass = element.shape === "circle" ? "editor-image-placeholder diploma-photo-placeholder" : "editor-image-placeholder";
       if (imageUrl) {
-        return `<div class="editor-element-content${shapeClass}"><img src="${imageUrl}" alt="${element.label}"></div>`;
+        return `<div class="editor-element-content${shapeClass}"><img src="${imageUrl}" alt="${element.label}" class="${imageClass}"></div>`;
       }
-      return `<div class="editor-element-content${shapeClass}"><div class="editor-image-placeholder">${element.label}</div></div>`;
+      return `<div class="editor-element-content${shapeClass}"><div class="${placeholderClass}">${element.label}</div></div>`;
     }
 
     const klass = `editor-element-content align-${element.align || "center"}`;

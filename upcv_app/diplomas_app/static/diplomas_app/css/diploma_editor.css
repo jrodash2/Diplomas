@@ -175,12 +175,11 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.25);
-  overflow: hidden;
 }
 
-.diploma-editor-element.is-image .editor-element-content.is-circle,
-.diploma-editor-element.is-image[data-key="foto_participante"] .editor-element-content {
+.diploma-photo-circle {
   border-radius: 50%;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.38);
 }
 
@@ -188,14 +187,25 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+  display: block;
   object-fit: contain;
+  object-position: center;
   user-select: none;
   pointer-events: none;
 }
 
-.diploma-editor-element.is-image .editor-element-content.is-circle img,
-.diploma-editor-element.is-image[data-key="foto_participante"] img {
+.diploma-photo-media {
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+}
+
+.diploma-photo-placeholder {
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .editor-image-placeholder {

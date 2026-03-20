@@ -6,13 +6,13 @@
   {% for item in render_elements %}
     {% if item.key != 'fondo_diploma' and item.visible %}
     <div
-      class="diploma-item{% if item.shape == 'circle' %} is-circle{% endif %}"
+      class="diploma-item{% if item.shape == 'circle' %} is-circle diploma-photo-circle{% endif %}"
       style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
       {% if item.type == 'imagen' %}
         {% if item.image_url %}
-          <img src="{{ item.image_url }}" alt="{{ item.label }}">
+          <img src="{{ item.image_url }}" alt="{{ item.label }}"{% if item.shape == 'circle' %} class="diploma-photo-media"{% endif %}>
         {% else %}
-          <div class="image-fallback">{{ item.label }}</div>
+          <div class="image-fallback{% if item.shape == 'circle' %} diploma-photo-placeholder{% endif %}">{{ item.label }}</div>
         {% endif %}
       {% else %}
         <div class="text-block align-{{ item.align }}">{{ item.rendered_value }}</div>
