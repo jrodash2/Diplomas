@@ -221,13 +221,13 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .editor-layer-count {
-  min-width: 32px;
-  height: 32px;
+  min-width: 28px;
+  height: 28px;
   border-radius: 999px;
   background: #eff6ff;
   color: #1d4ed8;
@@ -235,32 +235,32 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .editor-layer-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 .editor-layer-summary {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .editor-layer-summary-pill {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 11px;
+  padding: 4px 8px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -276,14 +276,14 @@
 
 .editor-layer-item {
   border: 1px solid #dbe2ea;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 
 .editor-layer-item.is-active {
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
   background: #f8fbff;
 }
 
@@ -293,11 +293,11 @@
 }
 
 .editor-layer-main {
-  padding: 10px 12px 8px;
+  padding: 8px 10px 6px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .editor-layer-select:focus-visible,
@@ -309,25 +309,26 @@
 .editor-layer-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
 .editor-layer-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .editor-layer-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #111827;
+  line-height: 1.2;
 }
 
 .editor-layer-token {
-  font-size: 11px;
+  font-size: 10px;
   color: #64748b;
   font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   white-space: nowrap;
@@ -338,18 +339,19 @@
 .editor-layer-badges {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .editor-layer-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 11px;
+  padding: 2px 6px;
+  font-size: 10px;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 .editor-layer-badge.is-type {
@@ -373,14 +375,15 @@
 }
 
 .editor-layer-help {
-  font-size: 12px;
+  font-size: 10px;
   color: #92400e;
+  line-height: 1.25;
 }
 
 .editor-layer-actions {
-  padding: 0 12px 10px;
+  padding: 0 10px 8px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-end;
 }
 
@@ -390,9 +393,10 @@
   border-radius: 999px;
   background: #fff;
   color: #334155;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 11px;
   font-weight: 600;
+  line-height: 1.15;
 }
 
 .editor-layer-select {
@@ -409,11 +413,12 @@
 
 .editor-layer-empty {
   border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 12px;
   text-align: center;
   color: #64748b;
   background: #f8fafc;
+  font-size: 12px;
 }
 
 @media (max-width: 1200px) {
