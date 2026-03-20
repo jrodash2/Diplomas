@@ -47,6 +47,7 @@
   const ui = {
     layerList: document.getElementById("editorLayerList"),
     layerCount: document.getElementById("editorLayerCount"),
+    layerSummary: document.getElementById("editorLayerSummary"),
     emptyState: document.getElementById("editorEmptyState"),
     propertyForm: document.getElementById("editorPropertyForm"),
     label: document.getElementById("editorPropLabel"),
@@ -234,15 +235,30 @@
       ui.layerCount.textContent = String(elements.length);
     }
 
+    const visibleCount = elements.filter(function (element) { return element.visible; }).length;
+    const hiddenCount = elements.length - visibleCount;
+    if (ui.layerSummary) {
+      ui.layerSummary.innerHTML = `
+        <span class="editor-layer-summary-pill is-visible">Visibles: ${visibleCount}</span>
+        <span class="editor-layer-summary-pill is-hidden">Ocultas: ${hiddenCount}</span>
+      `;
+    }
+
+    if (!elements.length) {
+      ui.layerList.innerHTML = '<div class="editor-layer-empty">No hay elementos cargados en este diseño.</div>';
+      return;
+    }
+
     ui.layerList.innerHTML = elements.map(function (element) {
       const isActive = state.selectedKey === element.key;
       const visibilityClass = element.visible ? "is-visible" : "is-hidden";
       const visibilityLabel = element.visible ? "Visible" : "Oculto";
       const toggleLabel = element.visible ? "Ocultar" : "Mostrar";
       const tokenLabel = element.token || element.key;
+      const hiddenHelp = element.visible ? "" : '<div class="editor-layer-help">Oculto en el lienzo. Puedes seleccionarlo y volverlo a mostrar.</div>';
       return `
         <div class="editor-layer-item ${isActive ? "is-active" : ""} ${element.visible ? "" : "is-hidden"}" data-key="${element.key}">
-          <button type="button" class="editor-layer-main" data-action="select" data-key="${element.key}">
+          <div class="editor-layer-main">
             <div class="editor-layer-meta">
               <div class="editor-layer-title-row">
                 <span class="editor-layer-title">${layerTitle(element)}</span>
@@ -253,9 +269,13 @@
                 <span class="editor-layer-badge is-z">Orden ${Math.round(element.z_index)}</span>
                 <span class="editor-layer-badge ${visibilityClass}">${visibilityLabel}</span>
               </div>
+              ${hiddenHelp}
             </div>
-          </button>
+          </div>
           <div class="editor-layer-actions">
+            <button type="button" class="editor-layer-select" data-action="select" data-key="${element.key}">
+              Seleccionar
+            </button>
             <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">
               ${toggleLabel}
             </button>
