@@ -6,7 +6,7 @@
   {% for item in render_elements %}
     {% if item.key != 'fondo_diploma' and item.visible %}
     <div
-      class="diploma-item"
+      class="diploma-item{% if item.shape == 'circle' %} is-circle{% endif %}"
       style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
       {% if item.type == 'imagen' %}
         {% if item.image_url %}

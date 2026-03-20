@@ -175,6 +175,13 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.diploma-editor-element.is-image .editor-element-content.is-circle,
+.diploma-editor-element.is-image[data-key="foto_participante"] .editor-element-content {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
 }
 
 .diploma-editor-element img {
@@ -184,6 +191,11 @@
   object-fit: contain;
   user-select: none;
   pointer-events: none;
+}
+
+.diploma-editor-element.is-image .editor-element-content.is-circle img,
+.diploma-editor-element.is-image[data-key="foto_participante"] img {
+  object-fit: cover;
 }
 
 .editor-image-placeholder {

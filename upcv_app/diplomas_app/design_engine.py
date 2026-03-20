@@ -77,6 +77,7 @@ def _base_element(
     color="#111827",
     align="center",
     visible=True,
+    shape="rect",
 ):
     return {
         "key": key,
@@ -94,6 +95,7 @@ def _base_element(
         "token": token,
         "texto": texto,
         "image_url": image_url,
+        "shape": shape,
     }
 
 SIGNATURE_KEY_PATTERN = re.compile(r"^firma_(\d+)_(imagen|nombre|cargo)$")
@@ -321,6 +323,20 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             texto="{{ participante_nombre }}",
             font_size=104,
         ),
+        "foto_participante": _base_element(
+            key="foto_participante",
+            label="Fotografía participante",
+            element_type="imagen",
+            x=360,
+            y=640,
+            width=360,
+            height=360,
+            z_index=24,
+            token="{{ foto_participante }}",
+            image_url="{{ foto_participante }}",
+            visible=True,
+            shape="circle",
+        ),
         "codigo": _base_element(
             key="codigo",
             label="Código",
@@ -329,7 +345,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             y=860,
             width=780,
             height=60,
-            z_index=24,
+            z_index=25,
             token="{{ codigo }}",
             texto="Código: {{ codigo }}",
             font_size=30,
@@ -343,7 +359,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             y=900,
             width=1988,
             height=130,
-            z_index=25,
+            z_index=26,
             token="{{ curso_nombre }}",
             texto="{{ curso_nombre }}",
             font_size=52,
@@ -356,7 +372,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             y=1080,
             width=1548,
             height=70,
-            z_index=26,
+            z_index=27,
             token="{{ fecha }}",
             texto="Guatemala, {{ fecha }} © UPCV",
             font_size=32,
@@ -409,6 +425,7 @@ def normalize_element(key, raw_element, fallback_element):
         "token": raw.get("token") or fallback["token"],
         "texto": raw.get("texto") or raw.get("content") or fallback["texto"],
         "image_url": raw.get("image_url") or fallback["image_url"],
+        "shape": raw.get("shape") or fallback.get("shape", "rect"),
     }
     return normalized
 
@@ -480,6 +497,13 @@ def resolve_text(text_value, context_map):
     return resolved
 
 
+def resolve_image_url(image_value, context_map):
+    resolved = image_value or ""
+    for token, replacement in context_map.items():
+        resolved = resolved.replace(token, replacement)
+    return resolved
+
+
 
 
 def build_token_context_map(*, curso=None, curso_empleado=None, config=None, firmas=None, sample=False):
@@ -493,9 +517,13 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
         participante_nombre = f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}"
         curso_nombre = curso_empleado.curso.nombre
         codigo = f"{curso_empleado.id:04d}-UPCV"
+    participante_foto = ""
+    if curso_empleado is not None:
+        participante_foto = media_url(getattr(curso_empleado.empleado, "imagen", None))
 
     context = {
         "{{ participante_nombre }}": participante_nombre,
+        "{{ foto_participante }}": participante_foto,
         "{{ curso_nombre }}": curso_nombre,
         "{{ codigo }}": codigo,
         "{{ fecha }}": timezone.now().strftime("%Y"),
@@ -546,11 +574,14 @@ def build_render_elements(definition, context_map):
             item["rendered_value"] = resolve_text(item["texto"], context_map)
         else:
             item["rendered_value"] = ""
+            item["image_url"] = resolve_image_url(item.get("image_url"), context_map)
         if SIGNATURE_KEY_PATTERN.match(item["key"]):
             if item["type"] == "imagen" and not item.get("image_url"):
                 item["visible"] = False
             elif item["type"] != "imagen" and not item["rendered_value"].strip():
                 item["visible"] = False
+        if item["key"] == "foto_participante" and not item.get("image_url"):
+            item["visible"] = False
         render_elements.append(item)
     return render_elements
 

@@ -144,6 +144,7 @@
     normalized.token = normalized.token || "";
     normalized.texto = normalized.texto || "";
     normalized.image_url = normalized.image_url || "";
+    normalized.shape = normalized.shape || "rect";
 
     if (normalized.key === "fondo_diploma") {
       normalized.x = 0;
@@ -171,6 +172,16 @@
     return resolved;
   }
 
+  function previewImageUrl(element) {
+    let resolved = element.image_url || "";
+    Object.entries(previewContext).forEach(function (entry) {
+      const token = entry[0];
+      const value = entry[1];
+      resolved = resolved.split(token).join(value);
+    });
+    return resolved;
+  }
+
   function typeLabel(type) {
     const labels = {
       texto: "Texto",
@@ -186,10 +197,12 @@
 
   function elementMarkup(element) {
     if (element.type === "imagen") {
-      if (element.image_url) {
-        return `<div class="editor-element-content"><img src="${element.image_url}" alt="${element.label}"></div>`;
+      const imageUrl = previewImageUrl(element);
+      const shapeClass = element.shape === "circle" ? " is-circle" : "";
+      if (imageUrl) {
+        return `<div class="editor-element-content${shapeClass}"><img src="${imageUrl}" alt="${element.label}"></div>`;
       }
-      return `<div class="editor-element-content"><div class="editor-image-placeholder">${element.label}</div></div>`;
+      return `<div class="editor-element-content${shapeClass}"><div class="editor-image-placeholder">${element.label}</div></div>`;
     }
 
     const klass = `editor-element-content align-${element.align || "center"}`;
