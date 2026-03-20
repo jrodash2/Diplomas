@@ -269,7 +269,6 @@
       const visibilityLabel = element.visible ? "Visible" : "Oculto";
       const toggleLabel = element.visible ? "Ocultar" : "Mostrar";
       const tokenLabel = element.token || element.key;
-      const hiddenHelp = element.visible ? "" : '<div class="editor-layer-help">Oculto en el lienzo. Puedes seleccionarlo y volverlo a mostrar.</div>';
       return `
         <div class="editor-layer-item ${isActive ? "is-active" : ""} ${element.visible ? "" : "is-hidden"}" data-key="${element.key}">
           <div class="editor-layer-main">
@@ -283,7 +282,6 @@
                 <span class="editor-layer-badge is-z">Orden ${Math.round(element.z_index)}</span>
                 <span class="editor-layer-badge ${visibilityClass}">${visibilityLabel}</span>
               </div>
-              ${hiddenHelp}
             </div>
           </div>
           <div class="editor-layer-actions">
