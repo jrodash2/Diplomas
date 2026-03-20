@@ -250,14 +250,16 @@ def guardar_posiciones(request, curso_id):
 
     if curso.diseno_diploma:
         current_definition = build_design_definition(curso.diseno_diploma, None)
+        patched_elements = current_definition["elements"]
         for key, values in posiciones_limpias.items():
-            if key not in current_definition["elements"]:
+            if key not in patched_elements:
                 continue
-            current_definition["elements"][key]["x"] = values["left"]
-            current_definition["elements"][key]["y"] = values["top"]
-            current_definition["elements"][key]["width"] = values["width"]
-            current_definition["elements"][key]["height"] = values["height"]
-        curso.diseno_diploma.estilos = current_definition
+            patched_elements[key]["x"] = values["left"]
+            patched_elements[key]["y"] = values["top"]
+            patched_elements[key]["width"] = values["width"]
+            patched_elements[key]["height"] = values["height"]
+
+        curso.diseno_diploma.estilos = normalize_definition_from_elements(curso.diseno_diploma, patched_elements)
         curso.diseno_diploma.save(update_fields=["estilos", "actualizado_en"])
     else:
         curso.posiciones = posiciones_limpias
