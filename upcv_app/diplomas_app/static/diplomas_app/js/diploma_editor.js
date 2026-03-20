@@ -45,6 +45,8 @@
   state.pristine = JSON.parse(JSON.stringify(state.elements));
 
   const ui = {
+    tabButtons: Array.from(document.querySelectorAll(".editor-sidebar-tab")),
+    tabPanels: Array.from(document.querySelectorAll(".editor-sidebar-panel")),
     layerList: document.getElementById("editorLayerList"),
     layerCount: document.getElementById("editorLayerCount"),
     layerSummary: document.getElementById("editorLayerSummary"),
@@ -93,6 +95,18 @@
       return min;
     }
     return Math.min(Math.max(numeric, min), max);
+  }
+
+  function setActiveSidebarTab(tabName) {
+    ui.tabButtons.forEach(function (button) {
+      const isActive = button.dataset.tabTarget === tabName;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+    ui.tabPanels.forEach(function (panel) {
+      panel.classList.toggle("is-active", panel.dataset.tabPanel === tabName);
+    });
   }
 
   function currentScale() {
@@ -445,6 +459,12 @@
     });
   }
 
+  ui.tabButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      setActiveSidebarTab(button.dataset.tabTarget);
+    });
+  });
+
   [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
@@ -508,6 +528,7 @@
 
   renderCanvas();
   renderLayerPanel();
+  setActiveSidebarTab("layers");
   const firstKey = Object.keys(state.elements).find(function (key) {
     return key !== "fondo_diploma";
   });

@@ -48,9 +48,14 @@
         </div>
       </section>
 
-      <aside class="diploma-editor-sidebar">
-        <section class="card diploma-editor-layers-card">
-          <div class="card-body">
+      <aside class="card diploma-editor-sidebar">
+        <div class="card-body diploma-editor-sidebar-body">
+          <div class="editor-sidebar-tabs" role="tablist" aria-label="Panel lateral del editor">
+            <button type="button" class="editor-sidebar-tab is-active" data-tab-target="layers" aria-selected="true">Capas</button>
+            <button type="button" class="editor-sidebar-tab" data-tab-target="properties" aria-selected="false">Propiedades</button>
+          </div>
+
+          <section class="editor-sidebar-panel is-active" data-tab-panel="layers">
             <div class="diploma-sidebar-heading">
               <div>
                 <h5 class="mb-1">Capas del diploma</h5>
@@ -65,11 +70,9 @@
             </div>
 
             <div class="editor-layer-list" id="editorLayerList"></div>
-          </div>
-        </section>
+          </section>
 
-        <section class="card diploma-editor-properties-card">
-          <div class="card-body">
+          <section class="editor-sidebar-panel" data-tab-panel="properties">
             <h5 class="mb-3">Propiedades</h5>
             <div class="editor-empty-state" id="editorEmptyState">
               Selecciona un elemento en el lienzo o en el panel de capas para editarlo.
@@ -154,8 +157,8 @@
                 <label class="form-check-label" for="editorPropVisible">Elemento visible</label>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </aside>
     </div>
   </div>

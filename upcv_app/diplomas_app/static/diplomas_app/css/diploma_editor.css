@@ -2,12 +2,57 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
+  align-items: start;
 }
 
 .diploma-editor-sidebar {
+  min-height: min(84vh, 920px);
+}
+
+.diploma-editor-sidebar-body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  min-height: min(84vh, 920px);
+  padding: 14px;
+}
+
+.editor-sidebar-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.editor-sidebar-tab {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.editor-sidebar-tab.is-active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.editor-sidebar-panel {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-sidebar-panel.is-active {
+  display: flex;
+  flex-direction: column;
 }
 
 .diploma-editor-header {
@@ -167,6 +212,11 @@
   display: none;
 }
 
+.editor-property-form {
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .diploma-sidebar-heading {
   display: flex;
   align-items: flex-start;
@@ -191,8 +241,9 @@
 .editor-layer-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 480px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding-right: 4px;
 }
@@ -242,7 +293,7 @@
 }
 
 .editor-layer-main {
-  padding: 12px 14px 10px;
+  padding: 10px 12px 8px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -258,7 +309,7 @@
 .editor-layer-meta {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -276,7 +327,7 @@
 }
 
 .editor-layer-token {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
   font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   white-space: nowrap;
@@ -327,7 +378,7 @@
 }
 
 .editor-layer-actions {
-  padding: 0 14px 12px;
+  padding: 0 12px 10px;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -368,5 +419,10 @@
 @media (max-width: 1200px) {
   .diploma-editor-layout {
     grid-template-columns: 1fr;
+  }
+
+  .diploma-editor-sidebar,
+  .diploma-editor-sidebar-body {
+    min-height: auto;
   }
 }
