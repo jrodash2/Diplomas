@@ -6,12 +6,12 @@
     return;
   }
 
-  const SCALE = 0.28;
   const definition = JSON.parse(payloadNode.textContent || "{}");
   const previewContext = previewContextNode ? JSON.parse(previewContextNode.textContent || "{}") : {};
   const canvasWidth = Number(canvas.dataset.canvasWidth || 3508);
   const canvasHeight = Number(canvas.dataset.canvasHeight || 2480);
   const fallbackBackgroundUrl = canvas.dataset.backgroundUrl || "";
+  const canvasScaleNode = canvas.closest(".diploma-canvas-scale");
 
   const state = {
     canvasWidth,
@@ -90,6 +90,24 @@
       return min;
     }
     return Math.min(Math.max(numeric, min), max);
+  }
+
+  function currentScale() {
+    if (canvasScaleNode) {
+      const transform = window.getComputedStyle(canvasScaleNode).transform;
+      if (transform && transform !== "none") {
+        const matrix = transform.match(/matrix\(([^)]+)\)/);
+        if (matrix) {
+          const values = matrix[1].split(",").map(Number);
+          if (values.length >= 1 && Number.isFinite(values[0]) && values[0] > 0) {
+            return values[0];
+          }
+        }
+      }
+    }
+
+    const configuredScale = Number(canvas.dataset.editorScale || 0.28);
+    return configuredScale > 0 ? configuredScale : 0.28;
   }
 
   function normalizeElement(element) {
@@ -280,8 +298,9 @@
       return;
     }
 
-    const deltaX = (event.clientX - state.drag.startX) / SCALE;
-    const deltaY = (event.clientY - state.drag.startY) / SCALE;
+    const scale = currentScale();
+    const deltaX = (event.clientX - state.drag.startX) / scale;
+    const deltaY = (event.clientY - state.drag.startY) / scale;
     element.x = state.drag.originX + deltaX;
     element.y = state.drag.originY + deltaY;
     state.elements[state.drag.key] = normalizeElement(element);

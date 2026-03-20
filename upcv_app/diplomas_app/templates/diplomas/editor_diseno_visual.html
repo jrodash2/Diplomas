@@ -31,13 +31,16 @@
           </div>
 
           <div class="diploma-canvas-shell">
-            <div class="diploma-canvas-scale">
+            <div
+              class="diploma-canvas-scale"
+              style="--diploma-base-width: {{ canvas_width }}px; --diploma-base-height: {{ canvas_height }}px; --diploma-editor-scale: 0.28;">
               <div
                 id="diplomaEditorCanvas"
                 class="diploma-editor-canvas"
                 data-save-url="{% url 'diplomas:guardar_diseno_visual' diseno.id %}"
                 data-canvas-width="{{ canvas_width }}"
                 data-canvas-height="{{ canvas_height }}"
+                data-editor-scale="0.28"
                 data-background-url="{{ fondo_url }}"
                 style="background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');"></div>
             </div>

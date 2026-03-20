@@ -10,13 +10,13 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
 .btn:hover { background:#084bcc; }
 .canvas-area { width:100vw; height:calc(100vh - 60px); display:flex; justify-content:center; align-items:center; overflow:auto; }
 .canvas-content { transform-origin:center center; transition: transform .2s ease; }
-.diploma-container { width:3508px; height:2480px; position:relative; background:#fff center center / cover no-repeat; box-shadow:0 10px 30px rgba(15,23,42,.16); border-radius:10px; overflow:hidden; }
-.diploma-item { position:absolute; white-space:pre-wrap; }
+.diploma-container { width:var(--diploma-base-width, 3508px); height:var(--diploma-base-height, 2480px); position:relative; background:#fff center center / cover no-repeat; box-shadow:0 10px 30px rgba(15,23,42,.16); border-radius:10px; overflow:hidden; }
+.diploma-item { position:absolute; white-space:pre-wrap; box-sizing:border-box; }
 .diploma-item img { width:100%; height:100%; object-fit:contain; }
-.text-block { width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:4px 8px; white-space:pre-wrap; }
+.text-block { width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:4px 8px; white-space:pre-wrap; box-sizing:border-box; }
 .text-block.align-left { justify-content:flex-start; }
 .text-block.align-right { justify-content:flex-end; }
-.image-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border:1px dashed #64748b; background:rgba(255,255,255,.78); color:#475569; font-weight:600; }
+.image-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border:1px dashed #64748b; background:rgba(255,255,255,.78); color:#475569; font-weight:600; box-sizing:border-box; }
 </style>
 </head>
 <body>
@@ -34,7 +34,7 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
   </div>
 </div>
 
-<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:3508px;height:2480px;overflow:hidden;">
+<div id="diploma_export" style="position:fixed;left:-99999px;top:-99999px;width:{{ design_definition.canvas.width }}px;height:{{ design_definition.canvas.height }}px;overflow:hidden;">
   {% include 'diplomas/partials/diploma_canvas.html' with container_id='diplomaExportCanvas' %}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -77,9 +77,9 @@ document.getElementById('btnDescargarJPG').onclick = async () => {
 
   const tempCanvas = await html2canvas(exportCanvasNode, { scale: 1, useCORS: true, backgroundColor: null });
   const finalCanvas = document.createElement('canvas');
-  finalCanvas.width = 3508;
-  finalCanvas.height = 2480;
-  finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, 3508, 2480);
+  finalCanvas.width = {{ design_definition.canvas.width }};
+  finalCanvas.height = {{ design_definition.canvas.height }};
+  finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, {{ design_definition.canvas.width }}, {{ design_definition.canvas.height }});
 
   const link = document.createElement('a');
   link.href = finalCanvas.toDataURL('image/jpeg', 1.0);

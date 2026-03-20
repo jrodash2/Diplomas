@@ -1,5 +1,8 @@
 {% load l10n %}
-<div id="{{ container_id }}" class="diploma-container" style="background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');">
+<div
+  id="{{ container_id }}"
+  class="diploma-container"
+  style="--diploma-base-width: {{ design_definition.canvas.width|unlocalize }}px; --diploma-base-height: {{ design_definition.canvas.height|unlocalize }}px; background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');">
   {% for item in render_elements %}
     {% if item.key != 'fondo_diploma' and item.visible %}
     <div
