@@ -4,6 +4,12 @@
   gap: 18px;
 }
 
+.diploma-editor-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .diploma-editor-header {
   display: flex;
   align-items: center;
@@ -159,6 +165,160 @@
 
 .editor-property-form.is-hidden {
   display: none;
+}
+
+.diploma-sidebar-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.editor-layer-count {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.editor-layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.editor-layer-item {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.editor-layer-item.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+  background: #f8fbff;
+}
+
+.editor-layer-item.is-hidden {
+  background: #f8fafc;
+  opacity: 0.88;
+}
+
+.editor-layer-main {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.editor-layer-main:focus-visible,
+.editor-layer-toggle:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.32);
+  outline-offset: 2px;
+}
+
+.editor-layer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.editor-layer-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.editor-layer-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.editor-layer-token {
+  font-size: 12px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-layer-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.editor-layer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.editor-layer-badge.is-type {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.editor-layer-badge.is-z {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.editor-layer-badge.is-visible {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.editor-layer-badge.is-hidden {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.editor-layer-actions {
+  padding: 0 14px 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.editor-layer-toggle {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.editor-layer-item.is-hidden .editor-layer-toggle {
+  border-color: #fdba74;
+  color: #c2410c;
+  background: #fff7ed;
 }
 
 @media (max-width: 1200px) {

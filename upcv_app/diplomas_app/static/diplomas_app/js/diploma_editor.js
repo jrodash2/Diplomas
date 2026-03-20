@@ -45,6 +45,8 @@
   state.pristine = JSON.parse(JSON.stringify(state.elements));
 
   const ui = {
+    layerList: document.getElementById("editorLayerList"),
+    layerCount: document.getElementById("editorLayerCount"),
     emptyState: document.getElementById("editorEmptyState"),
     propertyForm: document.getElementById("editorPropertyForm"),
     label: document.getElementById("editorPropLabel"),
@@ -154,6 +156,19 @@
     return resolved;
   }
 
+  function typeLabel(type) {
+    const labels = {
+      texto: "Texto",
+      imagen: "Imagen",
+      decorativo: "Decorativo",
+    };
+    return labels[type] || type || "Elemento";
+  }
+
+  function layerTitle(element) {
+    return element.label || element.key || "Elemento sin nombre";
+  }
+
   function elementMarkup(element) {
     if (element.type === "imagen") {
       if (element.image_url) {
@@ -202,6 +217,54 @@
     canvas.innerHTML = elements;
   }
 
+  function renderLayerPanel() {
+    if (!ui.layerList) {
+      return;
+    }
+
+    const elements = Object.values(state.elements)
+      .sort(function (left, right) {
+        if (right.z_index !== left.z_index) {
+          return right.z_index - left.z_index;
+        }
+        return left.key.localeCompare(right.key);
+      });
+
+    if (ui.layerCount) {
+      ui.layerCount.textContent = String(elements.length);
+    }
+
+    ui.layerList.innerHTML = elements.map(function (element) {
+      const isActive = state.selectedKey === element.key;
+      const visibilityClass = element.visible ? "is-visible" : "is-hidden";
+      const visibilityLabel = element.visible ? "Visible" : "Oculto";
+      const toggleLabel = element.visible ? "Ocultar" : "Mostrar";
+      const tokenLabel = element.token || element.key;
+      return `
+        <div class="editor-layer-item ${isActive ? "is-active" : ""} ${element.visible ? "" : "is-hidden"}" data-key="${element.key}">
+          <button type="button" class="editor-layer-main" data-action="select" data-key="${element.key}">
+            <div class="editor-layer-meta">
+              <div class="editor-layer-title-row">
+                <span class="editor-layer-title">${layerTitle(element)}</span>
+              </div>
+              <div class="editor-layer-token">${tokenLabel}</div>
+              <div class="editor-layer-badges">
+                <span class="editor-layer-badge is-type">${typeLabel(element.type)}</span>
+                <span class="editor-layer-badge is-z">Orden ${Math.round(element.z_index)}</span>
+                <span class="editor-layer-badge ${visibilityClass}">${visibilityLabel}</span>
+              </div>
+            </div>
+          </button>
+          <div class="editor-layer-actions">
+            <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">
+              ${toggleLabel}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
   function syncSidebar() {
     const element = state.elements[state.selectedKey];
     if (!element) {
@@ -240,6 +303,19 @@
     }
     state.selectedKey = key;
     renderCanvas();
+    renderLayerPanel();
+    syncSidebar();
+  }
+
+  function setElementVisibility(key, visible) {
+    if (!state.elements[key]) {
+      return;
+    }
+
+    state.elements[key].visible = visible;
+    state.elements[key] = normalizeElement(state.elements[key]);
+    renderCanvas();
+    renderLayerPanel();
     syncSidebar();
   }
 
@@ -265,6 +341,7 @@
 
     state.elements[state.selectedKey] = normalizeElement(element);
     renderCanvas();
+    renderLayerPanel();
     syncSidebar();
   }
 
@@ -320,6 +397,34 @@
     selectElement(target.dataset.key);
   });
 
+  if (ui.layerList) {
+    ui.layerList.addEventListener("click", function (event) {
+      const actionNode = event.target.closest("[data-action]");
+      if (!actionNode) {
+        return;
+      }
+
+      const key = actionNode.dataset.key;
+      const action = actionNode.dataset.action;
+      if (!key || !state.elements[key]) {
+        return;
+      }
+
+      if (action === "toggle-visibility") {
+        event.preventDefault();
+        event.stopPropagation();
+        state.selectedKey = key;
+        setElementVisibility(key, !state.elements[key].visible);
+        return;
+      }
+
+      if (action === "select") {
+        event.preventDefault();
+        selectElement(key);
+      }
+    });
+  }
+
   [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
@@ -370,6 +475,7 @@
       state.elements = payload.elementos ? JSON.parse(JSON.stringify(payload.elementos)) : state.elements;
       state.pristine = JSON.parse(JSON.stringify(state.elements));
       renderCanvas();
+      renderLayerPanel();
       syncSidebar();
       window.alert(payload.message || "Diseño guardado correctamente.");
     } catch (error) {
@@ -381,6 +487,7 @@
   });
 
   renderCanvas();
+  renderLayerPanel();
   const firstKey = Object.keys(state.elements).find(function (key) {
     return key !== "fondo_diploma";
   });
