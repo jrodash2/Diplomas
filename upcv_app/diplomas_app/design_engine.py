@@ -1,5 +1,6 @@
 from copy import deepcopy
 import re
+import string
 
 from django.utils import timezone
 
@@ -60,6 +61,11 @@ def clamp_number(value, default, min_value=0, max_value=None):
     if max_value is not None:
         number = min(number, max_value)
     return number
+
+
+def format_participant_name(value):
+    cleaned = " ".join(str(value or "").split())
+    return string.capwords(cleaned.lower())
 
 
 def _base_element(
@@ -533,7 +539,7 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
     descripcion_curso = getattr(curso, "descripcion", "") or ("Descripción del curso" if sample else "")
     codigo = "0001-UPCV"
     if curso_empleado is not None:
-        participante_nombre = f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}"
+        participante_nombre = format_participant_name(f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}")
         curso_nombre = curso_empleado.curso.nombre
         descripcion_curso = curso_empleado.curso.descripcion or ""
         codigo = f"{curso_empleado.id:04d}-UPCV"
