@@ -280,32 +280,38 @@
 
     ui.layerList.innerHTML = elements.map(function (element) {
       const isActive = state.selectedKey === element.key;
+      const typeClass = element.type === "imagen" ? "is-image" : element.type === "decorativo" ? "is-decorative" : "is-text";
       const visibilityClass = element.visible ? "is-visible" : "is-hidden";
       const visibilityLabel = element.visible ? "Visible" : "Oculto";
       const toggleLabel = element.visible ? "Ocultar" : "Mostrar";
       const tokenLabel = element.token || element.key;
       return `
         <div class="editor-layer-item ${isActive ? "is-active" : ""} ${element.visible ? "" : "is-hidden"}" data-key="${element.key}">
-          <div class="editor-layer-main">
-            <div class="editor-layer-meta">
-              <div class="editor-layer-title-row">
-                <span class="editor-layer-title">${layerTitle(element)}</span>
-              </div>
-              <div class="editor-layer-token">${tokenLabel}</div>
-              <div class="editor-layer-badges">
-                <span class="editor-layer-badge is-type">${typeLabel(element.type)}</span>
-                <span class="editor-layer-badge is-z">Orden ${Math.round(element.z_index)}</span>
-                <span class="editor-layer-badge ${visibilityClass}">${visibilityLabel}</span>
-              </div>
+          <button type="button" class="editor-layer-trigger" data-action="select" data-key="${element.key}" aria-expanded="${isActive ? "true" : "false"}">
+            <span class="editor-layer-leading">
+              <span class="editor-layer-type-dot ${typeClass}" aria-hidden="true"></span>
+              <span class="editor-layer-title">${layerTitle(element)}</span>
+            </span>
+            <span class="editor-layer-summary-inline">
+              <span class="editor-layer-inline-pill ${visibilityClass}">${visibilityLabel}</span>
+              <span class="editor-layer-inline-pill is-order">#${Math.round(element.z_index)}</span>
+            </span>
+          </button>
+          <div class="editor-layer-panel">
+            <div class="editor-layer-panel-meta">
+              <span class="editor-layer-badge is-type">${typeLabel(element.type)}</span>
+              <span class="editor-layer-badge is-z">Orden ${Math.round(element.z_index)}</span>
+              <span class="editor-layer-badge ${visibilityClass}">${visibilityLabel}</span>
             </div>
-          </div>
-          <div class="editor-layer-actions">
-            <button type="button" class="editor-layer-select" data-action="select" data-key="${element.key}">
-              Seleccionar
-            </button>
-            <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">
-              ${toggleLabel}
-            </button>
+            <div class="editor-layer-token">${tokenLabel}</div>
+            <div class="editor-layer-actions">
+              <button type="button" class="editor-layer-select" data-action="select" data-key="${element.key}">
+                Seleccionar
+              </button>
+              <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">
+                ${toggleLabel}
+              </button>
+            </div>
           </div>
         </div>
       `;
