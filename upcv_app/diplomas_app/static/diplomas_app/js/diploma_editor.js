@@ -213,7 +213,7 @@
       return `<div class="editor-element-content${shapeClass}"><div class="${placeholderClass}">${element.label}</div></div>`;
     }
 
-    const klass = `editor-element-content align-${element.align || "center"}`;
+    const klass = `editor-element-content diploma-text-element align-${element.align || "center"}`;
     return `<div class="${klass}">${previewText(element)}</div>`;
   }
 

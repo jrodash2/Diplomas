@@ -15,7 +15,7 @@
           <div class="image-fallback{% if item.shape == 'circle' %} diploma-photo-placeholder{% endif %}">{{ item.label }}</div>
         {% endif %}
       {% else %}
-        <div class="text-block align-{{ item.align }}">{{ item.rendered_value }}</div>
+        <div class="diploma-text-element align-{{ item.align }}">{{ item.rendered_value }}</div>
       {% endif %}
     </div>
     {% endif %}
