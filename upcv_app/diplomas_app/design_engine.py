@@ -11,6 +11,8 @@ from .models import Firma
 CANVAS_WIDTH = 3508
 CANVAS_HEIGHT = 2480
 DESIGN_VERSION = 2
+DEFAULT_FONT_FAMILY = 'Georgia, "Times New Roman", serif'
+DEFAULT_FONT_WEIGHT = "400"
 
 LEGACY_ELEMENT_KEY_MAP = {
     "logo1": "logo_gobierno",
@@ -74,6 +76,8 @@ def _base_element(
     texto="",
     image_url="",
     font_size=24,
+    font_family=DEFAULT_FONT_FAMILY,
+    font_weight=DEFAULT_FONT_WEIGHT,
     color="#111827",
     align="center",
     visible=True,
@@ -89,6 +93,8 @@ def _base_element(
         "width": width,
         "height": height,
         "font_size": font_size,
+        "font_family": font_family,
+        "font_weight": str(font_weight),
         "color": color,
         "align": align,
         "z_index": z_index,
@@ -282,6 +288,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             token="{{ institucion_nombre }}",
             texto=getattr(config, "nombre_institucion", "") or "Unidad para la Prevención Comunitaria de la Violencia",
             font_size=54,
+            font_weight="700",
         ),
         "subtitulo_diploma": _base_element(
             key="subtitulo_diploma",
@@ -295,6 +302,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             token="{{ subtitulo_diploma }}",
             texto="OTORGA EL PRESENTE DIPLOMA A:",
             font_size=48,
+            font_weight="700",
         ),
         "adorno_central": _base_element(
             key="adorno_central",
@@ -322,6 +330,8 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             token="{{ participante_nombre }}",
             texto="{{ participante_nombre }}",
             font_size=104,
+            font_family='"Palatino Linotype", "Book Antiqua", Palatino, serif',
+            font_weight="700",
         ),
         "foto_participante": _base_element(
             key="foto_participante",
@@ -350,6 +360,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             texto="Código: {{ codigo }}",
             font_size=30,
             align="left",
+            font_family='Arial, "Helvetica Neue", Helvetica, sans-serif',
         ),
         "nombre_curso": _base_element(
             key="nombre_curso",
@@ -363,6 +374,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             token="{{ curso_nombre }}",
             texto="{{ curso_nombre }}",
             font_size=52,
+            font_weight="700",
         ),
         "fecha_texto": _base_element(
             key="fecha_texto",
@@ -376,18 +388,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             token="{{ fecha }}",
             texto="Guatemala, {{ fecha }} © UPCV",
             font_size=32,
-        ),
-        "sello_medalla": _base_element(
-            key="sello_medalla",
-            label="Sello / Medalla",
-            element_type="imagen",
-            x=2670,
-            y=1170,
-            width=240,
-            height=240,
-            z_index=36,
-            token="{{ sello_medalla }}",
-            image_url="",
+            font_family='Arial, "Helvetica Neue", Helvetica, sans-serif',
         ),
     }
     base_elements.update(build_signature_elements(firmas, signature_slots))
@@ -419,6 +420,8 @@ def normalize_element(key, raw_element, fallback_element):
         "width": width,
         "height": height,
         "font_size": clamp_number(raw.get("font_size", raw.get("fontSize")), fallback["font_size"], min_value=8, max_value=300),
+        "font_family": raw.get("font_family") or raw.get("fontFamily") or fallback.get("font_family", DEFAULT_FONT_FAMILY),
+        "font_weight": str(raw.get("font_weight") or raw.get("fontWeight") or ("700" if raw.get("bold") else fallback.get("font_weight", DEFAULT_FONT_WEIGHT))),
         "color": raw.get("color") or fallback["color"],
         "align": raw.get("align") or raw.get("textAlign") or raw.get("alineacion") or fallback["align"],
         "z_index": int(clamp_number(raw.get("z_index", raw.get("zIndex")), fallback["z_index"], min_value=0, max_value=9999)),
@@ -532,7 +535,6 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
         "{{ adorno_central }}": "──────────── ✦ ────────────",
         "{{ logo_gobierno }}": "",
         "{{ logo_upcv }}": "",
-        "{{ sello_medalla }}": "",
         "{{ fondo_diploma }}": "",
     }
     for index, firma in enumerate(firmas, start=1):

@@ -7,7 +7,7 @@
     {% if item.key != 'fondo_diploma' and item.visible %}
     <div
       class="diploma-item{% if item.shape == 'circle' %} is-circle diploma-photo-circle{% endif %}"
-      style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
+      style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; font-family:{{ item.font_family }}; font-weight:{{ item.font_weight }}; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
       {% if item.type == 'imagen' %}
         {% if item.image_url %}
           <img src="{{ item.image_url }}" alt="{{ item.label }}"{% if item.shape == 'circle' %} class="diploma-photo-media"{% endif %}>

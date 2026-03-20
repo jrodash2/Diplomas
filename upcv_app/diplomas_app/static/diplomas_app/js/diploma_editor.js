@@ -34,6 +34,8 @@
       width: canvasWidth,
       height: canvasHeight,
       font_size: 20,
+      font_family: 'Georgia, "Times New Roman", serif',
+      font_weight: "400",
       color: "#111827",
       align: "center",
       z_index: 0,
@@ -62,6 +64,8 @@
     width: document.getElementById("editorPropWidth"),
     height: document.getElementById("editorPropHeight"),
     fontSize: document.getElementById("editorPropFontSize"),
+    fontFamily: document.getElementById("editorPropFontFamily"),
+    bold: document.getElementById("editorPropBold"),
     color: document.getElementById("editorPropColor"),
     align: document.getElementById("editorPropAlign"),
     zIndex: document.getElementById("editorPropZIndex"),
@@ -138,6 +142,8 @@
     normalized.x = clamp(normalized.x || 0, 0, Math.max(state.canvasWidth - normalized.width, 0));
     normalized.y = clamp(normalized.y || 0, 0, Math.max(state.canvasHeight - normalized.height, 0));
     normalized.font_size = clamp(normalized.font_size || 24, 8, 300);
+    normalized.font_family = normalized.font_family || 'Georgia, "Times New Roman", serif';
+    normalized.font_weight = String(normalized.font_weight || "400");
     normalized.z_index = clamp(normalized.z_index || 1, 0, 9999);
     normalized.color = normalized.color || "#111827";
     normalized.align = normalized.align || "center";
@@ -229,6 +235,8 @@
               width:${element.width}px;
               height:${element.height}px;
               font-size:${element.font_size}px;
+              font-family:${element.font_family};
+              font-weight:${element.font_weight};
               color:${element.color};
               text-align:${element.align};
               z-index:${element.z_index};
@@ -338,6 +346,8 @@
     ui.width.value = Math.round(element.width);
     ui.height.value = Math.round(element.height);
     ui.fontSize.value = Math.round(element.font_size);
+    ui.fontFamily.value = element.font_family || 'Georgia, "Times New Roman", serif';
+    ui.bold.checked = String(element.font_weight || "400") === "700";
     ui.color.value = element.color || "#111827";
     ui.align.value = element.align || "center";
     ui.zIndex.value = Math.round(element.z_index);
@@ -388,6 +398,8 @@
     if (element.type !== "imagen") {
       element.texto = ui.texto.value;
       element.font_size = Number(ui.fontSize.value || element.font_size);
+      element.font_family = ui.fontFamily.value || element.font_family;
+      element.font_weight = ui.bold.checked ? "700" : "400";
       element.color = ui.color.value || element.color;
       element.align = ui.align.value || element.align;
     }
@@ -484,7 +496,7 @@
     });
   });
 
-  [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
+  [ui.texto, ui.x, ui.y, ui.width, ui.height, ui.fontSize, ui.fontFamily, ui.bold, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
     }

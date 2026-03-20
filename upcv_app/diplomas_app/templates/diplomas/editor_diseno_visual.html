@@ -128,12 +128,31 @@
 
               <div class="row g-2 mt-1" id="editorTextStyleGroup">
                 <div class="col-6">
-                  <label class="form-label">Fuente</label>
+                  <label class="form-label">Tamaño</label>
                   <input type="number" id="editorPropFontSize" class="form-control">
                 </div>
                 <div class="col-6">
                   <label class="form-label">Color</label>
                   <input type="color" id="editorPropColor" class="form-control form-control-color">
+                </div>
+              </div>
+
+              <div class="row g-2 mt-1" id="editorTypographyGroup">
+                <div class="col-8">
+                  <label class="form-label">Tipo de fuente</label>
+                  <select id="editorPropFontFamily" class="form-control">
+                    <option value='Georgia, "Times New Roman", serif'>Serif formal</option>
+                    <option value='Arial, "Helvetica Neue", Helvetica, sans-serif'>Sans institucional</option>
+                    <option value='"Palatino Linotype", "Book Antiqua", Palatino, serif'>Palatino elegante</option>
+                    <option value='"Trebuchet MS", "Helvetica Neue", Helvetica, sans-serif'>Sans sobria</option>
+                    <option value='"Lucida Handwriting", "Brush Script MT", cursive'>Cursiva elegante</option>
+                  </select>
+                </div>
+                <div class="col-4 d-flex align-items-end">
+                  <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="editorPropBold">
+                    <label class="form-check-label" for="editorPropBold">Negrita</label>
+                  </div>
                 </div>
               </div>
 
