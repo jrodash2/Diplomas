@@ -376,6 +376,21 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             font_size=52,
             font_weight="700",
         ),
+        "descripcion_curso": _base_element(
+            key="descripcion_curso",
+            label="Descripción del curso",
+            element_type="texto",
+            x=760,
+            y=1045,
+            width=1988,
+            height=150,
+            z_index=27,
+            token="{{ descripcion_curso }}",
+            texto="{{ descripcion_curso }}",
+            font_size=28,
+            color="#374151",
+            align="center",
+        ),
         "fecha_texto": _base_element(
             key="fecha_texto",
             label="Fecha",
@@ -384,7 +399,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             y=1080,
             width=1548,
             height=70,
-            z_index=27,
+            z_index=28,
             token="{{ fecha }}",
             texto="Guatemala, {{ fecha }} © UPCV",
             font_size=32,
@@ -515,10 +530,12 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
 
     participante_nombre = "NOMBRE DEL PARTICIPANTE"
     curso_nombre = getattr(curso, "nombre", "NOMBRE DEL CURSO") or "NOMBRE DEL CURSO"
+    descripcion_curso = getattr(curso, "descripcion", "") or ("Descripción del curso" if sample else "")
     codigo = "0001-UPCV"
     if curso_empleado is not None:
         participante_nombre = f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}"
         curso_nombre = curso_empleado.curso.nombre
+        descripcion_curso = curso_empleado.curso.descripcion or ""
         codigo = f"{curso_empleado.id:04d}-UPCV"
     participante_foto = ""
     if curso_empleado is not None:
@@ -528,6 +545,7 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
         "{{ participante_nombre }}": participante_nombre,
         "{{ foto_participante }}": participante_foto,
         "{{ curso_nombre }}": curso_nombre,
+        "{{ descripcion_curso }}": descripcion_curso,
         "{{ codigo }}": codigo,
         "{{ fecha }}": timezone.now().strftime("%Y"),
         "{{ institucion_nombre }}": config.nombre_institucion if config else "",
@@ -583,6 +601,8 @@ def build_render_elements(definition, context_map):
             elif item["type"] != "imagen" and not item["rendered_value"].strip():
                 item["visible"] = False
         if item["key"] == "foto_participante" and not item.get("image_url"):
+            item["visible"] = False
+        if item["key"] == "descripcion_curso" and not item["rendered_value"].strip():
             item["visible"] = False
         render_elements.append(item)
     return render_elements
