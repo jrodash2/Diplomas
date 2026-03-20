@@ -404,6 +404,49 @@ def resolve_text(text_value, context_map):
     return resolved
 
 
+
+
+def build_token_context_map(*, curso=None, curso_empleado=None, config=None, firmas=None, sample=False):
+    config = config if config is not None else ConfiguracionGeneral.objects.first()
+    firmas = firmas if firmas is not None else get_signature_pair(curso)
+    firma_1 = firmas[0] if len(firmas) > 0 else None
+    firma_2 = firmas[1] if len(firmas) > 1 else None
+
+    participante_nombre = "NOMBRE DEL PARTICIPANTE"
+    curso_nombre = getattr(curso, "nombre", "NOMBRE DEL CURSO") or "NOMBRE DEL CURSO"
+    codigo = "0001-UPCV"
+    if curso_empleado is not None:
+        participante_nombre = f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}"
+        curso_nombre = curso_empleado.curso.nombre
+        codigo = f"{curso_empleado.id:04d}-UPCV"
+
+    return {
+        "{{ participante_nombre }}": participante_nombre,
+        "{{ curso_nombre }}": curso_nombre,
+        "{{ codigo }}": codigo,
+        "{{ fecha }}": timezone.now().strftime("%Y"),
+        "{{ institucion_nombre }}": config.nombre_institucion if config else "",
+        "{{ subtitulo_diploma }}": "OTORGA EL PRESENTE DIPLOMA A:",
+        "{{ adorno_central }}": "──────────── ✦ ────────────",
+        "{{ firma_1_nombre }}": getattr(firma_1, "nombre", "") if firma_1 else "",
+        "{{ firma_1_cargo }}": getattr(firma_1, "rol", "") if firma_1 else "",
+        "{{ firma_2_nombre }}": getattr(firma_2, "nombre", "") if firma_2 else "",
+        "{{ firma_2_cargo }}": getattr(firma_2, "rol", "") if firma_2 else "",
+        "{{ logo_gobierno }}": "",
+        "{{ logo_upcv }}": "",
+        "{{ sello_medalla }}": "",
+        "{{ fondo_diploma }}": "",
+    }
+
+
+def build_design_editor_payload(diseno, firmas=None):
+    definition = build_design_definition(diseno, None, firmas=firmas)
+    preview_context = build_token_context_map(config=ConfiguracionGeneral.objects.first(), firmas=firmas, sample=True)
+    return {
+        "definition": definition,
+        "preview_context": preview_context,
+    }
+
 def build_course_design_definition(curso, firmas=None):
     firmas = firmas if firmas is not None else get_signature_pair(curso)
     if curso.diseno_diploma_id:
@@ -429,30 +472,15 @@ def build_render_elements(definition, context_map):
 
 def build_diploma_render_context(curso_empleado):
     curso = curso_empleado.curso
-    empleado = curso_empleado.empleado
     config = ConfiguracionGeneral.objects.first()
     firmas = get_signature_pair(curso)
-    firma_1 = firmas[0] if len(firmas) > 0 else None
-    firma_2 = firmas[1] if len(firmas) > 1 else None
     definition = build_course_design_definition(curso, firmas=firmas)
-
-    context_map = {
-        "{{ participante_nombre }}": f"{empleado.nombres} {empleado.apellidos}",
-        "{{ curso_nombre }}": curso.nombre,
-        "{{ codigo }}": f"{curso_empleado.id:04d}-UPCV",
-        "{{ fecha }}": timezone.now().strftime("%Y"),
-        "{{ institucion_nombre }}": config.nombre_institucion if config else "",
-        "{{ subtitulo_diploma }}": "OTORGA EL PRESENTE DIPLOMA A:",
-        "{{ adorno_central }}": "──────────── ✦ ────────────",
-        "{{ firma_1_nombre }}": getattr(firma_1, "nombre", "") if firma_1 else "",
-        "{{ firma_1_cargo }}": getattr(firma_1, "rol", "") if firma_1 else "",
-        "{{ firma_2_nombre }}": getattr(firma_2, "nombre", "") if firma_2 else "",
-        "{{ firma_2_cargo }}": getattr(firma_2, "rol", "") if firma_2 else "",
-        "{{ logo_gobierno }}": "",
-        "{{ logo_upcv }}": "",
-        "{{ sello_medalla }}": "",
-        "{{ fondo_diploma }}": "",
-    }
+    context_map = build_token_context_map(
+        curso=curso,
+        curso_empleado=curso_empleado,
+        config=config,
+        firmas=firmas,
+    )
 
     render_elements = build_render_elements(definition, context_map)
 

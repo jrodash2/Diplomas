@@ -13,6 +13,7 @@ from .design_engine import (
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     build_design_definition,
+    build_design_editor_payload,
     build_diploma_render_context,
     ensure_design_definition,
     normalize_definition_from_elements,
@@ -86,10 +87,12 @@ def editar_diseno(request, diseno_id):
 @ensure_csrf_cookie
 def modificar_diseno_visual(request, diseno_id):
     diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
-    definition = build_design_definition(diseno)
+    editor_payload = build_design_editor_payload(diseno)
+    definition = editor_payload["definition"]
     context = {
         "diseno": diseno,
         "elementos_json": definition,
+        "preview_context_json": editor_payload["preview_context"],
         "fondo_url": definition["elements"]["fondo_diploma"]["image_url"],
         "canvas_width": CANVAS_WIDTH,
         "canvas_height": CANVAS_HEIGHT,

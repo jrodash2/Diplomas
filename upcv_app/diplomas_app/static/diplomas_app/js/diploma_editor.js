@@ -1,5 +1,6 @@
 (function () {
   const payloadNode = document.getElementById("diplomaDesignDefinition");
+  const previewContextNode = document.getElementById("diplomaPreviewContext");
   const canvas = document.getElementById("diplomaEditorCanvas");
   if (!payloadNode || !canvas) {
     return;
@@ -7,6 +8,7 @@
 
   const SCALE = 0.28;
   const definition = JSON.parse(payloadNode.textContent || "{}");
+  const previewContext = previewContextNode ? JSON.parse(previewContextNode.textContent || "{}") : {};
   const canvasWidth = Number(canvas.dataset.canvasWidth || 3508);
   const canvasHeight = Number(canvas.dataset.canvasHeight || 2480);
   const fallbackBackgroundUrl = canvas.dataset.backgroundUrl || "";
@@ -125,7 +127,13 @@
   }
 
   function previewText(element) {
-    return element.texto || element.token || element.label || element.key;
+    let resolved = element.texto || element.token || element.label || element.key;
+    Object.entries(previewContext).forEach(function (entry) {
+      const token = entry[0];
+      const value = entry[1];
+      resolved = resolved.split(token).join(value);
+    });
+    return resolved;
   }
 
   function elementMarkup(element) {
