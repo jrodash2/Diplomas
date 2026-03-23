@@ -105,6 +105,9 @@ def build_public_course_links(request, curso):
         "download_url": request.build_absolute_uri(download_path),
     }
 
+def get_design_or_404(request, **lookup):
+    diseno = get_object_or_404(DisenoDiploma.objects.select_related("ubicacion"), **lookup)
+    return enforce_scope_for_object(diseno, get_scope(request))
 
 # Dashboard
 
@@ -483,6 +486,11 @@ def editar_curso(request, curso_id):
 
     return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
+@diplomas_access_required
+def detalle_curso(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
+    total_participantes = participantes.count()
 
 @diplomas_access_required
 def detalle_curso(request, curso_id):
@@ -769,6 +777,15 @@ def public_diploma_download(request):
         "participant": participant,
     })
 
+def public_buscar_participante_por_dpi(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
+    dpi = "".join(str(request.GET.get("dpi") or "").split())
+    if not codigo or not dpi:
+        return JsonResponse({"existe": False, "error": "Debe indicar código de curso y DPI."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
 
 @diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):
