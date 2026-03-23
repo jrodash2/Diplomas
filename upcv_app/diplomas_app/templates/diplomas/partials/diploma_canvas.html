@@ -16,9 +16,9 @@
         {% endif %}
       {% else %}
         {% if item.render_as_html %}
-          <div class="diploma-text-element align-{{ item.align }}">{{ item.rendered_html|safe }}</div>
+          <div class="diploma-text-element align-{{ item.align }}"><div class="diploma-text-flow">{{ item.rendered_html|safe }}</div></div>
         {% else %}
-          <div class="diploma-text-element align-{{ item.align }}">{{ item.rendered_value }}</div>
+          <div class="diploma-text-element align-{{ item.align }}"><div class="diploma-text-flow">{{ item.rendered_value }}</div></div>
         {% endif %}
       {% endif %}
     </div>
