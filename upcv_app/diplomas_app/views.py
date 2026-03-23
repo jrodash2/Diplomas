@@ -1,11 +1,19 @@
 import json
+import os
+from uuid import uuid4
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.db import models
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from PIL import Image, UnidentifiedImageError
 
 from empleados_app.models import Empleado
 
@@ -18,31 +26,227 @@ from .design_engine import (
     ensure_design_definition,
     normalize_definition_from_elements,
 )
-from .forms import AgregarEmpleadoCursoForm, CursoForm, DisenoDiplomaForm, FirmaForm
-from .models import Curso, CursoEmpleado, DisenoDiploma, Firma
+from .forms import (
+    AgregarEmpleadoCursoForm,
+    AgregarParticipanteRapidoForm,
+    CursoForm,
+    DisenoDiplomaForm,
+    FirmaForm,
+    MatriculaManualParticipanteForm,
+    PublicCourseRegistrationForm,
+    PublicDiplomaDownloadForm,
+    UbicacionDiplomaForm,
+    UsuarioUbicacionDiplomaForm,
+)
+from .models import (
+    Curso,
+    CursoEmpleado,
+    DisenoDiploma,
+    Firma,
+    UbicacionDiploma,
+    UsuarioUbicacionDiploma,
+)
+from .utils import attach_diplomas_context, diplomas_access_required, enforce_scope_for_object, scope_queryset
 
 
-def eliminar_participante(request, curso_id, participante_id):
-    curso = get_object_or_404(Curso, id=curso_id)
-    asignacion = get_object_or_404(CursoEmpleado, id=participante_id)
-    asignacion.delete()
-    messages.success(request, "Participante eliminado del curso.")
-    return redirect("diplomas:detalle_curso", curso_id=curso.id)
+# Helpers
+
+def render_diplomas(request, template_name, context=None):
+    context = context or {}
+    return render(request, template_name, attach_diplomas_context(context, request))
 
 
+def get_scope(request):
+    return getattr(request, "diplomas_scope", {})
+
+
+def get_course_or_404(request, **lookup):
+    curso = get_object_or_404(Curso.objects.select_related("ubicacion", "diseno_diploma"), **lookup)
+    return enforce_scope_for_object(curso, get_scope(request))
+
+
+def get_design_or_404(request, **lookup):
+    diseno = get_object_or_404(DisenoDiploma.objects.select_related("ubicacion"), **lookup)
+    return enforce_scope_for_object(diseno, get_scope(request))
+
+
+def get_signature_or_404(request, **lookup):
+    firma = get_object_or_404(Firma.objects.select_related("ubicacion"), **lookup)
+    return enforce_scope_for_object(firma, get_scope(request))
+
+
+def get_location_or_404(request, **lookup):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied("Solo el grupo Diplomas puede administrar ubicaciones.")
+    return get_object_or_404(UbicacionDiploma, **lookup)
+
+
+def get_course_by_code_or_none(codigo):
+    return Curso.objects.select_related("ubicacion", "diseno_diploma").filter(codigo=codigo).first()
+
+
+def get_participant_by_course_and_dpi_or_none(curso, dpi):
+    if not curso or not dpi:
+        return None
+    return (
+        CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
+        .filter(curso=curso)
+        .filter(models.Q(participante_dpi=dpi) | models.Q(empleado__dpi=dpi))
+        .first()
+    )
+
+
+# Dashboard
+
+@diplomas_access_required
 def diplomas_dahsboard(request):
-    return render(request, 'diplomas/dashboard.html')
+    scope = get_scope(request)
+    cursos = scope_queryset(Curso.objects.select_related("ubicacion"), scope).order_by("-creado_en")
+    firmas = scope_queryset(Firma.objects.select_related("ubicacion"), scope).order_by("-creado_en")
+    disenos = scope_queryset(DisenoDiploma.objects.select_related("ubicacion"), scope).order_by("-creado_en")
+    participantes = CursoEmpleado.objects.filter(curso__in=cursos)
+    ubicaciones = UbicacionDiploma.objects.order_by("nombre") if scope.get("is_admin") else UbicacionDiploma.objects.filter(id=getattr(scope.get("location"), "id", None))
+
+    context = {
+        "total_cursos": cursos.count(),
+        "total_firmas": firmas.count(),
+        "total_disenos": disenos.count(),
+        "total_participantes": participantes.count(),
+        "total_ubicaciones": ubicaciones.count(),
+        "cursos_recientes": cursos[:5],
+        "firmas_recientes": firmas[:5],
+        "disenos_recientes": disenos[:5],
+    }
+    return render_diplomas(request, "diplomas/dashboard.html", context)
 
 
-def firmas_lista(request):
-    firmas = Firma.objects.all().order_by('-id')
-    form = FirmaForm()
-    return render(request, "diplomas/firmas_lista.html", {"firmas": firmas, "form": form})
+# Ubicaciones
+
+@diplomas_access_required
+def ubicaciones_lista(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    ubicaciones = UbicacionDiploma.objects.order_by("nombre")
+    return render_diplomas(request, "diplomas/ubicaciones_lista.html", {
+        "ubicaciones": ubicaciones,
+        "form": UbicacionDiplomaForm(),
+    })
 
 
-def crear_firma(request):
+@diplomas_access_required
+def crear_ubicacion(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
     if request.method == "POST":
-        form = FirmaForm(request.POST, request.FILES)
+        form = UbicacionDiplomaForm(request.POST)
+        if form.is_valid():
+            ubicacion = form.save(commit=False)
+            ubicacion.creado_por = request.user
+            ubicacion.save()
+            messages.success(request, "Ubicación creada correctamente.")
+        else:
+            messages.error(request, "No se pudo crear la ubicación.")
+    return redirect("diplomas:ubicaciones_lista")
+
+
+@diplomas_access_required
+def editar_ubicacion(request, ubicacion_id):
+    ubicacion = get_location_or_404(request, id=ubicacion_id)
+    if request.method == "POST":
+        form = UbicacionDiplomaForm(request.POST, instance=ubicacion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Ubicación actualizada correctamente.")
+            return redirect("diplomas:ubicaciones_lista")
+    else:
+        form = UbicacionDiplomaForm(instance=ubicacion)
+    return render_diplomas(request, "diplomas/editar_ubicacion.html", {"form": form, "ubicacion": ubicacion})
+
+
+@diplomas_access_required
+def eliminar_ubicacion(request, ubicacion_id):
+    ubicacion = get_location_or_404(request, id=ubicacion_id)
+    if request.method == "POST":
+        try:
+            ubicacion.delete()
+            messages.success(request, "Ubicación eliminada correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar la ubicación porque tiene registros relacionados.")
+    return redirect("diplomas:ubicaciones_lista")
+
+
+@diplomas_access_required
+def asignaciones_ubicacion_lista(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignaciones = UsuarioUbicacionDiploma.objects.select_related("usuario", "ubicacion", "asignado_por").order_by("usuario__username")
+    return render_diplomas(request, "diplomas/asignaciones_ubicacion_lista.html", {
+        "asignaciones": asignaciones,
+        "form": UsuarioUbicacionDiplomaForm(),
+    })
+
+
+@diplomas_access_required
+def crear_asignacion_ubicacion(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST)
+        if form.is_valid():
+            usuario = form.cleaned_data["usuario"]
+            ubicacion = form.cleaned_data["ubicacion"]
+            UsuarioUbicacionDiploma.objects.update_or_create(
+                usuario=usuario,
+                defaults={"ubicacion": ubicacion, "asignado_por": request.user},
+            )
+            messages.success(request, "Asignación guardada correctamente.")
+        else:
+            messages.error(request, "No se pudo guardar la asignación.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
+
+
+@diplomas_access_required
+def editar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST, instance=asignacion)
+        if form.is_valid():
+            form.save(assigned_by=request.user)
+            messages.success(request, "Asignación actualizada correctamente.")
+            return redirect("diplomas:asignaciones_ubicacion_lista")
+    else:
+        form = UsuarioUbicacionDiplomaForm(instance=asignacion)
+    return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
+
+
+@diplomas_access_required
+def eliminar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        asignacion.delete()
+        messages.success(request, "Asignación eliminada correctamente.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
+
+
+# Firmas
+
+@diplomas_access_required
+def firmas_lista(request):
+    scope = get_scope(request)
+    firmas = scope_queryset(Firma.objects.select_related("ubicacion"), scope).order_by("-id")
+    form = FirmaForm(scope=scope)
+    return render_diplomas(request, "diplomas/firmas_lista.html", {"firmas": firmas, "form": form})
+
+
+@diplomas_access_required
+def crear_firma(request):
+    scope = get_scope(request)
+    if request.method == "POST":
+        form = FirmaForm(request.POST, request.FILES, scope=scope)
         if form.is_valid():
             form.save()
             messages.success(request, "Firma creada correctamente.")
@@ -51,15 +255,48 @@ def crear_firma(request):
     return redirect("diplomas:firmas_lista")
 
 
-def disenos_lista(request):
-    disenos = DisenoDiploma.objects.all().order_by('-id')
-    form = DisenoDiplomaForm()
-    return render(request, "diplomas/disenos_lista.html", {"disenos": disenos, "form": form})
-
-
-def crear_diseno(request):
+@diplomas_access_required
+def editar_firma(request, firma_id):
+    firma = get_signature_or_404(request, id=firma_id)
+    scope = get_scope(request)
     if request.method == "POST":
-        form = DisenoDiplomaForm(request.POST, request.FILES)
+        form = FirmaForm(request.POST, request.FILES, instance=firma, scope=scope)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Firma actualizada correctamente.")
+            return redirect("diplomas:firmas_lista")
+    else:
+        form = FirmaForm(instance=firma, scope=scope)
+    return render_diplomas(request, "diplomas/editar_firma.html", {"form": form, "firma": firma})
+
+
+@diplomas_access_required
+def eliminar_firma(request, firma_id):
+    firma = get_signature_or_404(request, id=firma_id)
+    if request.method == "POST":
+        try:
+            firma.delete()
+            messages.success(request, "Firma eliminada correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar la firma porque está asociada a cursos.")
+    return redirect("diplomas:firmas_lista")
+
+
+# Diseños
+
+@diplomas_access_required
+def disenos_lista(request):
+    scope = get_scope(request)
+    disenos = scope_queryset(DisenoDiploma.objects.select_related("ubicacion"), scope).order_by("-id")
+    form = DisenoDiplomaForm(scope=scope)
+    return render_diplomas(request, "diplomas/disenos_lista.html", {"disenos": disenos, "form": form})
+
+
+@diplomas_access_required
+def crear_diseno(request):
+    scope = get_scope(request)
+    if request.method == "POST":
+        form = DisenoDiplomaForm(request.POST, request.FILES, scope=scope)
         if form.is_valid():
             diseno = form.save()
             ensure_design_definition(diseno)
@@ -69,24 +306,26 @@ def crear_diseno(request):
     return redirect("diplomas:disenos_lista")
 
 
+@diplomas_access_required
 def editar_diseno(request, diseno_id):
-    diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
+    diseno = get_design_or_404(request, id=diseno_id)
+    scope = get_scope(request)
     if request.method == "POST":
-        form = DisenoDiplomaForm(request.POST, request.FILES, instance=diseno)
+        form = DisenoDiplomaForm(request.POST, request.FILES, instance=diseno, scope=scope)
         if form.is_valid():
             form.save()
             messages.success(request, "Diseño actualizado correctamente.")
             return redirect("diplomas:disenos_lista")
     else:
-        form = DisenoDiplomaForm(instance=diseno)
+        form = DisenoDiplomaForm(instance=diseno, scope=scope)
 
-    return render(request, "diplomas/editar_diseno.html", {"form": form, "diseno": diseno})
-
+    return render_diplomas(request, "diplomas/editar_diseno.html", {"form": form, "diseno": diseno})
 
 
 @ensure_csrf_cookie
+@diplomas_access_required
 def modificar_diseno_visual(request, diseno_id):
-    diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
+    diseno = get_design_or_404(request, id=diseno_id)
     editor_payload = build_design_editor_payload(diseno)
     definition = editor_payload["definition"]
     context = {
@@ -97,14 +336,15 @@ def modificar_diseno_visual(request, diseno_id):
         "canvas_width": CANVAS_WIDTH,
         "canvas_height": CANVAS_HEIGHT,
     }
-    return render(request, "diplomas/editor_diseno_visual.html", context)
+    return render_diplomas(request, "diplomas/editor_diseno_visual.html", context)
 
 
+@diplomas_access_required
 def guardar_diseno_visual(request, diseno_id):
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
 
-    diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
+    diseno = get_design_or_404(request, id=diseno_id)
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
@@ -138,8 +378,50 @@ def guardar_diseno_visual(request, diseno_id):
     })
 
 
+@diplomas_access_required
+def subir_imagen_diseno_visual(request, diseno_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido."}, status=405)
+
+    diseno = get_design_or_404(request, id=diseno_id)
+    uploaded_file = request.FILES.get("image")
+    if not uploaded_file:
+        return JsonResponse({"success": False, "error": "Debe seleccionar una imagen."}, status=400)
+
+    allowed_extensions = {".png", ".jpg", ".jpeg", ".webp"}
+    extension = os.path.splitext(uploaded_file.name or "")[1].lower()
+    if extension not in allowed_extensions:
+        return JsonResponse({"success": False, "error": "Formato no permitido. Use PNG, JPG, JPEG o WEBP."}, status=400)
+
+    if not str(getattr(uploaded_file, "content_type", "")).startswith("image/"):
+        return JsonResponse({"success": False, "error": "El archivo seleccionado no es una imagen válida."}, status=400)
+
+    try:
+        image_bytes = uploaded_file.read()
+        Image.open(ContentFile(image_bytes)).verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        return JsonResponse({"success": False, "error": "No se pudo validar la imagen enviada."}, status=400)
+    finally:
+        uploaded_file.seek(0)
+
+    folder_name = slugify(diseno.nombre) or f"diseno-{diseno.id}"
+    filename = f"{uuid4().hex}{extension}"
+    storage_path = f"diplomas/editor/{folder_name}/{filename}"
+    saved_path = default_storage.save(storage_path, uploaded_file)
+    file_url = default_storage.url(saved_path)
+
+    return JsonResponse({
+        "success": True,
+        "message": "Imagen subida correctamente.",
+        "image_url": file_url,
+        "path": saved_path,
+        "filename": os.path.basename(saved_path),
+    })
+
+
+@diplomas_access_required
 def eliminar_diseno(request, diseno_id):
-    diseno = get_object_or_404(DisenoDiploma, id=diseno_id)
+    diseno = get_design_or_404(request, id=diseno_id)
     if request.method == "POST":
         if diseno.cursos.exists():
             messages.error(request, "No se puede eliminar el diseño porque está asignado a uno o más cursos.")
@@ -152,41 +434,165 @@ def eliminar_diseno(request, diseno_id):
     return redirect("diplomas:disenos_lista")
 
 
+# Cursos
+
+@diplomas_access_required
+def cursos_lista(request):
+    scope = get_scope(request)
+    cursos = scope_queryset(Curso.objects.select_related("ubicacion", "diseno_diploma"), scope).order_by("-creado_en")
+    form = CursoForm(scope=scope)
+    return render_diplomas(request, "diplomas/cursos_lista.html", {"cursos": cursos, "form": form})
+
+
+@diplomas_access_required
+def crear_curso_modal(request):
+    scope = get_scope(request)
+    if request.method == "POST":
+        form = CursoForm(request.POST, scope=scope)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Curso creado correctamente.")
+            return redirect("diplomas:cursos_lista")
+        messages.error(request, "Corrige los errores del formulario.")
+    return redirect("diplomas:cursos_lista")
+
+
+@diplomas_access_required
 def editar_curso(request, curso_id):
-    curso = get_object_or_404(Curso, id=curso_id)
+    curso = get_course_or_404(request, id=curso_id)
+    scope = get_scope(request)
 
     if request.method == "POST":
-        form = CursoForm(request.POST, instance=curso)
+        form = CursoForm(request.POST, instance=curso, scope=scope)
         if form.is_valid():
             form.save()
             messages.success(request, "Curso actualizado correctamente.")
             return redirect("diplomas:cursos_lista")
     else:
-        form = CursoForm(instance=curso)
+        form = CursoForm(instance=curso, scope=scope)
 
-    return render(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
+    return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
 
+@diplomas_access_required
+def detalle_curso(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
+    total_participantes = participantes.count()
+
+    return render_diplomas(request, "diplomas/detalle_curso.html", {
+        "curso": curso,
+        "participantes": participantes,
+        "total_participantes": total_participantes,
+        "matricula_rapida_form": AgregarParticipanteRapidoForm(
+            scope=get_scope(request),
+            course=curso,
+            initial={"curso": curso},
+        ),
+        "matricula_manual_form": MatriculaManualParticipanteForm(
+            scope=get_scope(request),
+            course=curso,
+            initial={"curso": curso},
+        ),
+    })
+
+
+@diplomas_access_required
+def eliminar_participante(request, curso_id, participante_id):
+    curso = get_course_or_404(request, id=curso_id)
+    asignacion = get_object_or_404(CursoEmpleado, id=participante_id, curso=curso)
+    asignacion.delete()
+    messages.success(request, "Participante eliminado del curso.")
+    return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+
+@diplomas_access_required
 def agregar_empleado_a_curso(request):
+    scope = get_scope(request)
     if request.method == "POST":
-        form = AgregarEmpleadoCursoForm(request.POST)
+        form = AgregarEmpleadoCursoForm(request.POST, scope=scope)
         if form.is_valid():
             curso = form.cleaned_data["curso"]
+            enforce_scope_for_object(curso, scope)
             empleado = form.cleaned_data["empleado"]
 
             if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
                 messages.warning(request, "Este empleado ya está asignado a este curso.")
-                return redirect("agregar_empleado_curso")
+                return redirect("diplomas:agregar_empleado_curso")
 
             CursoEmpleado.objects.create(curso=curso, empleado=empleado)
             messages.success(request, "Empleado agregado correctamente al curso.")
-            return redirect("agregar_empleado_curso")
+            return redirect("diplomas:agregar_empleado_curso")
     else:
-        form = AgregarEmpleadoCursoForm()
+        form = AgregarEmpleadoCursoForm(scope=scope)
 
-    return render(request, "diplomas/agregar_empleado_curso.html", {"form": form})
+    return render_diplomas(request, "diplomas/agregar_empleado_curso.html", {"form": form})
 
 
+@diplomas_access_required
+def agregar_empleado_detalle(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    mode = request.POST.get("enrollment_mode", "manual")
+
+    if mode == "quick":
+        form = AgregarParticipanteRapidoForm(request.POST, scope=get_scope(request), course=curso)
+        if not form.is_valid():
+            for _, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+        empleado = form.cleaned_data["empleado"]
+        if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
+            messages.warning(request, "El participante ya está inscrito en este curso.")
+            return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+        CursoEmpleado.objects.create(
+            curso=curso,
+            empleado=empleado,
+            participante_dpi=empleado.dpi,
+            participante_nombre=f"{empleado.nombres} {empleado.apellidos}".strip(),
+            fecha_asignacion=timezone.now(),
+        )
+        messages.success(request, "Participante existente agregado correctamente al curso.")
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+    form = MatriculaManualParticipanteForm(request.POST, request.FILES, scope=get_scope(request), course=curso)
+    if not form.is_valid():
+        for _, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+    dpi = form.cleaned_data["participante_dpi"]
+    nombre = form.cleaned_data["participante_nombre"]
+    empleado = Empleado.objects.filter(dpi=dpi).first()
+
+    if empleado and CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
+        messages.warning(request, "El participante ya está inscrito en este curso.")
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+    participante = form.save(commit=False)
+    participante.curso = curso
+    participante.fecha_asignacion = timezone.now()
+    participante.participante_dpi = dpi
+    participante.participante_nombre = nombre
+    participante.participante_correo = form.cleaned_data.get("participante_correo", "") or ""
+    participante.participante_telefono = form.cleaned_data.get("participante_telefono", "") or ""
+    participante.observaciones = form.cleaned_data.get("observaciones", "") or ""
+    participante.empleado = empleado
+
+    participante.save()
+    messages.success(
+        request,
+        "Participante agregado correctamente al curso."
+        if empleado
+        else "Participante manual agregado correctamente al curso.",
+    )
+    return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+
+@diplomas_access_required
 def buscar_empleado_por_dpi(request):
     dpi = request.GET.get("dpi")
     if not dpi:
@@ -198,43 +604,156 @@ def buscar_empleado_por_dpi(request):
             "existe": True,
             "nombres": empleado.nombres,
             "apellidos": empleado.apellidos,
-            "nombre_completo": f"{empleado.nombres} {empleado.apellidos}"
+            "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
+            "foto_url": empleado.imagen.url if empleado.imagen else "",
         })
     except Empleado.DoesNotExist:
         return JsonResponse({"existe": False})
 
 
-def crear_curso_modal(request):
-    if request.method == "POST":
-        form = CursoForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Curso creado correctamente.")
-            return redirect("diplomas:cursos_lista")
-        messages.error(request, "Corrige los errores del formulario.")
-        return redirect("diplomas:cursos_lista")
+def public_buscar_curso_por_codigo(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    if not codigo:
+        return JsonResponse({"existe": False, "error": "Debe indicar un código de curso."}, status=400)
 
-    return redirect("diplomas:cursos_lista")
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False})
+
+    return JsonResponse({
+        "existe": True,
+        "curso_id": curso.id,
+        "codigo": curso.codigo,
+        "nombre": curso.nombre,
+        "ubicacion": getattr(curso.ubicacion, "nombre", ""),
+    })
 
 
-def cursos_lista(request):
-    cursos = Curso.objects.all().order_by('-creado_en')
-    form = CursoForm()
-    return render(request, "diplomas/cursos_lista.html", {"cursos": cursos, "form": form})
+def public_buscar_participante_por_dpi(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
+    dpi = "".join(str(request.GET.get("dpi") or "").split())
+    if not codigo or not dpi:
+        return JsonResponse({"existe": False, "error": "Debe indicar código de curso y DPI."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
+
+    participante = get_participant_by_course_and_dpi_or_none(curso, dpi)
+    if participante:
+        return JsonResponse({
+            "existe": True,
+            "inscrito_en_curso": True,
+            "nombre_completo": participante.nombre_participante,
+            "dpi": participante.dpi_participante,
+            "correo": participante.correo_participante,
+            "telefono": participante.telefono_participante,
+        })
+
+    empleado = Empleado.objects.filter(dpi=dpi).first()
+    if not empleado:
+        return JsonResponse({"existe": False, "inscrito_en_curso": False})
+
+    return JsonResponse({
+        "existe": True,
+        "inscrito_en_curso": False,
+        "nombre_completo": f"{empleado.nombres} {empleado.apellidos}".strip(),
+        "dpi": empleado.dpi,
+        "foto_url": empleado.imagen.url if empleado.imagen else "",
+    })
 
 
+def public_course_registration(request):
+    form = PublicCourseRegistrationForm(request.POST or None, request.FILES or None)
+    registration_result = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        elif get_participant_by_course_and_dpi_or_none(curso, dpi):
+            form.add_error("dpi", "Este participante ya está inscrito en el curso.")
+        else:
+            empleado = Empleado.objects.filter(dpi=dpi).first()
+            nombre = form.cleaned_data.get("participante_nombre") or ""
+            if empleado:
+                nombre = f"{empleado.nombres} {empleado.apellidos}".strip()
+            if not nombre.strip():
+                form.add_error("participante_nombre", "Debe ingresar el nombre del participante si el DPI no existe.")
+            else:
+                participante = CursoEmpleado(
+                    curso=curso,
+                    empleado=empleado,
+                    participante_dpi=dpi,
+                    participante_nombre=nombre.strip(),
+                    participante_correo=form.cleaned_data.get("participante_correo", "") or "",
+                    participante_telefono=form.cleaned_data.get("participante_telefono", "") or "",
+                    observaciones=form.cleaned_data.get("observaciones", "") or "",
+                    fecha_asignacion=timezone.now(),
+                )
+                foto = form.cleaned_data.get("participante_foto")
+                if foto:
+                    participante.participante_foto = foto
+                participante.save()
+                registration_result = participante
+                form = PublicCourseRegistrationForm(
+                    initial={
+                        "codigo_curso": curso.codigo,
+                        "nombre_curso": curso.nombre,
+                        "dpi": participante.dpi_participante,
+                        "nombre_existente": participante.nombre_participante,
+                    }
+                )
+
+    return render(request, "diplomas/public_course_registration.html", {
+        "form": form,
+        "registration_result": registration_result,
+    })
+
+
+def public_diploma_download(request):
+    form = PublicDiplomaDownloadForm(request.POST or None)
+    participant = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        else:
+            participant = get_participant_by_course_and_dpi_or_none(curso, dpi)
+            if not participant:
+                form.add_error("dpi", "No existe un participante inscrito en ese curso con el DPI indicado.")
+            else:
+                context = build_diploma_render_context(participant)
+                return render(request, "diplomas/ver_diploma.html", context)
+
+    return render(request, "diplomas/public_diploma_download.html", {
+        "form": form,
+        "participant": participant,
+    })
+
+
+@diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):
-    curso_empleado = get_object_or_404(CursoEmpleado, id=participante_id, curso_id=curso_id)
+    curso_empleado = get_object_or_404(CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "empleado"), id=participante_id, curso_id=curso_id)
+    enforce_scope_for_object(curso_empleado.curso, get_scope(request))
     context = build_diploma_render_context(curso_empleado)
-    return render(request, "diplomas/ver_diploma.html", context)
+    return render_diplomas(request, "diplomas/ver_diploma.html", context)
 
 
 @csrf_exempt
+@diplomas_access_required
 def guardar_posiciones(request, curso_id):
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
 
-    curso = get_object_or_404(Curso, id=curso_id)
+    curso = get_course_or_404(request, id=curso_id)
 
     try:
         data = json.loads(request.body)
@@ -252,6 +771,8 @@ def guardar_posiciones(request, curso_id):
         }
 
     if curso.diseno_diploma:
+        if curso.diseno_diploma.ubicacion_id and curso.ubicacion_id != curso.diseno_diploma.ubicacion_id:
+            return JsonResponse({"error": "El diseño del curso no coincide con su ubicación."}, status=400)
         current_definition = build_design_definition(curso.diseno_diploma, None)
         patched_elements = current_definition["elements"]
         for key, values in posiciones_limpias.items():
@@ -269,38 +790,3 @@ def guardar_posiciones(request, curso_id):
         curso.save(update_fields=["posiciones"])
 
     return JsonResponse({"success": True})
-
-
-def detalle_curso(request, curso_id):
-    curso = get_object_or_404(Curso, id=curso_id)
-    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado")
-    total_participantes = participantes.count()
-
-    return render(request, "diplomas/detalle_curso.html", {
-        "curso": curso,
-        "participantes": participantes,
-        "total_participantes": total_participantes
-    })
-
-
-def agregar_empleado_detalle(request, curso_id):
-    curso = get_object_or_404(Curso, id=curso_id)
-    dpi = request.POST.get("dpi")
-
-    if not dpi:
-        messages.error(request, "Debe ingresar un DPI.")
-        return redirect("diplomas:detalle_curso", curso_id=curso.id)
-
-    try:
-        empleado = Empleado.objects.get(dpi=dpi)
-    except Empleado.DoesNotExist:
-        messages.error(request, "No existe un empleado con ese DPI.")
-        return redirect("diplomas:detalle_curso", curso_id=curso.id)
-
-    if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
-        messages.warning(request, "El empleado ya está inscrito en este curso.")
-        return redirect("diplomas:detalle_curso", curso_id=curso.id)
-
-    CursoEmpleado.objects.create(curso=curso, empleado=empleado, fecha_asignacion=timezone.now())
-    messages.success(request, "Empleado agregado correctamente.")
-    return redirect("diplomas:detalle_curso", curso_id=curso.id)

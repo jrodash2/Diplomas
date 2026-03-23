@@ -1,0 +1,17 @@
+{% extends 'diplomas/base.html' %}
+{% block content %}
+<div class="container d-flex justify-content-center mt-5" style="padding-top: 40px;">
+  <div class="card shadow p-4" style="width: 75%; max-width: 820px;">
+    <h4 class="text-center mb-4">Editar Firma: {{ firma.nombre }}</h4>
+    <form method="POST" enctype="multipart/form-data">{% csrf_token %}
+      <div class="row">
+        {% if form.ubicacion.is_hidden %}{{ form.ubicacion }}{% else %}<div class="col-md-12 mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>{% endif %}
+        <div class="col-md-6 mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
+        <div class="col-md-6 mb-3">{{ form.rol.label_tag }}{{ form.rol }}</div>
+        <div class="col-md-12 mb-3">{{ form.firma.label_tag }}{{ form.firma }}</div>
+      </div>
+      <div class="text-end mt-3"><button class="btn btn-primary">Guardar Cambios</button><a href="{% url 'diplomas:firmas_lista' %}" class="btn btn-dark">Cancelar</a></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
