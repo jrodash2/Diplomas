@@ -17,7 +17,7 @@ User = get_user_model()
 
 
 def normalize_dpi_input(value):
-    return "".join(str(value or "").split())
+    return "".join(char for char in str(value or "") if char.isdigit())
 
 
 class ScopedModelFormMixin:

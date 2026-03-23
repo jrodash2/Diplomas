@@ -8,6 +8,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import ProtectedError
+from django.db.models.functions import Replace
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -36,6 +37,7 @@ from .forms import (
     MatriculaManualParticipanteForm,
     PublicCourseRegistrationForm,
     PublicDiplomaDownloadForm,
+    normalize_dpi_input,
     UbicacionDiplomaForm,
     UsuarioUbicacionDiplomaForm,
 )
@@ -86,15 +88,30 @@ def get_course_by_code_or_none(codigo):
     return Curso.objects.select_related("ubicacion", "diseno_diploma").filter(codigo=codigo).first()
 
 
-def get_participant_by_course_and_dpi_or_none(curso, dpi):
-    if not curso or not dpi:
+def annotate_normalized_dpi(queryset, field_name, alias):
+    normalized = Replace(models.F(field_name), models.Value(" "), models.Value(""))
+    normalized = Replace(normalized, models.Value("-"), models.Value(""))
+    return queryset.annotate(**{alias: normalized})
+
+
+def get_employee_by_dpi_or_none(dpi):
+    normalized_dpi = normalize_dpi_input(dpi)
+    if not normalized_dpi:
         return None
-    return (
-        CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
-        .filter(curso=curso)
-        .filter(models.Q(participante_dpi=dpi) | models.Q(empleado__dpi=dpi))
-        .first()
-    )
+    empleados = annotate_normalized_dpi(Empleado.objects.all(), "dpi", "normalized_dpi")
+    return empleados.filter(normalized_dpi=normalized_dpi).first()
+
+
+def get_participant_by_course_and_dpi_or_none(curso, dpi):
+    normalized_dpi = normalize_dpi_input(dpi)
+    if not curso or not normalized_dpi:
+        return None
+    participantes = CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
+    participantes = annotate_normalized_dpi(participantes, "participante_dpi", "normalized_participante_dpi")
+    participantes = annotate_normalized_dpi(participantes, "empleado__dpi", "normalized_empleado_dpi")
+    return participantes.filter(curso=curso).filter(
+        models.Q(normalized_participante_dpi=normalized_dpi) | models.Q(normalized_empleado_dpi=normalized_dpi)
+    ).first()
 
 
 def build_public_course_links(request, curso):
@@ -105,9 +122,6 @@ def build_public_course_links(request, curso):
         "download_url": request.build_absolute_uri(download_path),
     }
 
-def get_design_or_404(request, **lookup):
-    diseno = get_object_or_404(DisenoDiploma.objects.select_related("ubicacion"), **lookup)
-    return enforce_scope_for_object(diseno, get_scope(request))
 
 # Dashboard
 
@@ -486,11 +500,6 @@ def editar_curso(request, curso_id):
 
     return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
-@diplomas_access_required
-def detalle_curso(request, curso_id):
-    curso = get_course_or_404(request, id=curso_id)
-    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
-    total_participantes = participantes.count()
 
 @diplomas_access_required
 def detalle_curso(request, curso_id):
@@ -615,21 +624,20 @@ def agregar_empleado_detalle(request, curso_id):
 
 @diplomas_access_required
 def buscar_empleado_por_dpi(request):
-    dpi = request.GET.get("dpi")
+    dpi = normalize_dpi_input(request.GET.get("dpi"))
     if not dpi:
         return JsonResponse({"error": "No se envió DPI"}, status=400)
 
-    try:
-        empleado = Empleado.objects.get(dpi=dpi)
-        return JsonResponse({
-            "existe": True,
-            "nombres": empleado.nombres,
-            "apellidos": empleado.apellidos,
-            "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
-            "foto_url": empleado.imagen.url if empleado.imagen else "",
-        })
-    except Empleado.DoesNotExist:
+    empleado = get_employee_by_dpi_or_none(dpi)
+    if not empleado:
         return JsonResponse({"existe": False})
+    return JsonResponse({
+        "existe": True,
+        "nombres": empleado.nombres,
+        "apellidos": empleado.apellidos,
+        "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
+        "foto_url": empleado.imagen.url if empleado.imagen else "",
+    })
 
 
 def public_buscar_curso_por_codigo(request):
@@ -649,6 +657,99 @@ def public_buscar_curso_por_codigo(request):
         "ubicacion": getattr(curso.ubicacion, "nombre", ""),
     })
 
+
+def public_buscar_participante_por_dpi(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
+    dpi = normalize_dpi_input(request.GET.get("dpi"))
+    if not codigo or not dpi:
+        return JsonResponse({"existe": False, "error": "Debe indicar código de curso y DPI."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
+
+    participante = get_participant_by_course_and_dpi_or_none(curso, dpi)
+    if participante:
+        return JsonResponse({
+            "existe": True,
+            "inscrito_en_curso": True,
+            "nombre_completo": participante.nombre_participante,
+            "dpi": participante.dpi_participante,
+            "correo": participante.correo_participante,
+            "telefono": participante.telefono_participante,
+        })
+
+    empleado = get_employee_by_dpi_or_none(dpi)
+    if not empleado:
+        return JsonResponse({"existe": False, "inscrito_en_curso": False})
+
+    return JsonResponse({
+        "existe": True,
+        "inscrito_en_curso": False,
+        "nombre_completo": f"{empleado.nombres} {empleado.apellidos}".strip(),
+        "dpi": empleado.dpi,
+        "foto_url": empleado.imagen.url if empleado.imagen else "",
+    })
+
+
+def public_course_registration(request):
+    initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    initial_data = {}
+    if initial_course:
+        initial_data = {
+            "codigo_curso": initial_course.codigo,
+            "nombre_curso": initial_course.nombre,
+        }
+
+    form = PublicCourseRegistrationForm(request.POST or None, request.FILES or None, initial=initial_data or None)
+    registration_result = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        elif get_participant_by_course_and_dpi_or_none(curso, dpi):
+            form.add_error("dpi", "Este participante ya está inscrito en el curso.")
+        else:
+            empleado = get_employee_by_dpi_or_none(dpi)
+            nombre = form.cleaned_data.get("participante_nombre") or ""
+            if empleado:
+                nombre = f"{empleado.nombres} {empleado.apellidos}".strip()
+            if not nombre.strip():
+                form.add_error("participante_nombre", "Debe ingresar el nombre del participante si el DPI no existe.")
+            else:
+                participante = CursoEmpleado(
+                    curso=curso,
+                    empleado=empleado,
+                    participante_dpi=dpi,
+                    participante_nombre=nombre.strip(),
+                    participante_correo=form.cleaned_data.get("participante_correo", "") or "",
+                    participante_telefono=form.cleaned_data.get("participante_telefono", "") or "",
+                    observaciones=form.cleaned_data.get("observaciones", "") or "",
+                    fecha_asignacion=timezone.now(),
+                )
+                foto = form.cleaned_data.get("participante_foto")
+                if foto:
+                    participante.participante_foto = foto
+                participante.save()
+                registration_result = participante
+                form = PublicCourseRegistrationForm(
+                    initial={
+                        "codigo_curso": curso.codigo,
+                        "nombre_curso": curso.nombre,
+                        "dpi": participante.dpi_participante,
+                        "nombre_existente": participante.nombre_participante,
+                    }
+                )
+
+    return render(request, "diplomas/public_course_registration.html", {
+        "form": form,
+        "registration_result": registration_result,
+    })
 
 def public_buscar_participante_por_dpi(request):
     codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
@@ -786,6 +887,44 @@ def public_buscar_participante_por_dpi(request):
     curso = get_course_by_code_or_none(codigo)
     if not curso:
         return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
+
+def public_diploma_download(request):
+    initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    initial_data = {}
+    if initial_course:
+        initial_data = {
+            "codigo_curso": initial_course.codigo,
+            "nombre_curso": initial_course.nombre,
+        }
+
+    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
+    participant = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        else:
+            participant = get_participant_by_course_and_dpi_or_none(curso, dpi)
+            if not participant:
+                employee = get_employee_by_dpi_or_none(dpi)
+                if employee:
+                    form.add_error("dpi", "El participante existe, pero no está inscrito en ese curso.")
+                else:
+                    form.add_error("dpi", "No existe un participante con el DPI indicado.")
+            else:
+                context = build_diploma_render_context(participant)
+                return render(request, "diplomas/ver_diploma.html", context)
+
+    return render(request, "diplomas/public_diploma_download.html", {
+        "form": form,
+        "participant": participant,
+    })
+
 
 @diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):

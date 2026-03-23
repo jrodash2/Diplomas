@@ -318,7 +318,7 @@ class DiplomasScopeTests(TestCase):
     def test_public_participant_lookup_returns_course_participant(self):
         response = self.client.get(
             reverse("diplomas:public_buscar_participante_por_dpi"),
-            {"codigo_curso": self.curso_a.codigo, "dpi": self.empleado.dpi},
+            {"codigo_curso": self.curso_a.codigo, "dpi": "1234 56789 0101"},
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -345,17 +345,42 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(participante.participante_correo, "publico@example.com")
         self.assertContains(response, "Registro completado correctamente")
 
+    def test_public_registration_links_existing_employee_when_dpi_has_spaces(self):
+        response = self.client.post(
+            reverse("diplomas:public_course_registration"),
+            {
+                "codigo_curso": self.curso_b.codigo,
+                "dpi": "1234 56789 0101",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_b, empleado=self.empleado)
+        self.assertEqual(participante.participante_dpi, "1234567890101")
+        self.assertEqual(participante.participante_nombre, "Ana Prueba")
+
     def test_public_diploma_download_renders_diploma_for_registered_participant(self):
         response = self.client.post(
             reverse("diplomas:public_diploma_download"),
             {
                 "codigo_curso": self.curso_a.codigo,
-                "dpi": self.empleado.dpi,
+                "dpi": "1234 56789 0101",
             },
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.participante.nombre_participante)
         self.assertTemplateUsed(response, "diplomas/ver_diploma.html")
+
+    def test_public_diploma_download_shows_clear_message_when_employee_is_not_enrolled(self):
+        response = self.client.post(
+            reverse("diplomas:public_diploma_download"),
+            {
+                "codigo_curso": self.curso_b.codigo,
+                "dpi": "1234 56789 0101",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "El participante existe, pero no está inscrito en ese curso.")
 
     def test_public_pages_prefill_course_code_from_querystring(self):
         registration_response = self.client.get(
