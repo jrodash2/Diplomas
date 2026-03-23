@@ -113,6 +113,16 @@ def get_participant_by_course_and_dpi_or_none(curso, dpi):
         models.Q(normalized_participante_dpi=normalized_dpi) | models.Q(normalized_empleado_dpi=normalized_dpi)
     ).first()
 
+def get_participant_by_course_and_dpi_or_none(curso, dpi):
+    normalized_dpi = normalize_dpi_input(dpi)
+    if not curso or not normalized_dpi:
+        return None
+    participantes = CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
+    participantes = annotate_normalized_dpi(participantes, "participante_dpi", "normalized_participante_dpi")
+    participantes = annotate_normalized_dpi(participantes, "empleado__dpi", "normalized_empleado_dpi")
+    return participantes.filter(curso=curso).filter(
+        models.Q(normalized_participante_dpi=normalized_dpi) | models.Q(normalized_empleado_dpi=normalized_dpi)
+    ).first()
 
 def build_public_course_links(request, curso):
     registration_path = f"{reverse('diplomas:public_course_registration')}?codigo_curso={curso.codigo}"
@@ -809,6 +819,8 @@ def public_diploma_download(request):
     context.update(get_public_branding_context(active_course or getattr(participant, "curso", None)))
     return render(request, "diplomas/public_diploma_download.html", context)
 
+    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
+    participant = None
 
 @diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):
