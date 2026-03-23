@@ -1,0 +1,96 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-sm-8">
+          <h4 class="card-title mb-0">Ubicaciones de Diplomas</h4>
+        </div>
+        <div class="col-sm-4 text-sm-end mt-2 mt-sm-0">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearUbicacion">
+            + Crear Ubicación
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="display" id="basic-9">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Abreviatura</th>
+                <th>Estado</th>
+                <th>Usuarios asignados</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ubicacion in ubicaciones %}
+              <tr>
+                <td>{{ ubicacion.id }}</td>
+                <td>{{ ubicacion.nombre }}</td>
+                <td><span class="badge bg-primary">{{ ubicacion.abreviatura }}</span></td>
+                <td>{% if ubicacion.activa %}Activa{% else %}Inactiva{% endif %}</td>
+                <td>{{ ubicacion.asignaciones_usuarios.count }}</td>
+                <td>
+                  <ul class="action">
+                    <li class="edit me-2">
+                      <a href="{% url 'diplomas:editar_ubicacion' ubicacion.id %}"><i class="icon-pencil-alt"></i></a>
+                    </li>
+                    <li class="delete">
+                      <form method="post" action="{% url 'diplomas:eliminar_ubicacion' ubicacion.id %}" onsubmit="return confirm('¿Eliminar ubicación?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
+                      </form>
+                    </li>
+                  </ul>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Abreviatura</th>
+                <th>Estado</th>
+                <th>Usuarios asignados</th>
+                <th>Acciones</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCrearUbicacion" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-body p-4">
+        <h5 class="mb-3">Nueva ubicación</h5>
+        <form method="post" action="{% url 'diplomas:crear_ubicacion' %}">
+          {% csrf_token %}
+          <div class="mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
+          <div class="mb-3">{{ form.abreviatura.label_tag }}{{ form.abreviatura }}</div>
+          <div class="mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}</div>
+          <div class="mb-3 form-check">{{ form.activa }} <label class="form-check-label" for="id_activa">Activa</label></div>
+          <div class="text-end"><button type="submit" class="btn btn-primary">Guardar</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
