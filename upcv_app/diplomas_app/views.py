@@ -200,6 +200,50 @@ def editar_asignacion_ubicacion(request, asignacion_id):
         form = UsuarioUbicacionDiplomaForm(instance=asignacion)
     return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
 
+@diplomas_access_required
+def crear_asignacion_ubicacion(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST)
+        if form.is_valid():
+            usuario = form.cleaned_data["usuario"]
+            ubicacion = form.cleaned_data["ubicacion"]
+            UsuarioUbicacionDiploma.objects.update_or_create(
+                usuario=usuario,
+                defaults={"ubicacion": ubicacion, "asignado_por": request.user},
+            )
+            messages.success(request, "Asignación guardada correctamente.")
+        else:
+            messages.error(request, "No se pudo guardar la asignación.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
+
+
+@diplomas_access_required
+def editar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST, instance=asignacion)
+        if form.is_valid():
+            form.save(assigned_by=request.user)
+            messages.success(request, "Asignación actualizada correctamente.")
+            return redirect("diplomas:asignaciones_ubicacion_lista")
+    else:
+        form = UsuarioUbicacionDiplomaForm(instance=asignacion)
+    return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
+
+
+@diplomas_access_required
+def eliminar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        asignacion.delete()
+        messages.success(request, "Asignación eliminada correctamente.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
 
 @diplomas_access_required
 def eliminar_asignacion_ubicacion(request, asignacion_id):
