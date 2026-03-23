@@ -111,6 +111,36 @@ def _base_element(
         "shape": shape,
     }
 
+
+def build_custom_element_fallback(key, raw_element):
+    raw = raw_element if isinstance(raw_element, dict) else {}
+    element_type = canonical_element_type(raw.get("type"), "texto")
+    default_label = raw.get("label") or key.replace("_", " ").strip().title() or "Elemento personalizado"
+    default_width = 360 if element_type == "imagen" else 720
+    default_height = 220 if element_type == "imagen" else 140
+    default_text = "Nuevo texto" if element_type != "imagen" else ""
+    default_image = raw.get("image_url") or ""
+    return _base_element(
+        key=key,
+        label=default_label,
+        element_type=element_type,
+        x=clamp_number(raw.get("x"), 120, min_value=0, max_value=CANVAS_WIDTH),
+        y=clamp_number(raw.get("y"), 120, min_value=0, max_value=CANVAS_HEIGHT),
+        width=clamp_number(raw.get("width"), default_width, min_value=20, max_value=CANVAS_WIDTH),
+        height=clamp_number(raw.get("height"), default_height, min_value=20, max_value=CANVAS_HEIGHT),
+        z_index=int(clamp_number(raw.get("z_index", raw.get("zIndex")), 90, min_value=0, max_value=9999)),
+        token=raw.get("token") or "",
+        texto=raw.get("texto") or raw.get("content") or default_text,
+        image_url=default_image,
+        font_size=clamp_number(raw.get("font_size", raw.get("fontSize")), 34, min_value=8, max_value=300),
+        font_family=raw.get("font_family") or raw.get("fontFamily") or DEFAULT_FONT_FAMILY,
+        font_weight=str(raw.get("font_weight") or raw.get("fontWeight") or "400"),
+        color=raw.get("color") or "#111827",
+        align=raw.get("align") or "center",
+        visible=bool(raw.get("visible", True)),
+        shape=raw.get("shape") or "rect",
+    )
+
 SIGNATURE_KEY_PATTERN = re.compile(r"^firma_(\d+)_(imagen|nombre|cargo)$")
 BOLD_MARKUP_PATTERN = re.compile(r"(\*\*|__)(.+?)\1")
 
@@ -464,7 +494,7 @@ def _normalize_elements_map(raw_map, base_elements):
     for raw_key, raw_value in raw_map.items():
         key = LEGACY_ELEMENT_KEY_MAP.get(raw_key, raw_key)
         if key not in normalized:
-            continue
+            normalized[key] = build_custom_element_fallback(key, raw_value)
         normalized[key] = normalize_element(key, raw_value, normalized[key])
 
     normalized["fondo_diploma"]["x"] = 0

@@ -1,12 +1,18 @@
 import json
+import os
+from uuid import uuid4
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from PIL import Image, UnidentifiedImageError
 
 from empleados_app.models import Empleado
 
@@ -194,6 +200,50 @@ def editar_asignacion_ubicacion(request, asignacion_id):
         form = UsuarioUbicacionDiplomaForm(instance=asignacion)
     return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
 
+@diplomas_access_required
+def crear_asignacion_ubicacion(request):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST)
+        if form.is_valid():
+            usuario = form.cleaned_data["usuario"]
+            ubicacion = form.cleaned_data["ubicacion"]
+            UsuarioUbicacionDiploma.objects.update_or_create(
+                usuario=usuario,
+                defaults={"ubicacion": ubicacion, "asignado_por": request.user},
+            )
+            messages.success(request, "Asignación guardada correctamente.")
+        else:
+            messages.error(request, "No se pudo guardar la asignación.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
+
+
+@diplomas_access_required
+def editar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        form = UsuarioUbicacionDiplomaForm(request.POST, instance=asignacion)
+        if form.is_valid():
+            form.save(assigned_by=request.user)
+            messages.success(request, "Asignación actualizada correctamente.")
+            return redirect("diplomas:asignaciones_ubicacion_lista")
+    else:
+        form = UsuarioUbicacionDiplomaForm(instance=asignacion)
+    return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
+
+
+@diplomas_access_required
+def eliminar_asignacion_ubicacion(request, asignacion_id):
+    if not get_scope(request).get("is_admin"):
+        raise PermissionDenied
+    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
+    if request.method == "POST":
+        asignacion.delete()
+        messages.success(request, "Asignación eliminada correctamente.")
+    return redirect("diplomas:asignaciones_ubicacion_lista")
 
 @diplomas_access_required
 def eliminar_asignacion_ubicacion(request, asignacion_id):
@@ -349,6 +399,47 @@ def guardar_diseno_visual(request, diseno_id):
         "message": "Diseño guardado correctamente.",
         "elementos": diseno.estilos.get("elements", {}),
         "definition": diseno.estilos,
+    })
+
+
+@diplomas_access_required
+def subir_imagen_diseno_visual(request, diseno_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido."}, status=405)
+
+    diseno = get_design_or_404(request, id=diseno_id)
+    uploaded_file = request.FILES.get("image")
+    if not uploaded_file:
+        return JsonResponse({"success": False, "error": "Debe seleccionar una imagen."}, status=400)
+
+    allowed_extensions = {".png", ".jpg", ".jpeg", ".webp"}
+    extension = os.path.splitext(uploaded_file.name or "")[1].lower()
+    if extension not in allowed_extensions:
+        return JsonResponse({"success": False, "error": "Formato no permitido. Use PNG, JPG, JPEG o WEBP."}, status=400)
+
+    if not str(getattr(uploaded_file, "content_type", "")).startswith("image/"):
+        return JsonResponse({"success": False, "error": "El archivo seleccionado no es una imagen válida."}, status=400)
+
+    try:
+        image_bytes = uploaded_file.read()
+        Image.open(ContentFile(image_bytes)).verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        return JsonResponse({"success": False, "error": "No se pudo validar la imagen enviada."}, status=400)
+    finally:
+        uploaded_file.seek(0)
+
+    folder_name = slugify(diseno.nombre) or f"diseno-{diseno.id}"
+    filename = f"{uuid4().hex}{extension}"
+    storage_path = f"diplomas/editor/{folder_name}/{filename}"
+    saved_path = default_storage.save(storage_path, uploaded_file)
+    file_url = default_storage.url(saved_path)
+
+    return JsonResponse({
+        "success": True,
+        "message": "Imagen subida correctamente.",
+        "image_url": file_url,
+        "path": saved_path,
+        "filename": os.path.basename(saved_path),
     })
 
 

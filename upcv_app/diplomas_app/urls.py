@@ -38,5 +38,6 @@ urlpatterns = [
     path("disenos/<int:diseno_id>/editar/", views.editar_diseno, name="editar_diseno"),
     path("disenos/<int:diseno_id>/modificar/", views.modificar_diseno_visual, name="modificar_diseno_visual"),
     path("disenos/<int:diseno_id>/guardar-visual/", views.guardar_diseno_visual, name="guardar_diseno_visual"),
+    path("disenos/<int:diseno_id>/subir-imagen-visual/", views.subir_imagen_diseno_visual, name="subir_imagen_diseno_visual"),
     path("disenos/<int:diseno_id>/eliminar/", views.eliminar_diseno, name="eliminar_diseno"),
 ]

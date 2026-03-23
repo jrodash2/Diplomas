@@ -17,10 +17,12 @@
     canvasWidth,
     canvasHeight,
     saveUrl: canvas.dataset.saveUrl,
+    uploadUrl: canvas.dataset.uploadUrl || "",
     elements: definition && definition.elements ? JSON.parse(JSON.stringify(definition.elements)) : {},
     selectedKey: null,
     drag: null,
     pristine: {},
+    pendingImageTarget: null,
   };
 
   if (!state.elements.fondo_diploma) {
@@ -42,6 +44,7 @@
       token: "{{ fondo_diploma }}",
       texto: "",
       image_url: fallbackBackgroundUrl,
+      shape: "rect",
     };
   }
   state.pristine = JSON.parse(JSON.stringify(state.elements));
@@ -76,6 +79,11 @@
     alignGroup: document.getElementById("editorAlignGroup"),
     reset: document.getElementById("editorReset"),
     save: document.getElementById("editorSave"),
+    addText: document.getElementById("editorAddText"),
+    addImage: document.getElementById("editorAddImage"),
+    imageInput: document.getElementById("editorImageInput"),
+    replaceImage: document.getElementById("editorReplaceImage"),
+    uploadFeedback: document.getElementById("editorUploadFeedback"),
   };
 
   function csrfToken() {
@@ -99,6 +107,15 @@
       return min;
     }
     return Math.min(Math.max(numeric, min), max);
+  }
+
+  function setFeedback(message, tone) {
+    if (!ui.uploadFeedback) {
+      return;
+    }
+    ui.uploadFeedback.classList.remove("text-muted", "text-success", "text-danger");
+    ui.uploadFeedback.classList.add(tone === "success" ? "text-success" : tone === "error" ? "text-danger" : "text-muted");
+    ui.uploadFeedback.textContent = message;
   }
 
   function setActiveSidebarTab(tabName) {
@@ -134,7 +151,7 @@
   function normalizeElement(element) {
     const normalized = element;
     normalized.key = normalized.key || "";
-    normalized.label = normalized.label || normalized.key;
+    normalized.label = normalized.label || normalized.key || "Elemento";
     normalized.type = normalized.type || "texto";
     normalized.visible = normalized.visible !== false;
     normalized.width = clamp(normalized.width || 200, 20, state.canvasWidth);
@@ -225,6 +242,83 @@
 
   function layerTitle(element) {
     return element.label || element.key || "Elemento sin nombre";
+  }
+
+  function nextZIndex() {
+    const zIndexes = Object.values(state.elements).map(function (element) {
+      return Number(element.z_index || 0);
+    });
+    return (Math.max.apply(null, zIndexes.length ? zIndexes : [0]) || 0) + 1;
+  }
+
+  function generateUniqueKey(prefix) {
+    const safePrefix = prefix || "custom";
+    let key;
+    do {
+      key = safePrefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 6);
+    } while (state.elements[key]);
+    return key;
+  }
+
+  function defaultPosition(width, height) {
+    return {
+      x: clamp(Math.round((state.canvasWidth - width) / 2), 0, Math.max(state.canvasWidth - width, 0)),
+      y: clamp(Math.round((state.canvasHeight - height) / 2), 0, Math.max(state.canvasHeight - height, 0)),
+    };
+  }
+
+  function createCustomTextElement() {
+    const width = 960;
+    const height = 180;
+    const position = defaultPosition(width, height);
+    const key = generateUniqueKey("custom_text");
+    return normalizeElement({
+      key: key,
+      label: "Texto personalizado",
+      type: "texto",
+      visible: true,
+      x: position.x,
+      y: position.y,
+      width: width,
+      height: height,
+      font_size: 42,
+      font_family: 'Georgia, "Times New Roman", serif',
+      font_weight: "400",
+      color: "#111827",
+      align: "center",
+      z_index: nextZIndex(),
+      token: "",
+      texto: "Nuevo texto",
+      image_url: "",
+      shape: "rect",
+    });
+  }
+
+  function createCustomImageElement(imageUrl) {
+    const width = 420;
+    const height = 260;
+    const position = defaultPosition(width, height);
+    const key = generateUniqueKey("custom_image");
+    return normalizeElement({
+      key: key,
+      label: "Imagen personalizada",
+      type: "imagen",
+      visible: true,
+      x: position.x,
+      y: position.y,
+      width: width,
+      height: height,
+      font_size: 20,
+      font_family: 'Georgia, "Times New Roman", serif',
+      font_weight: "400",
+      color: "#111827",
+      align: "center",
+      z_index: nextZIndex(),
+      token: "",
+      texto: "",
+      image_url: imageUrl || "",
+      shape: "rect",
+    });
   }
 
   function elementMarkup(element) {
@@ -344,12 +438,8 @@
             </div>
             <div class="editor-layer-token">${tokenLabel}</div>
             <div class="editor-layer-actions">
-              <button type="button" class="editor-layer-select" data-action="select" data-key="${element.key}">
-                Seleccionar
-              </button>
-              <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">
-                ${toggleLabel}
-              </button>
+              <button type="button" class="editor-layer-select" data-action="select" data-key="${element.key}">Seleccionar</button>
+              <button type="button" class="editor-layer-toggle" data-action="toggle-visibility" data-key="${element.key}">${toggleLabel}</button>
             </div>
           </div>
         </div>
@@ -389,6 +479,9 @@
     ui.textStyleGroup.style.display = isTextual ? "flex" : "none";
     ui.alignGroup.style.display = isTextual ? "block" : "none";
     ui.imageGroup.style.display = element.type === "imagen" ? "block" : "none";
+    if (ui.replaceImage) {
+      ui.replaceImage.style.display = element.type === "imagen" && element.key !== "fondo_diploma" ? "inline-flex" : "none";
+    }
   }
 
   function selectElement(key) {
@@ -399,6 +492,7 @@
     renderCanvas();
     renderLayerPanel();
     syncSidebar();
+    setActiveSidebarTab("properties");
   }
 
   function setElementVisibility(key, visible) {
@@ -432,6 +526,7 @@
       return;
     }
 
+    element.label = ui.label.value || element.label;
     element.x = Number(ui.x.value || element.x);
     element.y = Number(ui.y.value || element.y);
     element.width = Number(ui.width.value || element.width);
@@ -469,6 +564,68 @@
         input.blur();
       }
     });
+  }
+
+  async function uploadSelectedImage(file, targetKey) {
+    if (!file) {
+      return;
+    }
+    if (!state.uploadUrl) {
+      window.alert("No hay una ruta configurada para subir imágenes del editor.");
+      return;
+    }
+
+    const buttonToDisable = targetKey ? ui.replaceImage : ui.addImage;
+    const originalLabel = buttonToDisable ? buttonToDisable.textContent : "";
+    if (buttonToDisable) {
+      buttonToDisable.disabled = true;
+      buttonToDisable.textContent = targetKey ? "Subiendo..." : "Cargando...";
+    }
+    setFeedback("Subiendo imagen...", "neutral");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const token = csrfToken();
+      const response = await fetch(state.uploadUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: token ? { "X-CSRFToken": token } : {},
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "No se pudo subir la imagen.");
+      }
+
+      if (targetKey && state.elements[targetKey]) {
+        state.elements[targetKey].image_url = payload.image_url;
+        state.elements[targetKey].label = ui.label.value || state.elements[targetKey].label;
+        state.elements[targetKey] = normalizeElement(state.elements[targetKey]);
+        selectElement(targetKey);
+        setFeedback("Imagen reemplazada correctamente. Guarda el diseño para persistir el cambio.", "success");
+      } else {
+        const newElement = createCustomImageElement(payload.image_url);
+        state.elements[newElement.key] = newElement;
+        selectElement(newElement.key);
+        setFeedback("Imagen agregada al lienzo. Ajusta posición/tamaño y guarda el diseño.", "success");
+      }
+      renderCanvas();
+      renderLayerPanel();
+      syncSidebar();
+    } catch (error) {
+      window.alert(error.message || "No se pudo subir la imagen.");
+      setFeedback(error.message || "No se pudo subir la imagen.", "error");
+    } finally {
+      if (buttonToDisable) {
+        buttonToDisable.disabled = false;
+        buttonToDisable.textContent = originalLabel;
+      }
+      if (ui.imageInput) {
+        ui.imageInput.value = "";
+      }
+      state.pendingImageTarget = null;
+    }
   }
 
   canvas.addEventListener("mousedown", function (event) {
@@ -557,7 +714,7 @@
     });
   });
 
-  [ui.texto, ui.fontFamily, ui.bold, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
+  [ui.label, ui.texto, ui.fontFamily, ui.bold, ui.color, ui.align, ui.zIndex, ui.visible].forEach(function (input) {
     if (!input) {
       return;
     }
@@ -566,6 +723,39 @@
   });
 
   [ui.x, ui.y, ui.width, ui.height, ui.fontSize].forEach(commitDeferredNumericField);
+
+  if (ui.addText) {
+    ui.addText.addEventListener("click", function () {
+      const newElement = createCustomTextElement();
+      state.elements[newElement.key] = newElement;
+      selectElement(newElement.key);
+      setFeedback("Texto agregado al lienzo. Edita sus propiedades y guarda el diseño.", "success");
+    });
+  }
+
+  if (ui.addImage && ui.imageInput) {
+    ui.addImage.addEventListener("click", function () {
+      state.pendingImageTarget = null;
+      ui.imageInput.click();
+    });
+  }
+
+  if (ui.replaceImage && ui.imageInput) {
+    ui.replaceImage.addEventListener("click", function () {
+      if (!state.selectedKey || !state.elements[state.selectedKey] || state.elements[state.selectedKey].type !== "imagen") {
+        return;
+      }
+      state.pendingImageTarget = state.selectedKey;
+      ui.imageInput.click();
+    });
+  }
+
+  if (ui.imageInput) {
+    ui.imageInput.addEventListener("change", function () {
+      const file = ui.imageInput.files && ui.imageInput.files[0];
+      uploadSelectedImage(file, state.pendingImageTarget);
+    });
+  }
 
   ui.reset.addEventListener("click", function () {
     state.elements = JSON.parse(JSON.stringify(state.pristine));
@@ -578,6 +768,7 @@
     } else {
       syncSidebar();
     }
+    setFeedback("Se restauró el estado guardado más reciente del editor.", "neutral");
   });
 
   ui.save.addEventListener("click", async function () {
@@ -603,6 +794,7 @@
       const payload = await response.json();
       if (!response.ok || !payload.success) {
         window.alert(payload.error || "No se pudo guardar el diseño.");
+        setFeedback(payload.error || "No se pudo guardar el diseño.", "error");
         return;
       }
 
@@ -611,9 +803,11 @@
       renderCanvas();
       renderLayerPanel();
       syncSidebar();
+      setFeedback(payload.message || "Diseño guardado correctamente.", "success");
       window.alert(payload.message || "Diseño guardado correctamente.");
     } catch (error) {
       window.alert("Ocurrió un error al guardar el diseño.");
+      setFeedback("Ocurrió un error al guardar el diseño.", "error");
     } finally {
       ui.save.disabled = false;
       ui.save.textContent = originalLabel;

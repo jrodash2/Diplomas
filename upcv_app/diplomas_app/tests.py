@@ -1,13 +1,39 @@
 from datetime import date
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.test.utils import override_settings
 
+from empleados_app.models import Empleado
+
+from .design_engine import build_diploma_render_context
 from .models import Curso, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
 
 
+TEST_PNG_BYTES = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc`\x00\x01"
+    b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
 class DiplomasScopeTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_dir = TemporaryDirectory()
+        cls._override = override_settings(MEDIA_ROOT=cls._media_dir.name)
+        cls._override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._override.disable()
+        cls._media_dir.cleanup()
+        super().tearDownClass()
+
     def setUp(self):
         self.group_admin, _ = Group.objects.get_or_create(name="Diplomas")
         self.group_manager, _ = Group.objects.get_or_create(name="Gestor_Diplomas")
@@ -49,6 +75,15 @@ class DiplomasScopeTests(TestCase):
             diseno_diploma=self.diseno_b,
         )
         self.curso_b.firmas.add(self.firma_b)
+
+        self.empleado = Empleado.objects.create(
+            dpi="1234567890101",
+            nombres="Ana",
+            apellidos="Prueba",
+            tipoc="029",
+            activo=True,
+        )
+        self.participante = self.curso_a.participantes.create(empleado=self.empleado)
 
         self.client = Client()
 
@@ -104,3 +139,80 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(UsuarioUbicacionDiploma.objects.filter(usuario=new_manager, ubicacion=self.ubicacion_b).exists())
+
+    def test_editor_can_upload_custom_image_asset(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        upload = SimpleUploadedFile("sello.png", TEST_PNG_BYTES, content_type="image/png")
+        response = self.client.post(
+            reverse("diplomas:subir_imagen_diseno_visual", args=[self.diseno_a.id]),
+            {"image": upload},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertIn("/media/diplomas/editor/", payload["image_url"])
+
+    def test_editor_persists_custom_text_and_image_for_render(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        upload = SimpleUploadedFile("logo-extra.png", TEST_PNG_BYTES, content_type="image/png")
+        upload_response = self.client.post(
+            reverse("diplomas:subir_imagen_diseno_visual", args=[self.diseno_a.id]),
+            {"image": upload},
+        )
+        self.assertEqual(upload_response.status_code, 200)
+        image_url = upload_response.json()["image_url"]
+
+        save_response = self.client.post(
+            reverse("diplomas:guardar_diseno_visual", args=[self.diseno_a.id]),
+            data={
+                "elementos": {
+                    "custom_text_demo": {
+                        "key": "custom_text_demo",
+                        "label": "Leyenda especial",
+                        "type": "text",
+                        "texto": "Texto libre para diploma",
+                        "x": 200,
+                        "y": 300,
+                        "width": 900,
+                        "height": 160,
+                        "font_size": 40,
+                        "font_family": 'Arial, "Helvetica Neue", Helvetica, sans-serif',
+                        "font_weight": "700",
+                        "color": "#123456",
+                        "align": "left",
+                        "visible": True,
+                        "z_index": 88,
+                    },
+                    "custom_image_demo": {
+                        "key": "custom_image_demo",
+                        "label": "Sello adicional",
+                        "type": "image",
+                        "image_url": image_url,
+                        "x": 1200,
+                        "y": 250,
+                        "width": 240,
+                        "height": 240,
+                        "visible": True,
+                        "z_index": 89,
+                    },
+                }
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(save_response.status_code, 200)
+        self.diseno_a.refresh_from_db()
+
+        elements = self.diseno_a.estilos["elements"]
+        self.assertIn("custom_text_demo", elements)
+        self.assertEqual(elements["custom_text_demo"]["type"], "texto")
+        self.assertEqual(elements["custom_text_demo"]["texto"], "Texto libre para diploma")
+        self.assertIn("custom_image_demo", elements)
+        self.assertEqual(elements["custom_image_demo"]["type"], "imagen")
+        self.assertEqual(elements["custom_image_demo"]["image_url"], image_url)
+
+        render_context = build_diploma_render_context(self.participante)
+        render_map = {item["key"]: item for item in render_context["render_elements"]}
+        self.assertIn("custom_text_demo", render_map)
+        self.assertEqual(render_map["custom_text_demo"]["rendered_value"], "Texto libre para diploma")
+        self.assertIn("custom_image_demo", render_map)
+        self.assertEqual(render_map["custom_image_demo"]["image_url"], image_url)
