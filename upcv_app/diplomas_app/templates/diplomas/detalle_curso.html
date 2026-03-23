@@ -81,39 +81,66 @@
       </div><!-- row -->
     </div><!-- page-title -->
 
-    <div class="card mt-3 shadow-sm">
+    <div class="card mt-3 shadow-sm border-0">
       <div class="card-body">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
           <div>
             <h5 class="mb-1">Enlaces para participantes</h5>
             <p class="text-muted mb-0">
-              Estos links públicos ya incluyen el código del curso <strong>{{ curso.codigo }}</strong> para que pueda compartirlos fácilmente.
+              Comparta accesos rápidos del curso <strong>{{ curso.codigo }}</strong> sin mostrar URLs largas en pantalla.
             </p>
           </div>
           <span class="badge bg-primary">Listos para compartir</span>
         </div>
 
         <div class="row g-3">
-          <div class="col-12">
-            <div class="border rounded-3 p-3 h-100">
-              <label class="form-label fw-semibold mb-1">Link de registro de participantes</label>
-              <p class="text-muted small mb-2">Úselo para que los participantes completen su registro público en este curso.</p>
-              <div class="input-group">
-                <input type="text" class="form-control js-public-link" readonly value="{{ public_registration_url }}">
-                <button class="btn btn-outline-secondary js-copy-link" type="button">Copiar</button>
-                <a class="btn btn-primary" href="{{ public_registration_url }}" target="_blank" rel="noopener">Abrir</a>
+          <div class="col-lg-5">
+            <div class="rounded-3 p-4 h-100 text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);">
+              <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                  <span class="badge bg-light text-primary mb-2">Registro público</span>
+                  <h5 class="mb-2 text-white">Inscripción de participantes</h5>
+                  <p class="small mb-0" style="color: rgba(255,255,255,.82);">Formulario público para localizar al participante por DPI y registrarlo al curso.</p>
+                </div>
+                <i class="fa fa-user-plus fa-2x" aria-hidden="true" style="opacity:.35;"></i>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-4">
+                <a class="btn btn-light text-primary fw-semibold" href="{{ public_registration_url }}" target="_blank" rel="noopener">
+                  <i class="fa fa-external-link me-2"></i>Abrir registro
+                </a>
+                <button class="btn btn-outline-light js-copy-link" type="button" data-copy-url="{{ public_registration_url }}">
+                  <i class="fa fa-copy me-2"></i>Copiar link
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="col-12">
-            <div class="border rounded-3 p-3 h-100">
-              <label class="form-label fw-semibold mb-1">Link de descarga de diploma</label>
-              <p class="text-muted small mb-2">Úselo para que los participantes consulten y descarguen su diploma con el curso precargado.</p>
-              <div class="input-group">
-                <input type="text" class="form-control js-public-link" readonly value="{{ public_diploma_download_url }}">
-                <button class="btn btn-outline-secondary js-copy-link" type="button">Copiar</button>
-                <a class="btn btn-primary" href="{{ public_diploma_download_url }}" target="_blank" rel="noopener">Abrir</a>
+          <div class="col-lg-7">
+            <div class="rounded-3 p-4 h-100 border" style="background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+              <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                  <span class="badge bg-primary-subtle text-primary mb-2">Descarga pública</span>
+                  <h5 class="mb-2">Consulta y descarga de diploma</h5>
+                  <p class="text-muted small mb-0">Enlace para que el participante valide su DPI, confirme que pertenece al curso y abra su diploma.</p>
+                </div>
+                <i class="fa fa-download fa-2x text-primary" aria-hidden="true" style="opacity:.35;"></i>
+              </div>
+              <div class="row g-2 mt-3">
+                <div class="col-sm-6">
+                  <a class="btn btn-primary w-100" href="{{ public_diploma_download_url }}" target="_blank" rel="noopener">
+                    <i class="fa fa-external-link me-2"></i>Abrir descarga
+                  </a>
+                </div>
+                <div class="col-sm-6">
+                  <button class="btn btn-outline-primary w-100 js-copy-link" type="button" data-copy-url="{{ public_diploma_download_url }}">
+                    <i class="fa fa-copy me-2"></i>Copiar link
+                  </button>
+                </div>
+                <div class="col-12">
+                  <div class="small text-muted mt-2">
+                    Recomendación: comparta primero el registro y luego la descarga cuando el participante ya esté inscrito.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -350,24 +377,38 @@
 $(document).ready(function () {
   $(".js-copy-link").on("click", function () {
     var button = $(this);
-    var input = button.siblings(".js-public-link");
+    var url = button.data("copy-url");
     var originalText = button.text();
 
-    input.trigger("select");
-    input[0].setSelectionRange(0, input.val().length);
-
     try {
-      navigator.clipboard.writeText(input.val()).then(function () {
+      navigator.clipboard.writeText(url).then(function () {
         button.text("Copiado");
+        if (window.showDiplomaToast) {
+          window.showDiplomaToast("Link copiado al portapapeles.", "success");
+        }
         setTimeout(function () { button.text(originalText); }, 1600);
       }).catch(function () {
+        var tempInput = $("<input>");
+        $("body").append(tempInput);
+        tempInput.val(url).trigger("select");
         document.execCommand("copy");
+        tempInput.remove();
         button.text("Copiado");
+        if (window.showDiplomaToast) {
+          window.showDiplomaToast("Link copiado al portapapeles.", "success");
+        }
         setTimeout(function () { button.text(originalText); }, 1600);
       });
     } catch (error) {
+      var fallbackInput = $("<input>");
+      $("body").append(fallbackInput);
+      fallbackInput.val(url).trigger("select");
       document.execCommand("copy");
+      fallbackInput.remove();
       button.text("Copiado");
+      if (window.showDiplomaToast) {
+        window.showDiplomaToast("Link copiado al portapapeles.", "success");
+      }
       setTimeout(function () { button.text(originalText); }, 1600);
     }
   });

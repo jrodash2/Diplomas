@@ -113,9 +113,12 @@ class DiplomasScopeTests(TestCase):
         response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_a.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Enlaces para participantes")
+        self.assertContains(response, "Abrir registro")
+        self.assertContains(response, "Copiar link")
         self.assertContains(response, reverse("diplomas:public_course_registration"))
         self.assertContains(response, reverse("diplomas:public_diploma_download"))
         self.assertContains(response, f"codigo_curso={self.curso_a.codigo}")
+        self.assertNotContains(response, 'class="form-control js-public-link"')
 
     def test_manager_cannot_access_foreign_course_detail_by_url(self):
         self.client.login(username="gestor_diplomas", password="test12345")
