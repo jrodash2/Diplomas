@@ -751,6 +751,8 @@ def public_course_registration(request):
         "registration_result": registration_result,
     })
 
+    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
+    participant = None
 
 def public_diploma_download(request):
     initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
