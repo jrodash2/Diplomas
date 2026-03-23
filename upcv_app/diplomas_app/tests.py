@@ -7,7 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.test.utils import override_settings
 
-from empleados_app.models import Empleado
+from empleados_app.models import DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
 from .models import Curso, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
@@ -82,6 +82,11 @@ class DiplomasScopeTests(TestCase):
             apellidos="Prueba",
             tipoc="029",
             activo=True,
+        )
+        self.datos_basicos = DatosBasicosEmpleado.objects.create(
+            empleado=self.empleado,
+            telefono_personal="4444-5555",
+            correo_institucional="ana@example.com",
         )
         self.participante = self.curso_a.participantes.create(empleado=self.empleado)
 
@@ -274,6 +279,11 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi=self.empleado.dpi)
         self.assertEqual(participante.empleado, self.empleado)
+
+    def test_participant_table_fallbacks_use_employee_contact_data(self):
+        self.assertEqual(self.participante.correo_participante, "ana@example.com")
+        self.assertEqual(self.participante.telefono_participante, "4444-5555")
+        self.assertEqual(self.participante.observaciones_participante, "")
 
     def test_quick_enrollment_rejects_unknown_dpi(self):
         self.client.login(username="admin_diplomas", password="test12345")

@@ -105,6 +105,9 @@
                 <th>Foto</th>
                 <th>Nombre</th>
                 <th>DPI</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Observaciones</th>
                 <th>Fecha Asignación</th>
                 <th>Acciones</th>
               </tr>
@@ -124,6 +127,9 @@
 
                 <td>{{ p.nombre_participante }}</td>
                 <td>{{ p.dpi_participante }}</td>
+                <td>{{ p.correo_participante|default:"-" }}</td>
+                <td>{{ p.telefono_participante|default:"-" }}</td>
+                <td>{{ p.observaciones_participante|default:"-" }}</td>
                 <td>{{ p.fecha_asignacion|date:"d/m/Y H:i" }}</td>
 
                 <td>
@@ -159,6 +165,9 @@
                 <th>Foto</th>
                 <th>Nombre</th>
                 <th>DPI</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Observaciones</th>
                 <th>Fecha Asignación</th>
                 <th>Acciones</th>
               </tr>

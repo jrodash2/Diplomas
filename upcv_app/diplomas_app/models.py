@@ -151,6 +151,24 @@ class CursoEmpleado(models.Model):
         except Exception:
             return ""
 
+    @property
+    def correo_participante(self):
+        if self.participante_correo:
+            return self.participante_correo
+        datos_basicos = getattr(self.empleado, "datos_basicos", None)
+        return getattr(datos_basicos, "correo_institucional", "") or ""
+
+    @property
+    def telefono_participante(self):
+        if self.participante_telefono:
+            return self.participante_telefono
+        datos_basicos = getattr(self.empleado, "datos_basicos", None)
+        return getattr(datos_basicos, "telefono_personal", "") or ""
+
+    @property
+    def observaciones_participante(self):
+        return self.observaciones or ""
+
 
 class Diploma(models.Model):
     curso_empleado = models.OneToOneField(CursoEmpleado, on_delete=models.CASCADE, related_name="diploma")

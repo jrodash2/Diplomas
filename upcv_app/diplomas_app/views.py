@@ -455,11 +455,16 @@ def editar_curso(request, curso_id):
 
     return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
-
 @diplomas_access_required
 def detalle_curso(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
     participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado")
+    total_participantes = participantes.count()
+
+@diplomas_access_required
+def detalle_curso(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
     total_participantes = participantes.count()
 
     return render_diplomas(request, "diplomas/detalle_curso.html", {
