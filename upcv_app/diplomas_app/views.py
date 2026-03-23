@@ -751,6 +751,9 @@ def public_course_registration(request):
         "registration_result": registration_result,
     })
 
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
 
 def public_diploma_download(request):
     initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
