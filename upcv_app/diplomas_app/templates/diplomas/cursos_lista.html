@@ -12,10 +12,18 @@
       <div class="row align-items-center">
         <div class="col-sm-8">
           <h4 class="card-title mb-0">Gestión de Cursos</h4>
-          <p class="text-muted mb-0">{% if diplomas_scope.is_admin %}Visualiza cursos de todas las ubicaciones.{% else %}Solo se muestran cursos de {{ diplomas_user_location.nombre }}.{% endif %}</p>
+          <p class="text-muted mb-0">
+            {% if diplomas_scope.is_admin %}
+              Visualiza cursos de todas las ubicaciones.
+            {% else %}
+              Solo se muestran cursos de {{ diplomas_user_location.nombre }}.
+            {% endif %}
+          </p>
         </div>
         <div class="col-sm-4 text-sm-end mt-2 mt-sm-0">
-          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearCurso">+ Crear Curso</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearCurso">
+            + Crear Curso
+          </button>
         </div>
       </div>
     </div>
@@ -23,7 +31,7 @@
     <div class="card mt-3">
       <div class="card-body">
         <div class="table-responsive custom-scrollbar">
-          <table class="display" id="tabla-cursos">
+          <table class="display" id="basic-9">
             <thead>
               <tr>
                 <th>ID</th>
@@ -46,13 +54,32 @@
                 <td>{{ c.diseno_diploma.nombre|default:'Sin diseño' }}</td>
                 <td>
                   <ul class="action">
-                    <li class="view me-2"><a href="{% url 'diplomas:detalle_curso' c.id %}" title="Ver detalle"><i class="icon-eye"></i></a></li>
-                    <li class="edit me-2"><a href="{% url 'diplomas:editar_curso' c.id %}" title="Editar curso"><i class="icon-pencil-alt"></i></a></li>
+                    <li class="view me-2">
+                      <a href="{% url 'diplomas:detalle_curso' c.id %}" title="Ver detalle">
+                        <i class="icon-eye"></i>
+                      </a>
+                    </li>
+                    <li class="edit me-2">
+                      <a href="{% url 'diplomas:editar_curso' c.id %}" title="Editar curso">
+                        <i class="icon-pencil-alt"></i>
+                      </a>
+                    </li>
                   </ul>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
+            <tfoot>
+              <tr>
+                <th>ID</th>
+                {% if diplomas_scope.is_admin %}<th>Ubicación</th>{% endif %}
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Fechas</th>
+                <th>Diseño Diploma</th>
+                <th>Acciones</th>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -68,14 +95,23 @@
           <h5 class="theme-name mb-0"><span>Crear - </span>Nuevo Curso</h5>
           <p>Complete los campos para agregar un curso.</p>
         </div>
-        <div class="overflow-hidden text-center mb-4"><img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt=""></div>
+        <div class="overflow-hidden text-center mb-4">
+          <img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="">
+        </div>
         <form method="POST" action="{% url 'diplomas:crear_curso_modal' %}">
           {% csrf_token %}
           <div class="row">
-            {% if form.ubicacion.is_hidden %}{{ form.ubicacion }}{% else %}<div class="col-md-12 mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>{% endif %}
+            {% if form.ubicacion.is_hidden %}
+              {{ form.ubicacion }}
+            {% else %}
+              <div class="col-md-12 mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>
+            {% endif %}
             <div class="col-md-4 mb-3">{{ form.codigo.label_tag }}{{ form.codigo }}</div>
             <div class="col-md-8 mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
-            <div class="col-md-12 mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}<small class="text-muted">Puede usar <strong>**texto**</strong> o <strong>__texto__</strong> para mostrar partes en negrita dentro del diploma.</small></div>
+            <div class="col-md-12 mb-3">
+              {{ form.descripcion.label_tag }}{{ form.descripcion }}
+              <small class="text-muted">Puede usar <strong>**texto**</strong> o <strong>__texto__</strong> para mostrar partes en negrita dentro del diploma.</small>
+            </div>
             <div class="col-md-6 mb-3">{{ form.fecha_inicio.label_tag }}{{ form.fecha_inicio }}</div>
             <div class="col-md-6 mb-3">{{ form.fecha_fin.label_tag }}{{ form.fecha_fin }}</div>
             <div class="col-md-12 mb-3">{{ form.diseno_diploma.label_tag }}{{ form.diseno_diploma }}</div>
@@ -90,10 +126,4 @@
     </div>
   </div>
 </div>
-
-<script>
-$(function() {
-  $('#tabla-cursos').DataTable({pageLength: 10, language: {url: "{% static 'assets/js/datatable/datatables/spanish.json' %}"}});
-});
-</script>
 {% endblock %}
