@@ -53,6 +53,81 @@
         
         <!-- Responsive css-->
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/responsive.css' %}">
+        <style>
+          .diplomas-toast-stack {
+            position: fixed;
+            top: 88px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 360px;
+          }
+          .diplomas-toast {
+            border-radius: 18px;
+            padding: 16px 18px;
+            color: #fff;
+            box-shadow: 0 18px 35px rgba(15, 23, 42, 0.18);
+            backdrop-filter: blur(10px);
+            animation: diplomasToastIn .25s ease;
+            overflow: hidden;
+            position: relative;
+          }
+          .diplomas-toast::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,.35);
+          }
+          .diplomas-toast-success { background: linear-gradient(135deg, #0f9f6e, #047857); }
+          .diplomas-toast-error { background: linear-gradient(135deg, #dc2626, #991b1b); }
+          .diplomas-toast-warning { background: linear-gradient(135deg, #f59e0b, #b45309); }
+          .diplomas-toast-info { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+          .diplomas-toast-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+          }
+          .diplomas-toast-title {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: .02em;
+            margin: 0;
+          }
+          .diplomas-toast-message {
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0;
+            opacity: .95;
+          }
+          .diplomas-toast-close {
+            background: transparent;
+            border: 0;
+            color: #fff;
+            font-size: 18px;
+            line-height: 1;
+            opacity: .85;
+            cursor: pointer;
+          }
+          @keyframes diplomasToastIn {
+            from { transform: translateY(-8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+          @media (max-width: 767px) {
+            .diplomas-toast-stack {
+              left: 16px;
+              right: 16px;
+              top: 78px;
+              max-width: none;
+            }
+          }
+        </style>
     </head>
   <body> 
     <!-- loader starts-->
@@ -172,6 +247,21 @@
       <!-- Page Header Ends                              -->
       <!-- Page Body Start-->
       <div class="page-body-wrapper">
+        {% if messages %}
+        <div class="diplomas-toast-stack" id="diplomasToastStack">
+          {% for message in messages %}
+          <div class="diplomas-toast diplomas-toast-{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %}" data-auto-hide="true">
+            <div class="diplomas-toast-header">
+              <p class="diplomas-toast-title">
+                {% if message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Aviso{% elif message.tags == 'success' %}Éxito{% else %}Información{% endif %}
+              </p>
+              <button type="button" class="diplomas-toast-close" aria-label="Cerrar">×</button>
+            </div>
+            <p class="diplomas-toast-message">{{ message }}</p>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
         <!-- Page Sidebar Start-->
         <div class="sidebar-wrapper" data-layout="stroke-svg">
           <div class="logo-wrapper"><a href="{% url 'empleados:dahsboard' %}"><img class="img-fluid" src="{% static 'assets/images/logo/upcv.png' %}" alt=""></a>
@@ -193,7 +283,7 @@
                 </li>
                 <li class="sidebar-main-title">
                   <div>
-                    <h6 >Diplomas</h6>
+                    <h6 >{{ diplomas_menu_label }}</h6>
                   </div>
                 </li>
                 {% if user.is_authenticated %}
@@ -212,14 +302,16 @@
                     </svg>
                     <svg class="fill-icon">
                       <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
-                    </svg><span>Diplomas</span></a>
+                    </svg><span>{{ diplomas_menu_label }}</span></a>
                   <ul class="sidebar-submenu">
+                    <li><a href="{% url 'diplomas:diplomas_dahsboard' %}">Dashboard</a></li>
                     <li><a href="{% url 'diplomas:cursos_lista' %}">Cursos</a></li>
                     <li><a href="{% url 'diplomas:firmas_lista' %}">Firmas</a></li>
                     <li><a href="{% url 'diplomas:disenos_lista' %}">Diseños de Diplomas</a></li>
-                   
-                    {% comment %} <li><a href="#"></a></li>
-                    <li><a href="#"></a></li> {% endcomment %}
+                    {% if diplomas_scope.can_manage_locations %}
+                    <li><a href="{% url 'diplomas:ubicaciones_lista' %}">Ubicaciones</a></li>
+                    <li><a href="{% url 'diplomas:asignaciones_ubicacion_lista' %}">Asignaciones</a></li>
+                    {% endif %}
                   </ul>
                 </li>
  
@@ -299,14 +391,49 @@
      
      <!-- Theme js -->
      <script src="{% static 'assets/js/script.js' %}"></script>
+     <script>
+      (function () {
+        function bindToast(toast) {
+          if (!toast) return;
+          const closeButton = toast.querySelector('.diplomas-toast-close');
+          const removeToast = function () {
+            toast.style.transition = 'opacity .2s ease, transform .2s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-8px)';
+            setTimeout(function () { toast.remove(); }, 220);
+          };
+          closeButton?.addEventListener('click', removeToast);
+          if (toast.dataset.autoHide === 'true') {
+            setTimeout(removeToast, 4200);
+          }
+        }
 
-    
+        window.showDiplomaToast = function (message, level) {
+          const stack = document.getElementById('diplomasToastStack') || (() => {
+            const node = document.createElement('div');
+            node.id = 'diplomasToastStack';
+            node.className = 'diplomas-toast-stack';
+            document.body.appendChild(node);
+            return node;
+          })();
+          const safeLevel = ['success', 'error', 'warning', 'info'].includes(level) ? level : 'info';
+          const toast = document.createElement('div');
+          toast.className = `diplomas-toast diplomas-toast-${safeLevel}`;
+          toast.dataset.autoHide = 'true';
+          toast.innerHTML = `
+            <div class="diplomas-toast-header">
+              <p class="diplomas-toast-title">${safeLevel === 'success' ? 'Éxito' : safeLevel === 'error' ? 'Error' : safeLevel === 'warning' ? 'Aviso' : 'Información'}</p>
+              <button type="button" class="diplomas-toast-close" aria-label="Cerrar">×</button>
+            </div>
+            <p class="diplomas-toast-message"></p>
+          `;
+          toast.querySelector('.diplomas-toast-message').textContent = message;
+          stack.appendChild(toast);
+          bindToast(toast);
+        };
 
-
-
-
-
-
-     
+        document.querySelectorAll('.diplomas-toast').forEach(bindToast);
+      })();
+     </script>
   </body>
 </html>
