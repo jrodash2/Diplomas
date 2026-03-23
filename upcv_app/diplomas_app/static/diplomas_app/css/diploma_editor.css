@@ -89,6 +89,14 @@
   flex-wrap: wrap;
 }
 
+.editor-hidden-input {
+  display: none;
+}
+
+.editor-upload-feedback {
+  min-height: 20px;
+}
+
 .diploma-stage-toolbar {
   display: flex;
   justify-content: space-between;
@@ -193,14 +201,25 @@
   justify-content: center;
   padding: 4px 8px;
   margin: 0;
-  white-space: pre-wrap;
   overflow: hidden;
-  overflow-wrap: anywhere;
-  word-break: break-word;
   line-height: 1.15;
   letter-spacing: normal;
   text-transform: none;
   background: transparent;
+}
+
+.diploma-text-flow {
+  display: block;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.diploma-text-flow strong,
+.diploma-text-flow b,
+.diploma-text-flow span {
+  display: inline;
 }
 
 .diploma-text-element.align-left,

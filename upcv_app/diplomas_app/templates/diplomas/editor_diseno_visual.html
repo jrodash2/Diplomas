@@ -25,6 +25,8 @@
             <div class="diploma-stage-toolbar-actions">
               <p class="mb-0 text-muted small">Clic para seleccionar. Arrastra con el mouse para mover.</p>
               <div class="diploma-editor-actions">
+                <button type="button" class="btn btn-outline-primary" id="editorAddText">Agregar texto</button>
+                <button type="button" class="btn btn-outline-primary" id="editorAddImage">Agregar imagen</button>
                 <button type="button" class="btn btn-outline-secondary" id="editorReset">Restablecer</button>
                 <button type="button" class="btn btn-primary" id="editorSave">Guardar diseño</button>
                 <a href="{% url 'diplomas:disenos_lista' %}" class="btn btn-dark">Volver</a>
@@ -40,12 +42,17 @@
                 id="diplomaEditorCanvas"
                 class="diploma-editor-canvas"
                 data-save-url="{% url 'diplomas:guardar_diseno_visual' diseno.id %}"
+                data-upload-url="{% url 'diplomas:subir_imagen_diseno_visual' diseno.id %}"
                 data-canvas-width="{{ canvas_width }}"
                 data-canvas-height="{{ canvas_height }}"
                 data-editor-scale="0.28"
                 data-background-url="{{ fondo_url }}"
                 style="background-image:url('{% if fondo_url %}{{ fondo_url }}{% endif %}');"></div>
             </div>
+          </div>
+          <input type="file" id="editorImageInput" class="editor-hidden-input" accept="image/png,image/jpeg,image/webp">
+          <div class="editor-upload-feedback text-muted small mt-2" id="editorUploadFeedback">
+            Puedes agregar textos libres o subir imágenes nuevas para logos, sellos y otros elementos personalizados.
           </div>
         </div>
       </section>
@@ -83,7 +90,7 @@
             <div id="editorPropertyForm" class="editor-property-form is-hidden">
               <div class="mb-3">
                 <label class="form-label">Elemento</label>
-                <input type="text" id="editorPropLabel" class="form-control" disabled>
+                <input type="text" id="editorPropLabel" class="form-control">
               </div>
 
               <div class="mb-3">
@@ -103,7 +110,8 @@
 
               <div class="mb-3" id="editorImageGroup">
                 <label class="form-label">URL de imagen</label>
-                <input type="text" id="editorPropImageUrl" class="form-control" disabled>
+                <input type="text" id="editorPropImageUrl" class="form-control" readonly>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="editorReplaceImage">Reemplazar imagen</button>
               </div>
 
               <div class="row g-2">

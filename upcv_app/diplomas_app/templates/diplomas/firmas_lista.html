@@ -2,163 +2,121 @@
 {% load static %}
 
 {% block content %}
-
-<!-- jQuery -->
 <script src="{% static 'assets/js/jquery.min.js' %}"></script>
-
-<!-- DataTables -->
 <script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
 <script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
 
 <div class="page-body">
   <div class="container-fluid">
-
-    <!-- ENCABEZADO -->
     <div class="page-title">
-      <div class="row">
-        <div class="col-6">
+      <div class="row align-items-center">
+        <div class="col-sm-8">
           <h4 class="card-title mb-0">Gestión de Firmas</h4>
         </div>
-        
-      </div>
-    </div>
-<div class="col-6 text-align-left">
+        <div class="col-sm-4 text-sm-end mt-2 mt-sm-0">
           <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearFirma">
             + Crear Firma
           </button>
         </div>
-    <!-- TABLA -->
-    <div class="container-fluid mt-3">
-      <div class="edit-profile">
-        <div class="row">
-          <div class="col-xl-12">
-            <div class="card">
-              <div class="card-body">
+      </div>
+    </div>
 
-                <div class="table-responsive custom-scrollbar">
-                  <table class="display" id="basic-9">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Rol</th>
-                        <th>Firma</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {% for f in firmas %}
-                      <tr>
-                        <td>{{ f.id }}</td>
-                        <td>{{ f.nombre }}</td>
-                        <td>{{ f.rol }}</td>
-                        <td>
-                          {% if f.firma %}
-                            <img src="{{ f.firma.url }}" style="height:60px;">
-                          {% else %}
-                            <span class="text-muted">Sin firma</span>
-                          {% endif %}
-                        </td>
-                        <td>
-                          <ul class="action">
-
-                            <li class="view">
-                              <a href="{{ f.firma.url }}" target="_blank" title="Ver firma">
-                                <i class="icon-eye"></i>
-                              </a>
-                            </li>
-
-                          </ul>
-                        </td>
-                      </tr>
-                      {% endfor %}
-                    </tbody>
-
-                    <tfoot>
-                      <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Rol</th>
-                        <th>Firma</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </tfoot>
-
-                  </table>
-                </div>
-
-              </div><!-- card-body -->
-            </div><!-- card -->
-          </div><!-- col -->
-        </div><!-- row -->
-      </div><!-- edit-profile -->
-    </div><!-- container-fluid -->
-
-  </div><!-- container -->
-</div><!-- page-body -->
-
-
-<!-- ========================== -->
-<!--   MODAL CREAR FIRMA       -->
-<!-- ========================== -->
-<div class="modal fade" id="modalCrearFirma" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content dark-sign-up">
-      <div class="modal-body social-profile text-start p-4">
-
-        <div class="title-wrapper pb-3 modal-heading text-center">
-          <h5 class="theme-name mb-0"><span>Crear - </span>Nueva Firma</h5>
-          <p>Complete los campos para agregar una firma.</p>
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="display" id="basic-9">
+            <thead>
+              <tr>
+                <th>ID</th>
+                {% if diplomas_scope.is_admin %}<th>Ubicación</th>{% endif %}
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Firma</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in firmas %}
+              <tr>
+                <td>{{ f.id }}</td>
+                {% if diplomas_scope.is_admin %}<td>{{ f.ubicacion.nombre }}</td>{% endif %}
+                <td>{{ f.nombre }}</td>
+                <td>{{ f.rol }}</td>
+                <td>
+                  {% if f.firma %}
+                    <img src="{{ f.firma.url }}" style="height:60px;">
+                  {% else %}
+                    <span class="text-muted">Sin firma</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <ul class="action">
+                    {% if f.firma %}
+                    <li class="view me-2">
+                      <a href="{{ f.firma.url }}" target="_blank" title="Ver firma">
+                        <i class="icon-eye"></i>
+                      </a>
+                    </li>
+                    {% endif %}
+                    <li class="edit me-2">
+                      <a href="{% url 'diplomas:editar_firma' f.id %}">
+                        <i class="icon-pencil-alt"></i>
+                      </a>
+                    </li>
+                    <li class="delete">
+                      <form method="post" action="{% url 'diplomas:eliminar_firma' f.id %}" onsubmit="return confirm('¿Eliminar firma?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
+                      </form>
+                    </li>
+                  </ul>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>ID</th>
+                {% if diplomas_scope.is_admin %}<th>Ubicación</th>{% endif %}
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Firma</th>
+                <th>Acciones</th>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-
-        <!-- LOGO -->
-        <div class="overflow-hidden text-center mb-4">
-          <img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="">
-        </div>
-
-        <form method="POST" enctype="multipart/form-data" action="{% url 'diplomas:crear_firma' %}">
-          {% csrf_token %}
-
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              {{ form.nombre.label_tag }}
-              {{ form.nombre }}
-            </div>
-
-            <div class="col-md-6 mb-3">
-              {{ form.rol.label_tag }}
-              {{ form.rol }}
-            </div>
-
-            <div class="col-md-12 mb-3">
-              {{ form.firma.label_tag }}
-              {{ form.firma }}
-            </div>
-          </div>
-
-          <div class="modal-footer justify-content-center border-top-0">
-            <button type="submit" class="btn btn-primary">Guardar Firma</button>
-            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancelar</button>
-          </div>
-
-        </form>
-
       </div>
     </div>
   </div>
 </div>
 
-
-<script>
-$(document).ready(function() {
-    $('#basic-9').DataTable({
-        "pageLength": 10,
-        "language": {
-            "url": "{% static 'assets/js/datatable/datatables/spanish.json' %}"
-        }
-    });
-});
-</script>
-
+<div class="modal fade" id="modalCrearFirma" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nueva Firma</h5>
+        </div>
+        <form method="POST" enctype="multipart/form-data" action="{% url 'diplomas:crear_firma' %}">
+          {% csrf_token %}
+          {% if form.ubicacion.is_hidden %}
+            {{ form.ubicacion }}
+          {% else %}
+            <div class="mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>
+          {% endif %}
+          <div class="row">
+            <div class="col-md-6 mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
+            <div class="col-md-6 mb-3">{{ form.rol.label_tag }}{{ form.rol }}</div>
+            <div class="col-md-12 mb-3">{{ form.firma.label_tag }}{{ form.firma }}</div>
+          </div>
+          <div class="modal-footer justify-content-center border-top-0">
+            <button type="submit" class="btn btn-primary">Guardar Firma</button>
+            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

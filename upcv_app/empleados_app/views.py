@@ -327,44 +327,42 @@ def signout(request):
     logout(request)
     return redirect('empleados:signin')
 
-def signin(request):  
+def signin(request):
     if request.method == 'GET':
         return render(request, 'empleados/login.html', {
             'form': AuthenticationForm
         })
-    else:
-       
-        user = authenticate(
-            request, username=request.POST['username'], password=request.POST['password']
-        )
-        if user is None:
-            return render(request, 'empleados/login.html', {
-                'form': AuthenticationForm,
-                'error': 'Usuario o Password es Incorrecto'
-            })
-        else:
-            
-            auth_login(request, user)  
-                      
-            data = user.groups.all()
-            for g in data:
-                print(g.name)
-                if g.name == 'Admin_gafetes':
-                    return redirect('empleados:dahsboard')
-                elif g.name == 'Admin_tickets':
-                    return redirect('tickets:dashboard')
-                elif g.name == 'tecnico':
-                    return redirect('tickets:tickets_dahsboard')
-                elif g.name == 'Diplomas':
-                    return redirect('diplomas:diplomas_dahsboard')
-                if g.name in ['Administrador', 'PRESUPUESTO','COMPRAS']:
-                     return redirect('scompras:dahsboard')
-                elif g.name == 'scompras':
-                    return redirect('scompras:dashboard_usuario')
-                elif g.name == 'analista':
-                    return redirect('scompras:analista_dashboard')
-                else:
-                    return redirect('dahsboard')
+
+    user = authenticate(
+        request, username=request.POST['username'], password=request.POST['password']
+    )
+
+    if user is None:
+        return render(request, 'empleados/login.html', {
+            'form': AuthenticationForm,
+            'error': 'Usuario o Password es Incorrecto'
+        })
+
+    auth_login(request, user)
+
+    grupos = list(user.groups.values_list('name', flat=True))
+
+    if 'Admin_gafetes' in grupos:
+        return redirect('empleados:dahsboard')
+    if 'Admin_tickets' in grupos:
+        return redirect('tickets:dashboard')
+    if 'tecnico' in grupos:
+        return redirect('tickets:tickets_dahsboard')
+    if 'Diplomas' in grupos or 'Gestor_Diplomas' in grupos:
+        return redirect('diplomas:diplomas_dahsboard')
+    if any(grupo in grupos for grupo in ['Administrador', 'PRESUPUESTO', 'COMPRAS']):
+        return redirect('scompras:dahsboard')
+    if 'scompras' in grupos:
+        return redirect('scompras:dashboard_usuario')
+    if 'analista' in grupos:
+        return redirect('scompras:analista_dashboard')
+
+    return redirect('empleados:dahsboard')
 
 from django.http import JsonResponse
 from .models import Empleado   # Asegúrate de que el modelo está aquí
