@@ -1,0 +1,91 @@
+{% extends 'diplomas/base.html' %}
+{% load static %}
+
+{% block content %}
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-sm-8">
+          <h4 class="card-title mb-0">Asignación de gestores a ubicaciones</h4>
+        </div>
+        <div class="col-sm-4 text-sm-end mt-2 mt-sm-0">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearAsignacion">
+            + Nueva asignación
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="display" id="basic-9">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Ubicación</th>
+                <th>Asignado por</th>
+                <th>Actualizado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for asignacion in asignaciones %}
+              <tr>
+                <td>{{ asignacion.usuario.username }}</td>
+                <td>{{ asignacion.ubicacion.nombre }}</td>
+                <td>{{ asignacion.asignado_por.username|default:'-' }}</td>
+                <td>{{ asignacion.actualizado_en|date:'d/m/Y H:i' }}</td>
+                <td>
+                  <ul class="action">
+                    <li class="edit me-2">
+                      <a href="{% url 'diplomas:editar_asignacion_ubicacion' asignacion.id %}"><i class="icon-pencil-alt"></i></a>
+                    </li>
+                    <li class="delete">
+                      <form method="post" action="{% url 'diplomas:eliminar_asignacion_ubicacion' asignacion.id %}" onsubmit="return confirm('¿Eliminar asignación?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
+                      </form>
+                    </li>
+                  </ul>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Usuario</th>
+                <th>Ubicación</th>
+                <th>Asignado por</th>
+                <th>Actualizado</th>
+                <th>Acciones</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCrearAsignacion" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body p-4">
+        <h5 class="mb-3">Nueva asignación</h5>
+        <form method="post" action="{% url 'diplomas:crear_asignacion_ubicacion' %}">
+          {% csrf_token %}
+          <div class="mb-3">{{ form.usuario.label_tag }}{{ form.usuario }}</div>
+          <div class="mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>
+          <div class="text-end"><button type="submit" class="btn btn-primary">Guardar</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

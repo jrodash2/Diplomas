@@ -193,7 +193,7 @@
                 </li>
                 <li class="sidebar-main-title">
                   <div>
-                    <h6 >Diplomas</h6>
+                    <h6 >{{ diplomas_menu_label }}</h6>
                   </div>
                 </li>
                 {% if user.is_authenticated %}
@@ -212,14 +212,16 @@
                     </svg>
                     <svg class="fill-icon">
                       <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
-                    </svg><span>Diplomas</span></a>
+                    </svg><span>{{ diplomas_menu_label }}</span></a>
                   <ul class="sidebar-submenu">
+                    <li><a href="{% url 'diplomas:diplomas_dahsboard' %}">Dashboard</a></li>
                     <li><a href="{% url 'diplomas:cursos_lista' %}">Cursos</a></li>
                     <li><a href="{% url 'diplomas:firmas_lista' %}">Firmas</a></li>
                     <li><a href="{% url 'diplomas:disenos_lista' %}">Diseños de Diplomas</a></li>
-                   
-                    {% comment %} <li><a href="#"></a></li>
-                    <li><a href="#"></a></li> {% endcomment %}
+                    {% if diplomas_scope.can_manage_locations %}
+                    <li><a href="{% url 'diplomas:ubicaciones_lista' %}">Ubicaciones</a></li>
+                    <li><a href="{% url 'diplomas:asignaciones_ubicacion_lista' %}">Asignaciones</a></li>
+                    {% endif %}
                   </ul>
                 </li>
  
