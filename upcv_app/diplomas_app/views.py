@@ -27,6 +27,7 @@ from .design_engine import (
 )
 from .forms import (
     AgregarEmpleadoCursoForm,
+    AgregarParticipanteRapidoForm,
     CursoForm,
     DisenoDiplomaForm,
     FirmaForm,
@@ -465,6 +466,11 @@ def detalle_curso(request, curso_id):
         "curso": curso,
         "participantes": participantes,
         "total_participantes": total_participantes,
+        "matricula_rapida_form": AgregarParticipanteRapidoForm(
+            scope=get_scope(request),
+            course=curso,
+            initial={"curso": curso},
+        ),
         "matricula_manual_form": MatriculaManualParticipanteForm(
             scope=get_scope(request),
             course=curso,
@@ -508,6 +514,31 @@ def agregar_empleado_a_curso(request):
 @diplomas_access_required
 def agregar_empleado_detalle(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
+    mode = request.POST.get("enrollment_mode", "manual")
+
+    if mode == "quick":
+        form = AgregarParticipanteRapidoForm(request.POST, scope=get_scope(request), course=curso)
+        if not form.is_valid():
+            for _, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+        empleado = form.cleaned_data["empleado"]
+        if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
+            messages.warning(request, "El participante ya está inscrito en este curso.")
+            return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+        CursoEmpleado.objects.create(
+            curso=curso,
+            empleado=empleado,
+            participante_dpi=empleado.dpi,
+            participante_nombre=f"{empleado.nombres} {empleado.apellidos}".strip(),
+            fecha_asignacion=timezone.now(),
+        )
+        messages.success(request, "Participante existente agregado correctamente al curso.")
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
     form = MatriculaManualParticipanteForm(request.POST, request.FILES, scope=get_scope(request), course=curso)
     if not form.is_valid():
         for _, errors in form.errors.items():
@@ -520,7 +551,7 @@ def agregar_empleado_detalle(request, curso_id):
     empleado = Empleado.objects.filter(dpi=dpi).first()
 
     if empleado and CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
-        messages.warning(request, "El empleado ya está inscrito en este curso.")
+        messages.warning(request, "El participante ya está inscrito en este curso.")
         return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
     participante = form.save(commit=False)

@@ -140,6 +140,58 @@ class AgregarEmpleadoCursoForm(forms.Form):
         return cleaned_data
 
 
+class AgregarParticipanteRapidoForm(forms.Form):
+    curso = forms.ModelChoiceField(queryset=Curso.objects.none(), widget=forms.HiddenInput(), required=True)
+    dpi = forms.CharField(
+        label="DPI *",
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ingrese DPI para buscar participante existente",
+        }),
+        help_text="Escriba el DPI y el sistema autocompletará el nombre si el participante existe.",
+    )
+    nombre_completo = forms.CharField(
+        label="Nombre autocompletado",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "readonly": "readonly",
+            "placeholder": "El nombre aparecerá automáticamente si el DPI existe",
+        }),
+    )
+
+    def __init__(self, *args, scope=None, course=None, **kwargs):
+        self.scope = scope or {}
+        self.course = course
+        super().__init__(*args, **kwargs)
+        cursos = Curso.objects.all().order_by("nombre")
+        if not self.scope.get("is_admin"):
+            location = self.scope.get("location")
+            cursos = cursos.filter(ubicacion=location) if location else cursos.none()
+        self.fields["curso"].queryset = cursos
+        if course is not None:
+            self.fields["curso"].initial = course
+
+    def clean_dpi(self):
+        dpi = "".join(str(self.cleaned_data.get("dpi") or "").split())
+        if not dpi:
+            raise forms.ValidationError("Debe ingresar un DPI.")
+        return dpi
+
+    def clean(self):
+        cleaned_data = super().clean()
+        dpi = cleaned_data.get("dpi")
+        if dpi:
+            try:
+                empleado = Empleado.objects.get(dpi=dpi)
+                cleaned_data["empleado"] = empleado
+                cleaned_data["nombre_completo"] = f"{empleado.nombres} {empleado.apellidos}".strip()
+            except Empleado.DoesNotExist:
+                raise forms.ValidationError("No existe un participante registrado con ese DPI. Use la matrícula manual.")
+        return cleaned_data
+
+
 class MatriculaManualParticipanteForm(forms.ModelForm):
     curso = forms.ModelChoiceField(queryset=Curso.objects.none(), widget=forms.HiddenInput(), required=True)
 

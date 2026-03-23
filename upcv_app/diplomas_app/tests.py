@@ -264,12 +264,27 @@ class DiplomasScopeTests(TestCase):
         response = self.client.post(
             reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
             {
+                "enrollment_mode": "quick",
                 "curso": self.curso_b.id,
-                "participante_dpi": self.empleado.dpi,
-                "participante_nombre": f"{self.empleado.nombres} {self.empleado.apellidos}",
+                "dpi": self.empleado.dpi,
+                "nombre_completo": f"{self.empleado.nombres} {self.empleado.apellidos}",
             },
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
         participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi=self.empleado.dpi)
         self.assertEqual(participante.empleado, self.empleado)
+
+    def test_quick_enrollment_rejects_unknown_dpi(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
+            {
+                "enrollment_mode": "quick",
+                "curso": self.curso_b.id,
+                "dpi": "9999999990101",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_b, participante_dpi="9999999990101").exists())
