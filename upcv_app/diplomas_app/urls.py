@@ -5,6 +5,11 @@ from . import views
 app_name = "diplomas"
 
 urlpatterns = [
+    path("publico/registro/", views.public_course_registration, name="public_course_registration"),
+    path("publico/descarga/", views.public_diploma_download, name="public_diploma_download"),
+    path("publico/ajax/curso/", views.public_buscar_curso_por_codigo, name="public_buscar_curso_por_codigo"),
+    path("publico/ajax/participante/", views.public_buscar_participante_por_dpi, name="public_buscar_participante_por_dpi"),
+
     path("dashboard/", views.diplomas_dahsboard, name="diplomas_dahsboard"),
 
     path("ubicaciones/", views.ubicaciones_lista, name="ubicaciones_lista"),

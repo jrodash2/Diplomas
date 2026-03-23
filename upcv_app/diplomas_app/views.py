@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.db import models
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -32,6 +33,8 @@ from .forms import (
     DisenoDiplomaForm,
     FirmaForm,
     MatriculaManualParticipanteForm,
+    PublicCourseRegistrationForm,
+    PublicDiplomaDownloadForm,
     UbicacionDiplomaForm,
     UsuarioUbicacionDiplomaForm,
 )
@@ -76,6 +79,21 @@ def get_location_or_404(request, **lookup):
     if not get_scope(request).get("is_admin"):
         raise PermissionDenied("Solo el grupo Diplomas puede administrar ubicaciones.")
     return get_object_or_404(UbicacionDiploma, **lookup)
+
+
+def get_course_by_code_or_none(codigo):
+    return Curso.objects.select_related("ubicacion", "diseno_diploma").filter(codigo=codigo).first()
+
+
+def get_participant_by_course_and_dpi_or_none(curso, dpi):
+    if not curso or not dpi:
+        return None
+    return (
+        CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
+        .filter(curso=curso)
+        .filter(models.Q(participante_dpi=dpi) | models.Q(empleado__dpi=dpi))
+        .first()
+    )
 
 
 # Dashboard
@@ -455,11 +473,6 @@ def editar_curso(request, curso_id):
 
     return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
-@diplomas_access_required
-def detalle_curso(request, curso_id):
-    curso = get_course_or_404(request, id=curso_id)
-    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado")
-    total_participantes = participantes.count()
 
 @diplomas_access_required
 def detalle_curso(request, curso_id):
@@ -596,6 +609,134 @@ def buscar_empleado_por_dpi(request):
         })
     except Empleado.DoesNotExist:
         return JsonResponse({"existe": False})
+
+
+def public_buscar_curso_por_codigo(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    if not codigo:
+        return JsonResponse({"existe": False, "error": "Debe indicar un código de curso."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False})
+
+    return JsonResponse({
+        "existe": True,
+        "curso_id": curso.id,
+        "codigo": curso.codigo,
+        "nombre": curso.nombre,
+        "ubicacion": getattr(curso.ubicacion, "nombre", ""),
+    })
+
+
+def public_buscar_participante_por_dpi(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
+    dpi = "".join(str(request.GET.get("dpi") or "").split())
+    if not codigo or not dpi:
+        return JsonResponse({"existe": False, "error": "Debe indicar código de curso y DPI."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
+
+    participante = get_participant_by_course_and_dpi_or_none(curso, dpi)
+    if participante:
+        return JsonResponse({
+            "existe": True,
+            "inscrito_en_curso": True,
+            "nombre_completo": participante.nombre_participante,
+            "dpi": participante.dpi_participante,
+            "correo": participante.correo_participante,
+            "telefono": participante.telefono_participante,
+        })
+
+    empleado = Empleado.objects.filter(dpi=dpi).first()
+    if not empleado:
+        return JsonResponse({"existe": False, "inscrito_en_curso": False})
+
+    return JsonResponse({
+        "existe": True,
+        "inscrito_en_curso": False,
+        "nombre_completo": f"{empleado.nombres} {empleado.apellidos}".strip(),
+        "dpi": empleado.dpi,
+        "foto_url": empleado.imagen.url if empleado.imagen else "",
+    })
+
+
+def public_course_registration(request):
+    form = PublicCourseRegistrationForm(request.POST or None, request.FILES or None)
+    registration_result = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        elif get_participant_by_course_and_dpi_or_none(curso, dpi):
+            form.add_error("dpi", "Este participante ya está inscrito en el curso.")
+        else:
+            empleado = Empleado.objects.filter(dpi=dpi).first()
+            nombre = form.cleaned_data.get("participante_nombre") or ""
+            if empleado:
+                nombre = f"{empleado.nombres} {empleado.apellidos}".strip()
+            if not nombre.strip():
+                form.add_error("participante_nombre", "Debe ingresar el nombre del participante si el DPI no existe.")
+            else:
+                participante = CursoEmpleado(
+                    curso=curso,
+                    empleado=empleado,
+                    participante_dpi=dpi,
+                    participante_nombre=nombre.strip(),
+                    participante_correo=form.cleaned_data.get("participante_correo", "") or "",
+                    participante_telefono=form.cleaned_data.get("participante_telefono", "") or "",
+                    observaciones=form.cleaned_data.get("observaciones", "") or "",
+                    fecha_asignacion=timezone.now(),
+                )
+                foto = form.cleaned_data.get("participante_foto")
+                if foto:
+                    participante.participante_foto = foto
+                participante.save()
+                registration_result = participante
+                form = PublicCourseRegistrationForm(
+                    initial={
+                        "codigo_curso": curso.codigo,
+                        "nombre_curso": curso.nombre,
+                        "dpi": participante.dpi_participante,
+                        "nombre_existente": participante.nombre_participante,
+                    }
+                )
+
+    return render(request, "diplomas/public_course_registration.html", {
+        "form": form,
+        "registration_result": registration_result,
+    })
+
+
+def public_diploma_download(request):
+    form = PublicDiplomaDownloadForm(request.POST or None)
+    participant = None
+
+    if request.method == "POST" and form.is_valid():
+        codigo = form.cleaned_data["codigo_curso"]
+        dpi = form.cleaned_data["dpi"]
+        curso = get_course_by_code_or_none(codigo)
+
+        if not curso:
+            form.add_error("codigo_curso", "No existe un curso con ese código.")
+        else:
+            participant = get_participant_by_course_and_dpi_or_none(curso, dpi)
+            if not participant:
+                form.add_error("dpi", "No existe un participante inscrito en ese curso con el DPI indicado.")
+            else:
+                context = build_diploma_render_context(participant)
+                return render(request, "diplomas/ver_diploma.html", context)
+
+    return render(request, "diplomas/public_diploma_download.html", {
+        "form": form,
+        "participant": participant,
+    })
 
 
 @diplomas_access_required

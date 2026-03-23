@@ -10,7 +10,7 @@ from django.test.utils import override_settings
 from empleados_app.models import DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
-from .models import Curso, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
+from .models import Curso, CursoEmpleado, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
 
 
 TEST_PNG_BYTES = (
@@ -298,3 +298,52 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_b, participante_dpi="9999999990101").exists())
+
+    def test_public_course_lookup_returns_course_name(self):
+        response = self.client.get(reverse("diplomas:public_buscar_curso_por_codigo"), {"codigo_curso": self.curso_a.codigo})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["existe"])
+        self.assertEqual(payload["nombre"], self.curso_a.nombre)
+
+    def test_public_participant_lookup_returns_course_participant(self):
+        response = self.client.get(
+            reverse("diplomas:public_buscar_participante_por_dpi"),
+            {"codigo_curso": self.curso_a.codigo, "dpi": self.empleado.dpi},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["existe"])
+        self.assertTrue(payload["inscrito_en_curso"])
+        self.assertEqual(payload["nombre_completo"], self.participante.nombre_participante)
+
+    def test_public_registration_creates_manual_participant(self):
+        response = self.client.post(
+            reverse("diplomas:public_course_registration"),
+            {
+                "codigo_curso": self.curso_b.codigo,
+                "dpi": "7777 77777 0101",
+                "participante_nombre": "Registro Público",
+                "participante_correo": "publico@example.com",
+                "participante_telefono": "3333-2222",
+                "observaciones": "Alta por formulario público",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi="7777777770101")
+        self.assertEqual(participante.participante_nombre, "Registro Público")
+        self.assertEqual(participante.participante_correo, "publico@example.com")
+        self.assertContains(response, "Registro completado correctamente")
+
+    def test_public_diploma_download_renders_diploma_for_registered_participant(self):
+        response = self.client.post(
+            reverse("diplomas:public_diploma_download"),
+            {
+                "codigo_curso": self.curso_a.codigo,
+                "dpi": self.empleado.dpi,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.participante.nombre_participante)
+        self.assertTemplateUsed(response, "diplomas/ver_diploma.html")

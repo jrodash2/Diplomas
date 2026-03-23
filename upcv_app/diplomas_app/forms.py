@@ -16,6 +16,10 @@ from .utils import available_manager_users
 User = get_user_model()
 
 
+def normalize_dpi_input(value):
+    return "".join(str(value or "").split())
+
+
 class ScopedModelFormMixin:
     scope_field_name = "ubicacion"
 
@@ -266,7 +270,7 @@ class MatriculaManualParticipanteForm(forms.ModelForm):
         self.fields["observaciones"].required = False
 
     def clean_participante_dpi(self):
-        dpi = "".join(str(self.cleaned_data.get("participante_dpi") or "").split())
+        dpi = normalize_dpi_input(self.cleaned_data.get("participante_dpi"))
         if not dpi:
             raise forms.ValidationError("El DPI es obligatorio.")
         return dpi
@@ -284,6 +288,137 @@ class MatriculaManualParticipanteForm(forms.ModelForm):
         if curso and dpi and CursoEmpleado.objects.filter(curso=curso, participante_dpi=dpi).exists():
             raise forms.ValidationError("Ya existe un participante inscrito en este curso con ese DPI.")
         return cleaned_data
+
+
+class PublicCourseRegistrationForm(forms.Form):
+    codigo_curso = forms.CharField(
+        label="Código del curso *",
+        max_length=10,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ej.: 12345",
+        }),
+        help_text="Ingrese el código real del curso para validar que se registrará al curso correcto.",
+    )
+    nombre_curso = forms.CharField(
+        label="Curso encontrado",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "readonly": "readonly",
+            "placeholder": "El nombre del curso aparecerá automáticamente",
+        }),
+    )
+    dpi = forms.CharField(
+        label="DPI *",
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "2850 75586 0203",
+        }),
+        help_text="Formato esperado: 2850 75586 0203. El sistema validará el DPI aunque se escriba con espacios.",
+    )
+    nombre_existente = forms.CharField(
+        label="Participante encontrado",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "readonly": "readonly",
+            "placeholder": "Si el DPI existe, el nombre aparecerá aquí",
+        }),
+    )
+    participante_nombre = forms.CharField(
+        label="Nombre del participante",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ingrese nombre completo si el DPI no existe",
+        }),
+    )
+    participante_foto = forms.ImageField(
+        label="Fotografía (opcional)",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
+    )
+    participante_correo = forms.EmailField(
+        label="Correo electrónico (opcional)",
+        required=False,
+        widget=forms.EmailInput(attrs={
+            "class": "form-control",
+            "placeholder": "correo@ejemplo.com",
+        }),
+    )
+    participante_telefono = forms.CharField(
+        label="Teléfono (opcional)",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Número telefónico opcional",
+        }),
+    )
+    observaciones = forms.CharField(
+        label="Observaciones (opcional)",
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 3,
+            "placeholder": "Notas u observaciones opcionales",
+        }),
+    )
+
+    def clean_dpi(self):
+        dpi = normalize_dpi_input(self.cleaned_data.get("dpi"))
+        if not dpi:
+            raise forms.ValidationError("Debe ingresar un DPI válido.")
+        return dpi
+
+    def clean_codigo_curso(self):
+        codigo = "".join(str(self.cleaned_data.get("codigo_curso") or "").split())
+        if not codigo:
+            raise forms.ValidationError("Debe ingresar el código del curso.")
+        return codigo
+
+
+class PublicDiplomaDownloadForm(forms.Form):
+    codigo_curso = forms.CharField(
+        label="Código del curso *",
+        max_length=10,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ej.: 12345",
+        }),
+        help_text="Ingrese el código del curso exactamente como se lo compartieron.",
+    )
+    nombre_curso = forms.CharField(
+        label="Curso encontrado",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "readonly": "readonly",
+            "placeholder": "El nombre del curso aparecerá automáticamente",
+        }),
+    )
+    dpi = forms.CharField(
+        label="DPI *",
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "2850 75586 0203",
+        }),
+        help_text="Formato esperado: 2850 75586 0203. Se aceptan espacios.",
+    )
+
+    def clean_dpi(self):
+        dpi = normalize_dpi_input(self.cleaned_data.get("dpi"))
+        if not dpi:
+            raise forms.ValidationError("Debe ingresar un DPI válido.")
+        return dpi
+
+    def clean_codigo_curso(self):
+        codigo = "".join(str(self.cleaned_data.get("codigo_curso") or "").split())
+        if not codigo:
+            raise forms.ValidationError("Debe ingresar el código del curso.")
+        return codigo
 
 
 class CursoForm(ScopedModelFormMixin, forms.ModelForm):
