@@ -242,10 +242,10 @@
     const klass = `editor-element-content diploma-text-element align-${element.align || "center"}`;
     const preview = previewTextPayload(element);
     if (preview.asHtml) {
-      return `<div class="${klass}">${preview.html}</div>`;
+      return `<div class="${klass}"><div class="diploma-text-flow">${preview.html}</div></div>`;
     }
 
-    return `<div class="${klass}">${preview.text}</div>`;
+    return `<div class="${klass}"><div class="diploma-text-flow">${preview.text}</div></div>`;
   }
 
   function renderCanvas() {
