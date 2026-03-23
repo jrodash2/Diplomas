@@ -30,6 +30,7 @@ from .forms import (
     CursoForm,
     DisenoDiplomaForm,
     FirmaForm,
+    MatriculaManualParticipanteForm,
     UbicacionDiplomaForm,
     UsuarioUbicacionDiplomaForm,
 )
@@ -200,50 +201,6 @@ def editar_asignacion_ubicacion(request, asignacion_id):
         form = UsuarioUbicacionDiplomaForm(instance=asignacion)
     return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
 
-@diplomas_access_required
-def crear_asignacion_ubicacion(request):
-    if not get_scope(request).get("is_admin"):
-        raise PermissionDenied
-    if request.method == "POST":
-        form = UsuarioUbicacionDiplomaForm(request.POST)
-        if form.is_valid():
-            usuario = form.cleaned_data["usuario"]
-            ubicacion = form.cleaned_data["ubicacion"]
-            UsuarioUbicacionDiploma.objects.update_or_create(
-                usuario=usuario,
-                defaults={"ubicacion": ubicacion, "asignado_por": request.user},
-            )
-            messages.success(request, "Asignación guardada correctamente.")
-        else:
-            messages.error(request, "No se pudo guardar la asignación.")
-    return redirect("diplomas:asignaciones_ubicacion_lista")
-
-
-@diplomas_access_required
-def editar_asignacion_ubicacion(request, asignacion_id):
-    if not get_scope(request).get("is_admin"):
-        raise PermissionDenied
-    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
-    if request.method == "POST":
-        form = UsuarioUbicacionDiplomaForm(request.POST, instance=asignacion)
-        if form.is_valid():
-            form.save(assigned_by=request.user)
-            messages.success(request, "Asignación actualizada correctamente.")
-            return redirect("diplomas:asignaciones_ubicacion_lista")
-    else:
-        form = UsuarioUbicacionDiplomaForm(instance=asignacion)
-    return render_diplomas(request, "diplomas/editar_asignacion_ubicacion.html", {"form": form, "asignacion": asignacion})
-
-
-@diplomas_access_required
-def eliminar_asignacion_ubicacion(request, asignacion_id):
-    if not get_scope(request).get("is_admin"):
-        raise PermissionDenied
-    asignacion = get_object_or_404(UsuarioUbicacionDiploma, id=asignacion_id)
-    if request.method == "POST":
-        asignacion.delete()
-        messages.success(request, "Asignación eliminada correctamente.")
-    return redirect("diplomas:asignaciones_ubicacion_lista")
 
 @diplomas_access_required
 def eliminar_asignacion_ubicacion(request, asignacion_id):
@@ -507,7 +464,12 @@ def detalle_curso(request, curso_id):
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
         "participantes": participantes,
-        "total_participantes": total_participantes
+        "total_participantes": total_participantes,
+        "matricula_manual_form": MatriculaManualParticipanteForm(
+            scope=get_scope(request),
+            course=curso,
+            initial={"curso": curso},
+        ),
     })
 
 
@@ -546,24 +508,38 @@ def agregar_empleado_a_curso(request):
 @diplomas_access_required
 def agregar_empleado_detalle(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
-    dpi = request.POST.get("dpi")
-
-    if not dpi:
-        messages.error(request, "Debe ingresar un DPI.")
+    form = MatriculaManualParticipanteForm(request.POST, request.FILES, scope=get_scope(request), course=curso)
+    if not form.is_valid():
+        for _, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, error)
         return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
-    try:
-        empleado = Empleado.objects.get(dpi=dpi)
-    except Empleado.DoesNotExist:
-        messages.error(request, "No existe un empleado con ese DPI.")
-        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+    dpi = form.cleaned_data["participante_dpi"]
+    nombre = form.cleaned_data["participante_nombre"]
+    empleado = Empleado.objects.filter(dpi=dpi).first()
 
-    if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
+    if empleado and CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
         messages.warning(request, "El empleado ya está inscrito en este curso.")
         return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
-    CursoEmpleado.objects.create(curso=curso, empleado=empleado, fecha_asignacion=timezone.now())
-    messages.success(request, "Empleado agregado correctamente.")
+    participante = form.save(commit=False)
+    participante.curso = curso
+    participante.fecha_asignacion = timezone.now()
+    participante.participante_dpi = dpi
+    participante.participante_nombre = nombre
+    participante.participante_correo = form.cleaned_data.get("participante_correo", "") or ""
+    participante.participante_telefono = form.cleaned_data.get("participante_telefono", "") or ""
+    participante.observaciones = form.cleaned_data.get("observaciones", "") or ""
+    participante.empleado = empleado
+
+    participante.save()
+    messages.success(
+        request,
+        "Participante agregado correctamente al curso."
+        if empleado
+        else "Participante manual agregado correctamente al curso.",
+    )
     return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
 
@@ -579,7 +555,8 @@ def buscar_empleado_por_dpi(request):
             "existe": True,
             "nombres": empleado.nombres,
             "apellidos": empleado.apellidos,
-            "nombre_completo": f"{empleado.nombres} {empleado.apellidos}"
+            "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
+            "foto_url": empleado.imagen.url if empleado.imagen else "",
         })
     except Empleado.DoesNotExist:
         return JsonResponse({"existe": False})

@@ -5,6 +5,7 @@ from empleados_app.models import Empleado
 
 from .models import (
     Curso,
+    CursoEmpleado,
     DisenoDiploma,
     Firma,
     UbicacionDiploma,
@@ -136,6 +137,100 @@ class AgregarEmpleadoCursoForm(forms.Form):
             except Empleado.DoesNotExist:
                 raise forms.ValidationError("No existe un empleado con ese DPI.")
 
+        return cleaned_data
+
+
+class MatriculaManualParticipanteForm(forms.ModelForm):
+    curso = forms.ModelChoiceField(queryset=Curso.objects.none(), widget=forms.HiddenInput(), required=True)
+
+    class Meta:
+        model = CursoEmpleado
+        fields = [
+            "curso",
+            "participante_dpi",
+            "participante_nombre",
+            "participante_foto",
+            "participante_correo",
+            "participante_telefono",
+            "observaciones",
+        ]
+        widgets = {
+            "participante_dpi": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ingrese DPI del participante",
+            }),
+            "participante_nombre": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ingrese nombre completo del participante",
+            }),
+            "participante_foto": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "participante_correo": forms.EmailInput(attrs={
+                "class": "form-control",
+                "placeholder": "correo@ejemplo.com",
+            }),
+            "participante_telefono": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Número telefónico opcional",
+            }),
+            "observaciones": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "Notas internas u observaciones opcionales",
+            }),
+        }
+        help_texts = {
+            "participante_dpi": "Campo obligatorio. Ingrese el DPI del participante en formato habitual.",
+            "participante_nombre": "Campo obligatorio. Puede escribir el nombre completo aunque el DPI no exista en empleados.",
+            "participante_foto": "Opcional. Suba una imagen del participante si desea usarla en el diploma.",
+            "participante_correo": "Opcional. Si se completa, debe ser un correo válido.",
+            "participante_telefono": "Opcional. Puede registrar un teléfono de contacto.",
+            "observaciones": "Opcional. Use este espacio para notas internas del curso.",
+        }
+        labels = {
+            "participante_dpi": "DPI *",
+            "participante_nombre": "Nombre del participante *",
+            "participante_foto": "Fotografía (opcional)",
+            "participante_correo": "Correo electrónico (opcional)",
+            "participante_telefono": "Teléfono (opcional)",
+            "observaciones": "Observaciones (opcional)",
+        }
+
+    def __init__(self, *args, scope=None, course=None, **kwargs):
+        self.scope = scope or {}
+        self.course = course
+        super().__init__(*args, **kwargs)
+        cursos = Curso.objects.all().order_by("nombre")
+        if not self.scope.get("is_admin"):
+            location = self.scope.get("location")
+            cursos = cursos.filter(ubicacion=location) if location else cursos.none()
+        self.fields["curso"].queryset = cursos
+        if course is not None:
+            self.fields["curso"].initial = course
+        self.fields["participante_dpi"].required = True
+        self.fields["participante_nombre"].required = True
+        self.fields["participante_foto"].required = False
+        self.fields["participante_correo"].required = False
+        self.fields["participante_telefono"].required = False
+        self.fields["observaciones"].required = False
+
+    def clean_participante_dpi(self):
+        dpi = "".join(str(self.cleaned_data.get("participante_dpi") or "").split())
+        if not dpi:
+            raise forms.ValidationError("El DPI es obligatorio.")
+        return dpi
+
+    def clean_participante_nombre(self):
+        nombre = " ".join(str(self.cleaned_data.get("participante_nombre") or "").split())
+        if not nombre:
+            raise forms.ValidationError("El nombre del participante es obligatorio.")
+        return nombre
+
+    def clean(self):
+        cleaned_data = super().clean()
+        curso = cleaned_data.get("curso") or self.course
+        dpi = cleaned_data.get("participante_dpi")
+        if curso and dpi and CursoEmpleado.objects.filter(curso=curso, participante_dpi=dpi).exists():
+            raise forms.ValidationError("Ya existe un participante inscrito en este curso con ese DPI.")
         return cleaned_data
 
 

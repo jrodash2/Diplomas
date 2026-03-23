@@ -114,16 +114,16 @@
               {% for p in participantes %}
               <tr>
                 <td>
-                  {% if p.empleado.imagen %}
-                  <img src="{{ p.empleado.imagen.url }}"
+                  {% if p.foto_participante_url %}
+                  <img src="{{ p.foto_participante_url }}"
                        style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
                   {% else %}
                   <span class="text-muted">Sin foto</span>
                   {% endif %}
                 </td>
 
-                <td>{{ p.empleado.nombres }} {{ p.empleado.apellidos }}</td>
-                <td>{{ p.empleado.dpi }}</td>
+                <td>{{ p.nombre_participante }}</td>
+                <td>{{ p.dpi_participante }}</td>
                 <td>{{ p.fecha_asignacion|date:"d/m/Y H:i" }}</td>
 
                 <td>
@@ -186,22 +186,57 @@
 
         <div class="title-wrapper pb-3 modal-heading text-center">
           <h5 class="theme-name mb-0">Agregar Participante</h5>
-          <p>Ingrese el DPI del empleado para agregarlo al curso.</p>
+          <p>Registre manualmente al participante. Solo DPI y nombre son obligatorios.</p>
         </div>
 
         <div class="overflow-hidden text-center mb-3">
           <img class="img-fluid small-logo" src="{% static 'assets/images/logo/logo.png' %}" alt="">
         </div>
 
-        <form method="POST" action="{% url 'diplomas:agregar_empleado_detalle' curso.id %}">
+        <form method="POST" action="{% url 'diplomas:agregar_empleado_detalle' curso.id %}" enctype="multipart/form-data">
           {% csrf_token %}
+          {{ matricula_manual_form.curso }}
 
-          <label>DPI del empleado</label>
-          <input type="text" id="dpiInput" name="dpi" class="form-control mb-2">
+          <div class="mb-2">
+            <label for="{{ matricula_manual_form.participante_dpi.id_for_label }}" class="form-label">{{ matricula_manual_form.participante_dpi.label }}</label>
+            {{ matricula_manual_form.participante_dpi }}
+            <small class="text-muted">{{ matricula_manual_form.participante_dpi.help_text }}</small>
+          </div>
 
-          <label>Empleado</label>
-          <input type="text" id="nombreEmpleado" class="form-control mb-3" disabled>
+          <div class="mb-2">
+            <label for="{{ matricula_manual_form.participante_nombre.id_for_label }}" class="form-label">{{ matricula_manual_form.participante_nombre.label }}</label>
+            {{ matricula_manual_form.participante_nombre }}
+            <small class="text-muted">{{ matricula_manual_form.participante_nombre.help_text }}</small>
+          </div>
 
+          <div class="mb-2">
+            <label for="{{ matricula_manual_form.participante_foto.id_for_label }}" class="form-label">{{ matricula_manual_form.participante_foto.label }}</label>
+            {{ matricula_manual_form.participante_foto }}
+            <small class="text-muted">{{ matricula_manual_form.participante_foto.help_text }}</small>
+          </div>
+
+          <div class="mb-2">
+            <label for="{{ matricula_manual_form.participante_correo.id_for_label }}" class="form-label">{{ matricula_manual_form.participante_correo.label }}</label>
+            {{ matricula_manual_form.participante_correo }}
+            <small class="text-muted">{{ matricula_manual_form.participante_correo.help_text }}</small>
+          </div>
+
+          <div class="mb-2">
+            <label for="{{ matricula_manual_form.participante_telefono.id_for_label }}" class="form-label">{{ matricula_manual_form.participante_telefono.label }}</label>
+            {{ matricula_manual_form.participante_telefono }}
+            <small class="text-muted">{{ matricula_manual_form.participante_telefono.help_text }}</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ matricula_manual_form.observaciones.id_for_label }}" class="form-label">{{ matricula_manual_form.observaciones.label }}</label>
+            {{ matricula_manual_form.observaciones }}
+            <small class="text-muted">{{ matricula_manual_form.observaciones.help_text }}</small>
+          </div>
+
+          <div class="alert alert-light border small py-2">
+            <strong>Obligatorios:</strong> DPI y Nombre del participante.<br>
+            <strong>Opcionales:</strong> Fotografía, Correo, Teléfono y Observaciones.
+          </div>
           <button class="btn btn-primary w-100">Agregar</button>
         </form>
 
@@ -218,11 +253,11 @@
 <script>
 $(document).ready(function () {
 
-  $("#dpiInput").on("keyup", function () {
+  $("#id_participante_dpi").on("keyup", function () {
     var dpi = $(this).val();
 
     if (dpi.length < 5) {
-      $("#nombreEmpleado").val("");
+      $("#id_participante_nombre").val("");
       return;
     }
 
@@ -231,9 +266,9 @@ $(document).ready(function () {
       data: { dpi: dpi },
       success: function (data) {
         if (data.existe) {
-          $("#nombreEmpleado").val(data.nombre_completo);
+          $("#id_participante_nombre").val(data.nombre_completo);
         } else {
-          $("#nombreEmpleado").val("No encontrado");
+          $("#id_participante_nombre").val("");
         }
       }
     });

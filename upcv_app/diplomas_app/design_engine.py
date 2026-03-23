@@ -595,13 +595,14 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
     descripcion_curso = getattr(curso, "descripcion", "") or ("Descripción del curso" if sample else "")
     codigo = "0001-UPCV"
     if curso_empleado is not None:
-        participante_nombre = format_participant_name(f"{curso_empleado.empleado.nombres} {curso_empleado.empleado.apellidos}")
+        raw_name = getattr(curso_empleado, "nombre_participante", "") or ""
+        participante_nombre = format_participant_name(raw_name)
         curso_nombre = curso_empleado.curso.nombre
         descripcion_curso = curso_empleado.curso.descripcion or ""
         codigo = f"{curso_empleado.id:04d}-UPCV"
     participante_foto = ""
     if curso_empleado is not None:
-        participante_foto = media_url(getattr(curso_empleado.empleado, "imagen", None))
+        participante_foto = getattr(curso_empleado, "foto_participante_url", "") or ""
 
     context = {
         "{{ participante_nombre }}": participante_nombre,

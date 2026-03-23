@@ -216,3 +216,60 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(render_map["custom_text_demo"]["rendered_value"], "Texto libre para diploma")
         self.assertIn("custom_image_demo", render_map)
         self.assertEqual(render_map["custom_image_demo"]["image_url"], image_url)
+
+    def test_manual_enrollment_accepts_required_fields_only(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_a.id]),
+            {
+                "curso": self.curso_a.id,
+                "participante_dpi": "5555555550101",
+                "participante_nombre": "Participante Manual",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_a, participante_dpi="5555555550101")
+        self.assertIsNone(participante.empleado)
+        self.assertEqual(participante.nombre_participante, "Participante Manual")
+        self.assertEqual(participante.participante_correo, "")
+        self.assertEqual(participante.participante_telefono, "")
+        self.assertEqual(participante.observaciones, "")
+
+    def test_manual_enrollment_stores_optional_fields_and_photo(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        upload = SimpleUploadedFile("participante.png", TEST_PNG_BYTES, content_type="image/png")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_a.id]),
+            {
+                "curso": self.curso_a.id,
+                "participante_dpi": "6666666660101",
+                "participante_nombre": "Participante Opcional",
+                "participante_correo": "manual@example.com",
+                "participante_telefono": "5555-0000",
+                "observaciones": "Participante agregado manualmente",
+                "participante_foto": upload,
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_a, participante_dpi="6666666660101")
+        self.assertEqual(participante.participante_correo, "manual@example.com")
+        self.assertEqual(participante.participante_telefono, "5555-0000")
+        self.assertEqual(participante.observaciones, "Participante agregado manualmente")
+        self.assertTrue(bool(participante.participante_foto))
+
+    def test_existing_dpi_enrollment_still_links_employee(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
+            {
+                "curso": self.curso_b.id,
+                "participante_dpi": self.empleado.dpi,
+                "participante_nombre": f"{self.empleado.nombres} {self.empleado.apellidos}",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi=self.empleado.dpi)
+        self.assertEqual(participante.empleado, self.empleado)
