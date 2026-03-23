@@ -81,6 +81,46 @@
       </div><!-- row -->
     </div><!-- page-title -->
 
+    <div class="card mt-3 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+          <div>
+            <h5 class="mb-1">Enlaces para participantes</h5>
+            <p class="text-muted mb-0">
+              Estos links públicos ya incluyen el código del curso <strong>{{ curso.codigo }}</strong> para que pueda compartirlos fácilmente.
+            </p>
+          </div>
+          <span class="badge bg-primary">Listos para compartir</span>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="border rounded-3 p-3 h-100">
+              <label class="form-label fw-semibold mb-1">Link de registro de participantes</label>
+              <p class="text-muted small mb-2">Úselo para que los participantes completen su registro público en este curso.</p>
+              <div class="input-group">
+                <input type="text" class="form-control js-public-link" readonly value="{{ public_registration_url }}">
+                <button class="btn btn-outline-secondary js-copy-link" type="button">Copiar</button>
+                <a class="btn btn-primary" href="{{ public_registration_url }}" target="_blank" rel="noopener">Abrir</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="border rounded-3 p-3 h-100">
+              <label class="form-label fw-semibold mb-1">Link de descarga de diploma</label>
+              <p class="text-muted small mb-2">Úselo para que los participantes consulten y descarguen su diploma con el curso precargado.</p>
+              <div class="input-group">
+                <input type="text" class="form-control js-public-link" readonly value="{{ public_diploma_download_url }}">
+                <button class="btn btn-outline-secondary js-copy-link" type="button">Copiar</button>
+                <a class="btn btn-primary" href="{{ public_diploma_download_url }}" target="_blank" rel="noopener">Abrir</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- BOTÓN AGREGAR PARTICIPANTE -->
     <div class="col-4 text-align-left">
@@ -308,6 +348,29 @@
 <!-- ========================= -->
 <script>
 $(document).ready(function () {
+  $(".js-copy-link").on("click", function () {
+    var button = $(this);
+    var input = button.siblings(".js-public-link");
+    var originalText = button.text();
+
+    input.trigger("select");
+    input[0].setSelectionRange(0, input.val().length);
+
+    try {
+      navigator.clipboard.writeText(input.val()).then(function () {
+        button.text("Copiado");
+        setTimeout(function () { button.text(originalText); }, 1600);
+      }).catch(function () {
+        document.execCommand("copy");
+        button.text("Copiado");
+        setTimeout(function () { button.text(originalText); }, 1600);
+      });
+    } catch (error) {
+      document.execCommand("copy");
+      button.text("Copiado");
+      setTimeout(function () { button.text(originalText); }, 1600);
+    }
+  });
 
   $("#id_dpi").on("keyup", function () {
     var dpi = $(this).val();

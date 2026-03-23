@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -95,6 +96,18 @@ def get_participant_by_course_and_dpi_or_none(curso, dpi):
         .first()
     )
 
+
+def build_public_course_links(request, curso):
+    registration_path = f"{reverse('diplomas:public_course_registration')}?codigo_curso={curso.codigo}"
+    download_path = f"{reverse('diplomas:public_diploma_download')}?codigo_curso={curso.codigo}"
+    return {
+        "registration_url": request.build_absolute_uri(registration_path),
+        "download_url": request.build_absolute_uri(download_path),
+    }
+
+def get_design_or_404(request, **lookup):
+    diseno = get_object_or_404(DisenoDiploma.objects.select_related("ubicacion"), **lookup)
+    return enforce_scope_for_object(diseno, get_scope(request))
 
 # Dashboard
 
@@ -473,17 +486,25 @@ def editar_curso(request, curso_id):
 
     return render_diplomas(request, "diplomas/editar_curso.html", {"form": form, "curso": curso})
 
-
 @diplomas_access_required
 def detalle_curso(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
     participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
     total_participantes = participantes.count()
 
+@diplomas_access_required
+def detalle_curso(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
+    total_participantes = participantes.count()
+    public_links = build_public_course_links(request, curso)
+
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
         "participantes": participantes,
         "total_participantes": total_participantes,
+        "public_registration_url": public_links["registration_url"],
+        "public_diploma_download_url": public_links["download_url"],
         "matricula_rapida_form": AgregarParticipanteRapidoForm(
             scope=get_scope(request),
             course=curso,
@@ -664,7 +685,16 @@ def public_buscar_participante_por_dpi(request):
 
 
 def public_course_registration(request):
-    form = PublicCourseRegistrationForm(request.POST or None, request.FILES or None)
+    initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    initial_data = {}
+    if initial_course:
+        initial_data = {
+            "codigo_curso": initial_course.codigo,
+            "nombre_curso": initial_course.nombre,
+        }
+
+    form = PublicCourseRegistrationForm(request.POST or None, request.FILES or None, initial=initial_data or None)
     registration_result = None
 
     if request.method == "POST" and form.is_valid():
@@ -715,7 +745,16 @@ def public_course_registration(request):
 
 
 def public_diploma_download(request):
-    form = PublicDiplomaDownloadForm(request.POST or None)
+    initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    initial_data = {}
+    if initial_course:
+        initial_data = {
+            "codigo_curso": initial_course.codigo,
+            "nombre_curso": initial_course.nombre,
+        }
+
+    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
     participant = None
 
     if request.method == "POST" and form.is_valid():
@@ -738,6 +777,15 @@ def public_diploma_download(request):
         "participant": participant,
     })
 
+def public_buscar_participante_por_dpi(request):
+    codigo = "".join(str(request.GET.get("codigo_curso") or "").split())
+    dpi = "".join(str(request.GET.get("dpi") or "").split())
+    if not codigo or not dpi:
+        return JsonResponse({"existe": False, "error": "Debe indicar código de curso y DPI."}, status=400)
+
+    curso = get_course_by_code_or_none(codigo)
+    if not curso:
+        return JsonResponse({"existe": False, "error": "No existe un curso con ese código."}, status=404)
 
 @diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):

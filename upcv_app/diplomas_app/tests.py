@@ -108,6 +108,15 @@ class DiplomasScopeTests(TestCase):
         self.assertContains(response, "Sede Central")
         self.assertNotContains(response, "Curso B")
 
+    def test_manager_course_detail_shows_public_links_for_current_course(self):
+        self.client.login(username="gestor_diplomas", password="test12345")
+        response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_a.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Enlaces para participantes")
+        self.assertContains(response, reverse("diplomas:public_course_registration"))
+        self.assertContains(response, reverse("diplomas:public_diploma_download"))
+        self.assertContains(response, f"codigo_curso={self.curso_a.codigo}")
+
     def test_manager_cannot_access_foreign_course_detail_by_url(self):
         self.client.login(username="gestor_diplomas", password="test12345")
         response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_b.id]))
@@ -347,3 +356,20 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.participante.nombre_participante)
         self.assertTemplateUsed(response, "diplomas/ver_diploma.html")
+
+    def test_public_pages_prefill_course_code_from_querystring(self):
+        registration_response = self.client.get(
+            reverse("diplomas:public_course_registration"),
+            {"codigo_curso": self.curso_a.codigo},
+        )
+        self.assertEqual(registration_response.status_code, 200)
+        self.assertContains(registration_response, f'value="{self.curso_a.codigo}"')
+        self.assertContains(registration_response, self.curso_a.nombre)
+
+        download_response = self.client.get(
+            reverse("diplomas:public_diploma_download"),
+            {"codigo_curso": self.curso_a.codigo},
+        )
+        self.assertEqual(download_response.status_code, 200)
+        self.assertContains(download_response, f'value="{self.curso_a.codigo}"')
+        self.assertContains(download_response, self.curso_a.nombre)
