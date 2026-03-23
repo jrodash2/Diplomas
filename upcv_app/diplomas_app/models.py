@@ -1,12 +1,33 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from empleados_app.models import Empleado
 
 
+INSTITUTION_CODE = "UPCV"
+
+
+def normalize_location_abbreviation(value):
+    cleaned = "".join(char for char in str(value or "").upper() if char.isalnum())
+    return cleaned[:10]
+
+
+def default_location_abbreviation(name):
+    words = [word for word in str(name or "").replace("-", " ").split() if word]
+    if not words:
+        return "GENERAL"
+    initials = "".join(word[0] for word in words if word[0].isalnum())
+    normalized_initials = normalize_location_abbreviation(initials)
+    if normalized_initials:
+        return normalized_initials
+    compact = normalize_location_abbreviation("".join(words))
+    return compact or "GENERAL"
+
+
 class UbicacionDiploma(models.Model):
     nombre = models.CharField(max_length=150, unique=True)
+    abreviatura = models.CharField(max_length=10, unique=True)
     descripcion = models.TextField(blank=True, null=True)
     activa = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -25,6 +46,10 @@ class UbicacionDiploma(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def save(self, *args, **kwargs):
+        self.abreviatura = normalize_location_abbreviation(self.abreviatura) or default_location_abbreviation(self.nombre)
+        super().save(*args, **kwargs)
 
 
 class Firma(models.Model):
@@ -178,6 +203,50 @@ class Diploma(models.Model):
 
     def __str__(self):
         return f"Diploma de {self.curso_empleado.nombre_participante or self.curso_empleado.empleado} - {self.curso_empleado.curso}"
+
+    @classmethod
+    def build_numero_diploma(cls, curso_empleado, year=None):
+        ubicacion = getattr(curso_empleado.curso, "ubicacion", None)
+        if not ubicacion:
+            raise ValueError("El curso del diploma debe tener una ubicación asignada.")
+
+        location_code = normalize_location_abbreviation(getattr(ubicacion, "abreviatura", "")) or default_location_abbreviation(ubicacion.nombre)
+        emission_year = int(year or timezone.now().year)
+        prefix = f"{INSTITUTION_CODE}-{location_code}-"
+        suffix = f"-{emission_year}"
+
+        with transaction.atomic():
+            issued_numbers = cls.objects.select_for_update().filter(
+                curso_empleado__curso__ubicacion=ubicacion,
+                fecha_emision__year=emission_year,
+            ).values_list("numero_diploma", flat=True)
+
+            max_sequence = 0
+            for issued_number in issued_numbers:
+                raw_value = str(issued_number or "").strip().upper()
+                if not raw_value.startswith(prefix) or not raw_value.endswith(suffix):
+                    continue
+                sequence_chunk = raw_value[len(prefix):-len(suffix)]
+                if sequence_chunk.isdigit():
+                    max_sequence = max(max_sequence, int(sequence_chunk))
+
+            next_sequence = max_sequence + 1
+            return f"{INSTITUTION_CODE}-{location_code}-{str(next_sequence).zfill(4)}-{emission_year}"
+
+    @classmethod
+    def ensure_for_course_employee(cls, curso_empleado):
+        try:
+            diploma = curso_empleado.diploma
+        except cls.DoesNotExist:
+            diploma = None
+        if diploma is not None:
+            return diploma
+        return cls.objects.create(curso_empleado=curso_empleado)
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and not self.numero_diploma:
+            self.numero_diploma = self.build_numero_diploma(self.curso_empleado, year=self.fecha_emision.year if self.fecha_emision else None)
+        super().save(*args, **kwargs)
 
 
 class UsuarioUbicacionDiploma(models.Model):

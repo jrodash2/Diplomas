@@ -1,20 +1,27 @@
 from django.contrib import admin
 
-from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma
+from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma
+
+
+@admin.register(UbicacionDiploma)
+class UbicacionDiplomaAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "abreviatura", "activa", "creado_en")
+    search_fields = ("nombre", "abreviatura")
+    list_filter = ("activa", "creado_en")
 
 
 @admin.register(Firma)
 class FirmaAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "rol", "creado_en")
-    search_fields = ("nombre", "rol")
-    list_filter = ("creado_en",)
+    list_display = ("nombre", "rol", "ubicacion", "creado_en")
+    search_fields = ("nombre", "rol", "ubicacion__nombre", "ubicacion__abreviatura")
+    list_filter = ("ubicacion", "creado_en")
 
 
 @admin.register(DisenoDiploma)
 class DisenoDiplomaAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "activo", "creado_en", "actualizado_en")
-    search_fields = ("nombre", "descripcion")
-    list_filter = ("activo", "creado_en")
+    list_display = ("nombre", "ubicacion", "activo", "creado_en", "actualizado_en")
+    search_fields = ("nombre", "descripcion", "ubicacion__nombre", "ubicacion__abreviatura")
+    list_filter = ("ubicacion", "activo", "creado_en")
 
 
 class CursoEmpleadoInline(admin.TabularInline):
@@ -25,9 +32,9 @@ class CursoEmpleadoInline(admin.TabularInline):
 
 @admin.register(Curso)
 class CursoAdmin(admin.ModelAdmin):
-    list_display = ("codigo", "nombre", "diseno_diploma", "fecha_inicio", "fecha_fin", "creado_en")
-    search_fields = ("codigo", "nombre")
-    list_filter = ("fecha_inicio", "fecha_fin")
+    list_display = ("codigo", "nombre", "ubicacion", "diseno_diploma", "fecha_inicio", "fecha_fin", "creado_en")
+    search_fields = ("codigo", "nombre", "ubicacion__nombre", "ubicacion__abreviatura")
+    list_filter = ("ubicacion", "fecha_inicio", "fecha_fin")
     filter_horizontal = ("firmas",)
     inlines = [CursoEmpleadoInline]
     readonly_fields = ("posiciones",)
@@ -36,8 +43,8 @@ class CursoAdmin(admin.ModelAdmin):
 @admin.register(CursoEmpleado)
 class CursoEmpleadoAdmin(admin.ModelAdmin):
     list_display = ("curso", "empleado", "fecha_asignacion")
-    search_fields = ("empleado__nombres", "empleado__apellidos", "curso__nombre")
-    list_filter = ("curso", "fecha_asignacion")
+    search_fields = ("empleado__nombres", "empleado__apellidos", "curso__nombre", "curso__ubicacion__abreviatura")
+    list_filter = ("curso__ubicacion", "curso", "fecha_asignacion")
     autocomplete_fields = ("curso", "empleado")
 
 

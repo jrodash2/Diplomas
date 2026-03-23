@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from empleados_app.models import ConfiguracionGeneral
 
-from .models import Firma
+from .models import Diploma, Firma
 
 
 CANVAS_WIDTH = 3508
@@ -593,13 +593,22 @@ def build_token_context_map(*, curso=None, curso_empleado=None, config=None, fir
     participante_nombre = "NOMBRE DEL PARTICIPANTE"
     curso_nombre = getattr(curso, "nombre", "NOMBRE DEL CURSO") or "NOMBRE DEL CURSO"
     descripcion_curso = getattr(curso, "descripcion", "") or ("Descripción del curso" if sample else "")
-    codigo = "0001-UPCV"
+    sample_location = getattr(curso, "ubicacion", None)
+    sample_location_code = getattr(sample_location, "abreviatura", "") if sample_location else "GRAL"
+    codigo = f"UPCV-{sample_location_code or 'GRAL'}-0001-{timezone.now().year}"
     if curso_empleado is not None:
         raw_name = getattr(curso_empleado, "nombre_participante", "") or ""
         participante_nombre = format_participant_name(raw_name)
         curso_nombre = curso_empleado.curso.nombre
         descripcion_curso = curso_empleado.curso.descripcion or ""
-        codigo = f"{curso_empleado.id:04d}-UPCV"
+        try:
+            diploma = curso_empleado.diploma
+        except Diploma.DoesNotExist:
+            diploma = None
+        if diploma and diploma.numero_diploma:
+            codigo = diploma.numero_diploma
+        else:
+            codigo = Diploma.build_numero_diploma(curso_empleado)
     participante_foto = ""
     if curso_empleado is not None:
         participante_foto = getattr(curso_empleado, "foto_participante_url", "") or ""
@@ -678,6 +687,15 @@ def build_render_elements(definition, context_map):
 
 
 def build_diploma_render_context(curso_empleado):
+    Diploma.ensure_for_course_employee(curso_empleado)
+    curso_empleado = type(curso_empleado).objects.select_related(
+        "curso",
+        "curso__ubicacion",
+        "curso__diseno_diploma",
+        "empleado",
+        "empleado__datos_basicos",
+        "diploma",
+    ).get(pk=curso_empleado.pk)
     curso = curso_empleado.curso
     config = ConfiguracionGeneral.objects.first()
     firmas = get_course_signatures(curso)

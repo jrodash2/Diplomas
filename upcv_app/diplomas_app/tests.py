@@ -10,7 +10,7 @@ from django.test.utils import override_settings
 from empleados_app.models import DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
-from .models import Curso, CursoEmpleado, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
+from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
 
 
 TEST_PNG_BYTES = (
@@ -44,8 +44,8 @@ class DiplomasScopeTests(TestCase):
         self.manager = User.objects.create_user(username="gestor_diplomas", password="test12345")
         self.manager.groups.add(self.group_manager)
 
-        self.ubicacion_a = UbicacionDiploma.objects.create(nombre="Sede Central", activa=True)
-        self.ubicacion_b = UbicacionDiploma.objects.create(nombre="Sede Norte", activa=True)
+        self.ubicacion_a = UbicacionDiploma.objects.create(nombre="Sede Central", abreviatura="SC", activa=True)
+        self.ubicacion_b = UbicacionDiploma.objects.create(nombre="Sede Norte", abreviatura="SN", activa=True)
         UsuarioUbicacionDiploma.objects.create(usuario=self.manager, ubicacion=self.ubicacion_a, asignado_por=self.admin)
 
         self.firma_a = Firma.objects.create(nombre="Firma A", rol="Director", firma="firmas/a.png", ubicacion=self.ubicacion_a)
@@ -159,7 +159,7 @@ class DiplomasScopeTests(TestCase):
 
     def test_editor_can_upload_custom_image_asset(self):
         self.client.login(username="admin_diplomas", password="test12345")
-        upload = SimpleUploadedFile("sello.png", TEST_PNG_BYTES, content_type="image/png")
+        upload = SimpleUploadedFile("imagen-extra.png", TEST_PNG_BYTES, content_type="image/png")
         response = self.client.post(
             reverse("diplomas:subir_imagen_diseno_visual", args=[self.diseno_a.id]),
             {"image": upload},
@@ -202,7 +202,7 @@ class DiplomasScopeTests(TestCase):
                     },
                     "custom_image_demo": {
                         "key": "custom_image_demo",
-                        "label": "Sello adicional",
+                        "label": "Imagen adicional",
                         "type": "image",
                         "image_url": image_url,
                         "x": 1200,
@@ -376,6 +376,27 @@ class DiplomasScopeTests(TestCase):
         self.assertContains(response, 'class="diploma-image-media"')
         self.assertContains(response, 'data-diploma-image-shape="rect"')
         self.assertContains(response, "diploma-export-fitted-image")
+        self.participante.refresh_from_db()
+        self.assertTrue(Diploma.objects.filter(curso_empleado=self.participante).exists())
+        self.assertEqual(self.participante.diploma.numero_diploma, "UPCV-SC-0001-2026")
+
+    def test_diploma_number_is_scoped_per_location(self):
+        participant_same_location = self.curso_a.participantes.create(
+            participante_dpi="9999999990101",
+            participante_nombre="Segundo Participante",
+        )
+        participant_other_location = self.curso_b.participantes.create(
+            participante_dpi="8888888880101",
+            participante_nombre="Participante Norte",
+        )
+
+        diploma_a1 = Diploma.ensure_for_course_employee(self.participante)
+        diploma_a2 = Diploma.ensure_for_course_employee(participant_same_location)
+        diploma_b1 = Diploma.ensure_for_course_employee(participant_other_location)
+
+        self.assertEqual(diploma_a1.numero_diploma, "UPCV-SC-0001-2026")
+        self.assertEqual(diploma_a2.numero_diploma, "UPCV-SC-0002-2026")
+        self.assertEqual(diploma_b1.numero_diploma, "UPCV-SN-0001-2026")
 
     def test_public_diploma_download_shows_clear_message_when_employee_is_not_enrolled(self):
         response = self.client.post(
@@ -404,3 +425,19 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(download_response.status_code, 200)
         self.assertContains(download_response, f'value="{self.curso_a.codigo}"')
         self.assertContains(download_response, self.curso_a.nombre)
+
+    def test_public_pages_show_location_context_and_branding(self):
+        response = self.client.get(
+            reverse("diplomas:public_course_registration"),
+            {"codigo_curso": self.curso_a.codigo},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ubicación:")
+        self.assertContains(response, self.curso_a.ubicacion.nombre)
+
+        lookup_response = self.client.get(
+            reverse("diplomas:public_buscar_curso_por_codigo"),
+            {"codigo_curso": self.curso_a.codigo},
+        )
+        self.assertEqual(lookup_response.status_code, 200)
+        self.assertEqual(lookup_response.json()["ubicacion_abreviatura"], "SC")

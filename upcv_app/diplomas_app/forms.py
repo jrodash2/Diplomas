@@ -50,12 +50,19 @@ class ScopedModelFormMixin:
 class UbicacionDiplomaForm(forms.ModelForm):
     class Meta:
         model = UbicacionDiploma
-        fields = ["nombre", "descripcion", "activa"]
+        fields = ["nombre", "abreviatura", "descripcion", "activa"]
         widgets = {
             "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de la ubicación"}),
+            "abreviatura": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej.: RRHH, FIN, TI"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Descripción opcional"}),
             "activa": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def clean_abreviatura(self):
+        abreviatura = "".join(char for char in str(self.cleaned_data.get("abreviatura") or "").upper() if char.isalnum())
+        if not abreviatura:
+            raise forms.ValidationError("Debe ingresar una abreviatura para la ubicación.")
+        return abreviatura[:10]
 
 
 class UsuarioUbicacionDiplomaForm(forms.ModelForm):

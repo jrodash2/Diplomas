@@ -17,7 +17,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from PIL import Image, UnidentifiedImageError
 
-from empleados_app.models import Empleado
+from empleados_app.models import ConfiguracionGeneral, Empleado
 
 from .design_engine import (
     CANVAS_HEIGHT,
@@ -113,6 +113,16 @@ def get_participant_by_course_and_dpi_or_none(curso, dpi):
         models.Q(normalized_participante_dpi=normalized_dpi) | models.Q(normalized_empleado_dpi=normalized_dpi)
     ).first()
 
+def get_participant_by_course_and_dpi_or_none(curso, dpi):
+    normalized_dpi = normalize_dpi_input(dpi)
+    if not curso or not normalized_dpi:
+        return None
+    participantes = CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "curso__diseno_diploma", "empleado", "empleado__datos_basicos")
+    participantes = annotate_normalized_dpi(participantes, "participante_dpi", "normalized_participante_dpi")
+    participantes = annotate_normalized_dpi(participantes, "empleado__dpi", "normalized_empleado_dpi")
+    return participantes.filter(curso=curso).filter(
+        models.Q(normalized_participante_dpi=normalized_dpi) | models.Q(normalized_empleado_dpi=normalized_dpi)
+    ).first()
 
 def build_public_course_links(request, curso):
     registration_path = f"{reverse('diplomas:public_course_registration')}?codigo_curso={curso.codigo}"
@@ -120,6 +130,17 @@ def build_public_course_links(request, curso):
     return {
         "registration_url": request.build_absolute_uri(registration_path),
         "download_url": request.build_absolute_uri(download_path),
+    }
+
+
+def get_public_branding_context(course=None):
+    config = ConfiguracionGeneral.objects.first()
+    selected_course = course
+    selected_location = getattr(selected_course, "ubicacion", None) if selected_course else None
+    return {
+        "configuracion": config,
+        "selected_course": selected_course,
+        "selected_location": selected_location,
     }
 
 
@@ -655,6 +676,7 @@ def public_buscar_curso_por_codigo(request):
         "codigo": curso.codigo,
         "nombre": curso.nombre,
         "ubicacion": getattr(curso.ubicacion, "nombre", ""),
+        "ubicacion_abreviatura": getattr(curso.ubicacion, "abreviatura", ""),
     })
 
 
@@ -695,6 +717,7 @@ def public_buscar_participante_por_dpi(request):
 def public_course_registration(request):
     initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
     initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    active_course = initial_course
     initial_data = {}
     if initial_course:
         initial_data = {
@@ -709,6 +732,7 @@ def public_course_registration(request):
         codigo = form.cleaned_data["codigo_curso"]
         dpi = form.cleaned_data["dpi"]
         curso = get_course_by_code_or_none(codigo)
+        active_course = curso
 
         if not curso:
             form.add_error("codigo_curso", "No existe un curso con ese código.")
@@ -746,17 +770,18 @@ def public_course_registration(request):
                     }
                 )
 
-    return render(request, "diplomas/public_course_registration.html", {
+    context = {
         "form": form,
         "registration_result": registration_result,
-    })
+    }
+    context.update(get_public_branding_context(active_course or getattr(registration_result, "curso", None)))
+    return render(request, "diplomas/public_course_registration.html", context)
 
-    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
-    participant = None
 
 def public_diploma_download(request):
     initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
     initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
+    active_course = initial_course
     initial_data = {}
     if initial_course:
         initial_data = {
@@ -771,6 +796,7 @@ def public_diploma_download(request):
         codigo = form.cleaned_data["codigo_curso"]
         dpi = form.cleaned_data["dpi"]
         curso = get_course_by_code_or_none(codigo)
+        active_course = curso
 
         if not curso:
             form.add_error("codigo_curso", "No existe un curso con ese código.")
@@ -786,11 +812,15 @@ def public_diploma_download(request):
                 context = build_diploma_render_context(participant)
                 return render(request, "diplomas/ver_diploma.html", context)
 
-    return render(request, "diplomas/public_diploma_download.html", {
+    context = {
         "form": form,
         "participant": participant,
-    })
+    }
+    context.update(get_public_branding_context(active_course or getattr(participant, "curso", None)))
+    return render(request, "diplomas/public_diploma_download.html", context)
 
+    form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
+    participant = None
 
 @diplomas_access_required
 def ver_diploma(request, curso_id, participante_id):

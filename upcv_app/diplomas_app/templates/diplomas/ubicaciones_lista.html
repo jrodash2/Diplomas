@@ -29,6 +29,7 @@
               <tr>
                 <th>ID</th>
                 <th>Nombre</th>
+                <th>Abreviatura</th>
                 <th>Estado</th>
                 <th>Usuarios asignados</th>
                 <th>Acciones</th>
@@ -39,6 +40,7 @@
               <tr>
                 <td>{{ ubicacion.id }}</td>
                 <td>{{ ubicacion.nombre }}</td>
+                <td><span class="badge bg-primary">{{ ubicacion.abreviatura }}</span></td>
                 <td>{% if ubicacion.activa %}Activa{% else %}Inactiva{% endif %}</td>
                 <td>{{ ubicacion.asignaciones_usuarios.count }}</td>
                 <td>
@@ -61,6 +63,7 @@
               <tr>
                 <th>ID</th>
                 <th>Nombre</th>
+                <th>Abreviatura</th>
                 <th>Estado</th>
                 <th>Usuarios asignados</th>
                 <th>Acciones</th>
@@ -81,6 +84,7 @@
         <form method="post" action="{% url 'diplomas:crear_ubicacion' %}">
           {% csrf_token %}
           <div class="mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
+          <div class="mb-3">{{ form.abreviatura.label_tag }}{{ form.abreviatura }}</div>
           <div class="mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}</div>
           <div class="mb-3 form-check">{{ form.activa }} <label class="form-check-label" for="id_activa">Activa</label></div>
           <div class="text-end"><button type="submit" class="btn btn-primary">Guardar</button></div>
