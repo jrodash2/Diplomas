@@ -1,22 +1,17 @@
 {% extends 'diplomas/base.html' %}
-
 {% block content %}
 <div class="container d-flex justify-content-center mt-5" style="padding-top: 40px;">
   <div class="card shadow p-4" style="width: 85%; max-width: 900px;">
     <h4 class="text-center mb-4">Editar Diseño: {{ diseno.nombre }}</h4>
-    <form method="POST" enctype="multipart/form-data">
-      {% csrf_token %}
+    <form method="POST" enctype="multipart/form-data">{% csrf_token %}
       <div class="row">
+        {% if form.ubicacion.is_hidden %}{{ form.ubicacion }}{% else %}<div class="col-md-12 mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>{% endif %}
         <div class="col-md-12 mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
         <div class="col-md-12 mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}</div>
         <div class="col-md-12 mb-3">{{ form.imagen_fondo.label_tag }}{{ form.imagen_fondo }}</div>
         <div class="col-md-12 mb-3 form-check">{{ form.activo }} <label class="form-check-label" for="id_activo">Activo</label></div>
       </div>
-      <div class="text-end mt-3">
-        <a href="{% url 'diplomas:modificar_diseno_visual' diseno.id %}" class="btn btn-info">Modificar diseño visual</a>
-        <button class="btn btn-primary">Guardar Cambios</button>
-        <a href="{% url 'diplomas:disenos_lista' %}" class="btn btn-dark">Cancelar</a>
-      </div>
+      <div class="text-end mt-3"><a href="{% url 'diplomas:modificar_diseno_visual' diseno.id %}" class="btn btn-info">Modificar diseño visual</a><button class="btn btn-primary">Guardar Cambios</button><a href="{% url 'diplomas:disenos_lista' %}" class="btn btn-dark">Cancelar</a></div>
     </form>
   </div>
 </div>

@@ -1,19 +1,56 @@
 {% extends 'diplomas/base.html' %}
 
 {% block content %}
-
-<br><br><br><br><br>
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-
-            <!-- Card centrado -->
-            <div class="card shadow-lg p-4 text-center">
-                <h3 class="mb-3">Gestión de Diplomas</h3>
-                <p class="text-muted">Aquí podrás administrar los diplomas de empleados.</p>
-            </div>
-
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-sm-6">
+          <h4>{% if diplomas_scope.is_admin %}Dashboard global de Diplomas{% else %}Dashboard de {{ diplomas_user_location.nombre }}{% endif %}</h4>
+          <p class="mb-0 text-muted">{% if diplomas_scope.is_admin %}Vista general de todas las ubicaciones del módulo.{% else %}Vista limitada a su ubicación asignada.{% endif %}</p>
         </div>
+      </div>
     </div>
+
+    {% if diplomas_scope.is_manager and not diplomas_scope.has_location %}
+      <div class="alert alert-warning">Su usuario no tiene una ubicación asignada. Solicite a un administrador del grupo <strong>Diplomas</strong> que complete la asignación.</div>
+    {% else %}
+    <div class="row">
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Cursos</h6><h3>{{ total_cursos }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Firmas</h6><h3>{{ total_firmas }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Diseños</h6><h3>{{ total_disenos }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Participantes</h6><h3>{{ total_participantes }}</h3></div></div></div>
+    </div>
+    {% if diplomas_scope.is_admin %}
+    <div class="row">
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Ubicaciones</h6><h3>{{ total_ubicaciones }}</h3></div></div></div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-xl-4">
+        <div class="card"><div class="card-header pb-0"><h5>Cursos recientes</h5></div><div class="card-body">
+          <ul class="list-group list-group-flush">
+            {% for curso in cursos_recientes %}<li class="list-group-item d-flex justify-content-between"><span>{{ curso.nombre }}</span><small class="text-muted">{{ curso.ubicacion.nombre }}</small></li>{% empty %}<li class="list-group-item text-muted">Sin cursos registrados.</li>{% endfor %}
+          </ul>
+        </div></div>
+      </div>
+      <div class="col-xl-4">
+        <div class="card"><div class="card-header pb-0"><h5>Firmas recientes</h5></div><div class="card-body">
+          <ul class="list-group list-group-flush">
+            {% for firma in firmas_recientes %}<li class="list-group-item d-flex justify-content-between"><span>{{ firma.nombre }}</span><small class="text-muted">{{ firma.ubicacion.nombre }}</small></li>{% empty %}<li class="list-group-item text-muted">Sin firmas registradas.</li>{% endfor %}
+          </ul>
+        </div></div>
+      </div>
+      <div class="col-xl-4">
+        <div class="card"><div class="card-header pb-0"><h5>Diseños recientes</h5></div><div class="card-body">
+          <ul class="list-group list-group-flush">
+            {% for diseno in disenos_recientes %}<li class="list-group-item d-flex justify-content-between"><span>{{ diseno.nombre }}</span><small class="text-muted">{{ diseno.ubicacion.nombre }}</small></li>{% empty %}<li class="list-group-item text-muted">Sin diseños registrados.</li>{% endfor %}
+          </ul>
+        </div></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
