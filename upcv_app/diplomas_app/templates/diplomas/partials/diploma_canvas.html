@@ -10,7 +10,11 @@
       style="left:{{ item.x|unlocalize }}px; top:{{ item.y|unlocalize }}px; width:{{ item.width|unlocalize }}px; height:{{ item.height|unlocalize }}px; font-size:{{ item.font_size|unlocalize }}px; font-family:{{ item.font_family }}; font-weight:{{ item.font_weight }}; color:{{ item.color }}; text-align:{{ item.align }}; z-index:{{ item.z_index|unlocalize }};">
       {% if item.type == 'imagen' %}
         {% if item.image_url %}
-          <img src="{{ item.image_url }}" alt="{{ item.label }}"{% if item.shape == 'circle' %} class="diploma-photo-media"{% endif %}>
+          <img
+            src="{{ item.image_url }}"
+            alt="{{ item.label }}"
+            class="{% if item.shape == 'circle' %}diploma-photo-media{% else %}diploma-image-media{% endif %}"
+            data-diploma-image-shape="{{ item.shape|default:'rect' }}">
         {% else %}
           <div class="image-fallback{% if item.shape == 'circle' %} diploma-photo-placeholder{% endif %}">{{ item.label }}</div>
         {% endif %}

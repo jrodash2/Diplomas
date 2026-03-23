@@ -373,6 +373,9 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.participante.nombre_participante)
         self.assertTemplateUsed(response, "diplomas/ver_diploma.html")
+        self.assertContains(response, 'class="diploma-image-media"')
+        self.assertContains(response, 'data-diploma-image-shape="rect"')
+        self.assertContains(response, "diploma-export-fitted-image")
 
     def test_public_diploma_download_shows_clear_message_when_employee_is_not_enrolled(self):
         response = self.client.post(
