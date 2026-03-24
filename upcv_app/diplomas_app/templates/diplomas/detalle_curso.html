@@ -83,6 +83,16 @@
 
     <div class="card mt-3 shadow-sm border-0">
       <div class="card-body">
+        {% if not can_enroll %}
+        <div class="alert alert-warning mb-3">
+          {{ enrollment_message }}
+        </div>
+        {% endif %}
+        {% if not can_download %}
+        <div class="alert alert-info mb-3">
+          {{ download_message }}
+        </div>
+        {% endif %}
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
           <div>
             <h5 class="mb-1">Enlaces para participantes</h5>
@@ -105,7 +115,7 @@
                 <i class="fa fa-user-plus fa-2x" aria-hidden="true" style="opacity:.35;"></i>
               </div>
               <div class="d-flex flex-wrap gap-2 mt-4">
-                <a class="btn btn-light text-primary fw-semibold" href="{{ public_registration_url }}" target="_blank" rel="noopener">
+                <a class="btn btn-light text-primary fw-semibold {% if not can_enroll %}disabled{% endif %}" href="{{ public_registration_url }}" target="_blank" rel="noopener" {% if not can_enroll %}aria-disabled="true" tabindex="-1"{% endif %}>
                   <i class="fa fa-external-link me-2"></i>Abrir registro
                 </a>
                 <button class="btn btn-outline-light js-copy-link" type="button" data-copy-url="{{ public_registration_url }}">
@@ -127,7 +137,7 @@
               </div>
               <div class="row g-2 mt-3">
                 <div class="col-sm-6">
-                  <a class="btn btn-primary w-100" href="{{ public_diploma_download_url }}" target="_blank" rel="noopener">
+                  <a class="btn btn-primary w-100 {% if not can_download %}disabled{% endif %}" href="{{ public_diploma_download_url }}" target="_blank" rel="noopener" {% if not can_download %}aria-disabled="true" tabindex="-1"{% endif %}>
                     <i class="fa fa-external-link me-2"></i>Abrir descarga
                   </a>
                 </div>
@@ -153,7 +163,8 @@
     <div class="col-4 text-align-left">
       <button class="btn btn-primary mt-3"
               data-bs-toggle="modal"
-              data-bs-target="#modalAgregarEmpleado">
+              data-bs-target="#modalAgregarEmpleado"
+              {% if not can_enroll %}disabled{% endif %}>
         + Agregar Participante
       </button>
     </div>
@@ -283,6 +294,11 @@
         </ul>
 
         <div class="tab-content">
+          {% if not can_enroll %}
+          <div class="alert alert-warning mb-3">
+            {{ enrollment_message }}
+          </div>
+          {% endif %}
           <div class="tab-pane fade show active" id="matriculaRapidaPane" role="tabpanel">
             <div class="alert alert-light border small py-2">
               <strong>Opción rápida:</strong> escriba el DPI, espere el autocompletado y agregue al participante si ya existe.
@@ -305,7 +321,7 @@
 
               <div class="small mb-3" id="quickLookupStatus"></div>
 
-              <button class="btn btn-primary w-100" id="quickAddButton">Agregar participante existente</button>
+              <button class="btn btn-primary w-100" id="quickAddButton" {% if not can_enroll %}disabled{% endif %}>Agregar participante existente</button>
             </form>
           </div>
 
@@ -358,7 +374,7 @@
                 <strong>Obligatorios:</strong> DPI y Nombre del participante.<br>
                 <strong>Opcionales:</strong> Fotografía, Correo, Teléfono y Observaciones.
               </div>
-              <button class="btn btn-outline-primary w-100">Guardar matrícula manual</button>
+              <button class="btn btn-outline-primary w-100" {% if not can_enroll %}disabled{% endif %}>Guardar matrícula manual</button>
             </form>
           </div>
         </div>
@@ -375,6 +391,7 @@
 <!-- ========================= -->
 <script>
 $(document).ready(function () {
+  const enrollmentLocked = {% if can_enroll %}false{% else %}true{% endif %};
   $(".js-copy-link").on("click", function () {
     var button = $(this);
     var url = button.data("copy-url");
@@ -421,7 +438,7 @@ $(document).ready(function () {
     if (dpi.length < 5) {
       $("#id_nombre_completo").val("");
       quickStatus.removeClass("text-success text-danger").addClass("text-muted").text("Ingrese un DPI válido para buscar.");
-      quickButton.prop("disabled", false);
+      quickButton.prop("disabled", enrollmentLocked);
       return;
     }
 
@@ -432,11 +449,11 @@ $(document).ready(function () {
         if (data.existe) {
           $("#id_nombre_completo").val(data.nombre_completo);
           quickStatus.removeClass("text-danger text-muted").addClass("text-success").text("Participante encontrado. Puede agregarlo al curso.");
-          quickButton.prop("disabled", false);
+          quickButton.prop("disabled", enrollmentLocked);
         } else {
           $("#id_nombre_completo").val("");
           quickStatus.removeClass("text-success text-muted").addClass("text-danger").text("No se encontró un participante con ese DPI. Use la matrícula manual.");
-          quickButton.prop("disabled", false);
+          quickButton.prop("disabled", enrollmentLocked);
         }
       },
       error: function () {
