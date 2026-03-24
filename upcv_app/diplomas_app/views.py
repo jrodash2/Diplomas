@@ -168,9 +168,15 @@ def get_course_enrollment_status(curso):
     return True, ""
 
 
-def get_public_course_diploma_download_status(curso):
+def get_diploma_download_status(curso, mode="public"):
     if not curso:
         return False, "Debe seleccionar un curso válido."
+
+    if mode == "internal":
+        return True, ""
+
+    if mode != "public":
+        raise ValueError("mode must be 'public' or 'internal'")
 
     end_date = getattr(curso, "fecha_fin", None)
     if not end_date:
@@ -185,12 +191,16 @@ def get_public_course_diploma_download_status(curso):
     return True, ""
 
 
+def get_public_course_diploma_download_status(curso):
+    return get_diploma_download_status(curso, mode="public")
+
+
 def get_course_diploma_download_status(curso):
     """
     Compatibilidad retroactiva.
     Algunas rutas/vistas antiguas aún pueden invocar este nombre histórico.
     """
-    return get_public_course_diploma_download_status(curso)
+    return get_diploma_download_status(curso, mode="internal")
 
 
 def add_months_to_date(source_date, months):

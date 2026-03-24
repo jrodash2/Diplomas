@@ -12,6 +12,7 @@ from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Emp
 
 from .design_engine import build_diploma_render_context
 from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
+from .views import get_course_diploma_download_status
 
 
 TEST_PNG_BYTES = (
@@ -556,6 +557,11 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
+
+    def test_legacy_internal_download_status_helper_does_not_block_open_course(self):
+        can_download, message = get_course_diploma_download_status(self.curso_b)
+        self.assertTrue(can_download)
+        self.assertEqual(message, "")
 
     def test_internal_preview_and_download_are_available_before_course_end(self):
         self.client.login(username="admin_diplomas", password="test12345")
