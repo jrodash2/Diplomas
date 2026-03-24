@@ -557,14 +557,14 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
 
-    def test_internal_preview_is_available_before_course_end_but_download_button_is_locked(self):
+    def test_internal_preview_and_download_are_available_before_course_end(self):
         self.client.login(username="admin_diplomas", password="test12345")
         response = self.client.get(
             reverse("diplomas:ver_diploma", args=[self.curso_b.id, self.participante_curso_abierto.id]),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
-        self.assertContains(response, 'data-download-locked="true"')
+        self.assertContains(response, "Descargar JPG")
+        self.assertNotContains(response, 'data-download-locked="true"')
 
     def test_internal_download_button_is_enabled_when_course_is_finished(self):
         self.client.login(username="admin_diplomas", password="test12345")
@@ -573,3 +573,38 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'data-download-locked="true"')
+
+    def test_public_download_is_blocked_after_six_month_window(self):
+        today = timezone.localdate()
+        old_course = Curso.objects.create(
+            ubicacion=self.ubicacion_a,
+            codigo="90001",
+            nombre="Curso Antiguo",
+            descripcion="Antiguo",
+            fecha_inicio=today - timedelta(days=240),
+            fecha_fin=today - timedelta(days=220),
+            diseno_diploma=self.diseno_a,
+        )
+        old_course.firmas.add(self.firma_a)
+        old_participant = old_course.participantes.create(
+            participante_dpi="1010101010101",
+            participante_nombre="Participante Antiguo",
+        )
+
+        response = self.client.post(
+            reverse("diplomas:public_diploma_download"),
+            {
+                "codigo_curso": old_course.codigo,
+                "dpi": old_participant.participante_dpi,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "El plazo disponible para descargar este diploma desde este enlace ya ha vencido.")
+
+    def test_public_download_page_shows_informative_window_message(self):
+        response = self.client.get(reverse("diplomas:public_diploma_download"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "el diploma puede descargarse desde este enlace únicamente hasta 6 meses después de finalizado el curso",
+        )

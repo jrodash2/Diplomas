@@ -1,5 +1,6 @@
 import json
 import os
+import calendar
 from uuid import uuid4
 
 from django.contrib import messages
@@ -178,7 +179,18 @@ def get_course_diploma_download_status(curso):
     today = timezone.localdate()
     if today < end_date:
         return False, "No se puede descargar el diploma porque el curso aún no ha finalizado."
+    deadline = add_months_to_date(end_date, months=6)
+    if today > deadline:
+        return False, "El plazo disponible para descargar este diploma desde este enlace ya ha vencido."
     return True, ""
+
+
+def add_months_to_date(source_date, months):
+    total_month = (source_date.month - 1) + months
+    year = source_date.year + (total_month // 12)
+    month = (total_month % 12) + 1
+    day = min(source_date.day, calendar.monthrange(year, month)[1])
+    return source_date.replace(year=year, month=month, day=day)
 
 
 # Dashboard
@@ -905,9 +917,8 @@ def ver_diploma(request, curso_id, participante_id):
         messages.error(request, download_message)
         return redirect("diplomas:detalle_curso", curso_id=curso_empleado.curso_id)
     context = build_diploma_render_context(curso_empleado)
-    can_download, download_message = get_course_diploma_download_status(curso_empleado.curso)
-    context["allow_download"] = can_download
-    context["download_block_message"] = "" if can_download else download_message
+    context["allow_download"] = True
+    context["download_block_message"] = ""
     return render_diplomas(request, "diplomas/ver_diploma.html", context)
 
 
