@@ -32,10 +32,16 @@ class PerfilAdmin(admin.ModelAdmin):
 admin.site.register(Perfil, PerfilAdmin)
 
 # Admin para SolicitudCompra
+
 class SolicitudCompraAdmin(admin.ModelAdmin):
-    list_display = ('id', 'seccion', 'usuario', 'fecha_solicitud')
-    search_fields = ('seccion__nombre', 'usuario__username', 'descripcion')
-    list_filter = ('fecha_solicitud', 'estado', 'prioridad')
+    list_display = ('correlativo', 'codigo_correlativo', 'seccion', 'fecha_solicitud')
+    search_fields = ('seccion__nombre', 'usuario__username', 'descripcion', 'codigo_correlativo')
+    list_filter = ('fecha_solicitud', 'estado', 'prioridad')  # No se suele poner código en filtros porque no es categoría fija
+
+    def correlativo(self, obj):
+        queryset = self.model.objects.order_by('id')
+        return list(queryset).index(obj) + 1
+    correlativo.short_description = 'Correlativo'
 
 admin.site.register(SolicitudCompra, SolicitudCompraAdmin)
 
