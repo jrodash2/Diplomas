@@ -43,9 +43,21 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
 .diploma-text-element.align-right { justify-content:flex-end; }
 .image-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border:1px dashed #64748b; background:rgba(255,255,255,.78); color:#475569; font-weight:600; box-sizing:border-box; }
 .diploma-export-fitted-image { width:100%; height:100%; display:block; }
+.diplomas-toast-stack { position:fixed; top:18px; right:18px; z-index:2200; display:flex; flex-direction:column; gap:10px; max-width:360px; }
+.diplomas-toast { border-radius:14px; padding:14px 16px; color:#fff; box-shadow:0 14px 30px rgba(15,23,42,.22); animation:diplomaToastIn .22s ease; }
+.diplomas-toast-success { background:linear-gradient(135deg,#0f9f6e,#047857); }
+.diplomas-toast-error { background:linear-gradient(135deg,#dc2626,#991b1b); }
+.diplomas-toast-warning { background:linear-gradient(135deg,#f59e0b,#b45309); }
+.diplomas-toast-info { background:linear-gradient(135deg,#2563eb,#1d4ed8); }
+.diplomas-toast-header { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px; }
+.diplomas-toast-title { margin:0; font-weight:700; font-size:13px; }
+.diplomas-toast-message { margin:0; font-size:13px; line-height:1.45; }
+.diplomas-toast-close { background:transparent; border:0; color:#fff; font-size:17px; cursor:pointer; opacity:.9; }
+@keyframes diplomaToastIn { from { transform:translateY(-8px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 </style>
 </head>
 <body>
+<div class="diplomas-toast-stack" id="diplomaToastStack"></div>
 <div class="toolbar">
     <button class="btn" id="zoomOut">–</button>
     <button class="btn" id="zoomIn">+</button>
@@ -72,6 +84,30 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
 <script>
 let zoom = 0.28;
 const canvasContent = document.getElementById('canvasContent');
+function showInlineToast(message, level) {
+  const stack = document.getElementById('diplomaToastStack');
+  if (!stack) return;
+  const toast = document.createElement('div');
+  const tone = level === 'error' ? 'error' : level === 'warning' ? 'warning' : level === 'success' ? 'success' : 'info';
+  toast.className = `diplomas-toast diplomas-toast-${tone}`;
+  toast.innerHTML = `
+    <div class="diplomas-toast-header">
+      <p class="diplomas-toast-title">${tone === 'error' ? 'Error' : tone === 'warning' ? 'Aviso' : tone === 'success' ? 'Éxito' : 'Información'}</p>
+      <button type="button" class="diplomas-toast-close" aria-label="Cerrar">×</button>
+    </div>
+    <p class="diplomas-toast-message"></p>
+  `;
+  toast.querySelector('.diplomas-toast-message').textContent = message;
+  stack.appendChild(toast);
+  const removeToast = () => {
+    toast.style.transition = 'opacity .2s ease, transform .2s ease';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-8px)';
+    setTimeout(() => toast.remove(), 220);
+  };
+  toast.querySelector('.diplomas-toast-close')?.addEventListener('click', removeToast);
+  setTimeout(removeToast, 4200);
+}
 
 function applyZoom() {
   canvasContent.style.transform = `scale(${zoom})`;
@@ -91,7 +127,7 @@ document.getElementById('fullscreenBtn').onclick = () => {
 document.getElementById('btnDescargarJPG').onclick = async () => {
   const downloadAllowed = {% if allow_download is False %}false{% else %}true{% endif %};
   if (!downloadAllowed) {
-    window.alert("{{ download_block_message|default:'No se puede descargar el diploma porque el curso aún no ha finalizado.'|escapejs }}");
+    showInlineToast("{{ download_block_message|default:'No se puede descargar el diploma porque el curso aún no ha finalizado.'|escapejs }}", "error");
     return;
   }
   const exportCanvasNode = document.getElementById('diplomaExportCanvas');

@@ -34,6 +34,7 @@ from .forms import (
     AgregarParticipanteRapidoForm,
     CursoForm,
     DisenoDiplomaForm,
+    EditarParticipanteCursoForm,
     FirmaForm,
     MatriculaManualParticipanteForm,
     PublicCourseRegistrationForm,
@@ -598,10 +599,18 @@ def detalle_curso(request, curso_id):
     public_links = build_public_course_links(request, curso)
     can_enroll, enrollment_message = get_course_enrollment_status(curso)
     can_download, _download_message = get_public_course_diploma_download_status(curso)
+    participants_for_edit = [
+        {
+            "participant": participante,
+            "form": EditarParticipanteCursoForm(instance=participante, prefix=f"edit_{participante.id}"),
+        }
+        for participante in participantes
+    ]
 
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
         "participantes": participantes,
+        "participants_for_edit": participants_for_edit,
         "total_participantes": total_participantes,
         "public_registration_url": public_links["registration_url"],
         "public_diploma_download_url": public_links["download_url"],
@@ -619,6 +628,37 @@ def detalle_curso(request, curso_id):
         "enrollment_message": enrollment_message,
         "can_download": can_download,
     })
+
+
+@diplomas_access_required
+def editar_participante_detalle(request, curso_id, participante_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participante = get_object_or_404(CursoEmpleado, id=participante_id, curso=curso)
+
+    if request.method != "POST":
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+    form = EditarParticipanteCursoForm(
+        request.POST,
+        request.FILES,
+        instance=participante,
+        prefix=f"edit_{participante.id}",
+    )
+
+    if not form.is_valid():
+        for _, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
+
+    participante_editado = form.save(commit=False)
+    participante_editado.participante_correo = form.cleaned_data.get("participante_correo", "") or ""
+    participante_editado.participante_telefono = form.cleaned_data.get("participante_telefono", "") or ""
+    participante_editado.observaciones = form.cleaned_data.get("observaciones", "") or ""
+    participante_editado.save()
+
+    messages.success(request, "Participante actualizado correctamente.")
+    return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
 
 @diplomas_access_required
@@ -735,9 +775,11 @@ def buscar_empleado_por_dpi(request):
         return JsonResponse({"existe": False})
     return JsonResponse({
         "existe": True,
+        "empleado_id": empleado.id,
         "nombres": empleado.nombres,
         "apellidos": empleado.apellidos,
         "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
+        "dpi_normalizado": normalize_dpi_input(getattr(empleado, "dpi", "")),
         "foto_url": empleado.imagen.url if empleado.imagen else "",
     })
 
