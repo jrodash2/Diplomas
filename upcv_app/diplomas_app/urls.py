@@ -28,6 +28,7 @@ urlpatterns = [
     path("ajax/buscar-empleado/", views.buscar_empleado_por_dpi, name="buscar_empleado_por_dpi"),
     path("curso/<int:curso_id>/", views.detalle_curso, name="detalle_curso"),
     path("curso/<int:curso_id>/agregar/", views.agregar_empleado_detalle, name="agregar_empleado_detalle"),
+    path("curso/<int:curso_id>/participante/<int:participante_id>/editar/", views.editar_participante_detalle, name="editar_participante_detalle"),
     path("curso/<int:curso_id>/editar/", views.editar_curso, name="editar_curso"),
     path("curso/<int:curso_id>/eliminar-participante/<int:participante_id>/", views.eliminar_participante, name="eliminar_participante"),
     path("curso/<int:curso_id>/diploma/<int:participante_id>/", views.ver_diploma, name="ver_diploma"),

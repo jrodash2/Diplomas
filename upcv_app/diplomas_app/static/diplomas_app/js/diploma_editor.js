@@ -118,6 +118,15 @@
     ui.uploadFeedback.textContent = message;
   }
 
+  function notify(message, tone) {
+    const normalizedTone = tone === "error" ? "error" : tone === "warning" ? "warning" : tone === "success" ? "success" : "info";
+    if (typeof window.showDiplomaToast === "function") {
+      window.showDiplomaToast(message, normalizedTone);
+      return;
+    }
+    window.alert(message);
+  }
+
   function setActiveSidebarTab(tabName) {
     ui.tabButtons.forEach(function (button) {
       const isActive = button.dataset.tabTarget === tabName;
@@ -571,7 +580,7 @@
       return;
     }
     if (!state.uploadUrl) {
-      window.alert("No hay una ruta configurada para subir imágenes del editor.");
+      notify("No hay una ruta configurada para subir imágenes del editor.", "error");
       return;
     }
 
@@ -614,7 +623,7 @@
       renderLayerPanel();
       syncSidebar();
     } catch (error) {
-      window.alert(error.message || "No se pudo subir la imagen.");
+      notify(error.message || "No se pudo subir la imagen.", "error");
       setFeedback(error.message || "No se pudo subir la imagen.", "error");
     } finally {
       if (buttonToDisable) {
@@ -793,7 +802,7 @@
 
       const payload = await response.json();
       if (!response.ok || !payload.success) {
-        window.alert(payload.error || "No se pudo guardar el diseño.");
+        notify(payload.error || "No se pudo guardar el diseño.", "error");
         setFeedback(payload.error || "No se pudo guardar el diseño.", "error");
         return;
       }
@@ -804,9 +813,9 @@
       renderLayerPanel();
       syncSidebar();
       setFeedback(payload.message || "Diseño guardado correctamente.", "success");
-      window.alert(payload.message || "Diseño guardado correctamente.");
+      notify(payload.message || "Diseño guardado correctamente.", "success");
     } catch (error) {
-      window.alert("Ocurrió un error al guardar el diseño.");
+      notify("Ocurrió un error al guardar el diseño.", "error");
       setFeedback("Ocurrió un error al guardar el diseño.", "error");
     } finally {
       ui.save.disabled = false;
