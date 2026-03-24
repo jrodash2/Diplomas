@@ -564,6 +564,7 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Descargar JPG")
+        self.assertNotContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
         self.assertNotContains(response, 'data-download-locked="true"')
 
     def test_internal_download_button_is_enabled_when_course_is_finished(self):
