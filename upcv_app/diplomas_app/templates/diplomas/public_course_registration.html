@@ -29,31 +29,33 @@
         .actions { display: flex; gap: 12px; flex-wrap: wrap; }
         .btn { background: #2563eb; color: #fff; border: 0; border-radius: 14px; padding: 13px 20px; cursor: pointer; font-size: 15px; box-shadow: 0 10px 24px rgba(37, 99, 235, .18); }
         .btn-secondary { background: #0f172a; text-decoration: none; display: inline-block; }
-        .toast-stack { position: fixed; top: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 12px; max-width: 380px; }
-        .toast { border-radius: 18px; color: #fff; padding: 16px 18px; box-shadow: 0 18px 35px rgba(15, 23, 42, 0.18); }
-        .toast.error { background: linear-gradient(135deg, #dc2626, #991b1b); }
-        .toast.success { background: linear-gradient(135deg, #0f9f6e, #047857); }
-        .toast button { background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer; }
-        .toast-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
-        .toast-title { margin: 0; font-weight: 700; }
-        .toast-message { margin: 0; font-size: 13px; line-height: 1.45; }
+        .diplomas-toast-stack { position: fixed; top: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 12px; max-width: 380px; }
+        .diplomas-toast { border-radius: 18px; color: #fff; padding: 16px 18px; box-shadow: 0 18px 35px rgba(15, 23, 42, 0.18); }
+        .diplomas-toast-error { background: linear-gradient(135deg, #dc2626, #991b1b); }
+        .diplomas-toast-success { background: linear-gradient(135deg, #0f9f6e, #047857); }
+        .diplomas-toast-warning { background: linear-gradient(135deg, #f59e0b, #b45309); }
+        .diplomas-toast-info { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .diplomas-toast-close { background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer; }
+        .diplomas-toast-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+        .diplomas-toast-title { margin: 0; font-weight: 700; }
+        .diplomas-toast-message { margin: 0; font-size: 13px; line-height: 1.45; }
         @media (max-width: 860px) {
             .form-shell { grid-template-columns: 1fr; }
             .hero { padding-top: 32px; }
             .container { margin-top: -12px; }
-            .toast-stack { left: 16px; right: 16px; max-width: none; }
+            .diplomas-toast-stack { left: 16px; right: 16px; max-width: none; }
         }
     </style>
 </head>
 <body>
-    <div class="toast-stack" id="toastStack">
+    <div class="diplomas-toast-stack" id="toastStack">
         {% if form.non_field_errors or form.errors %}
-            <div class="toast error" data-auto-hide="true">
-                <div class="toast-header">
-                    <p class="toast-title">Revise la información</p>
-                    <button type="button" class="toast-close">×</button>
+            <div class="diplomas-toast diplomas-toast-error" data-auto-hide="true">
+                <div class="diplomas-toast-header">
+                    <p class="diplomas-toast-title">Revise la información</p>
+                    <button type="button" class="diplomas-toast-close">×</button>
                 </div>
-                <div class="toast-message">
+                <div class="diplomas-toast-message">
                 {{ form.non_field_errors }}
                 {% for field in form %}
                     {% for error in field.errors %}
@@ -65,12 +67,12 @@
         {% endif %}
 
         {% if registration_result %}
-            <div class="toast success" data-auto-hide="true">
-                <div class="toast-header">
-                    <p class="toast-title">Registro completado</p>
-                    <button type="button" class="toast-close">×</button>
+            <div class="diplomas-toast diplomas-toast-success" data-auto-hide="true">
+                <div class="diplomas-toast-header">
+                    <p class="diplomas-toast-title">Registro completado</p>
+                    <button type="button" class="diplomas-toast-close">×</button>
                 </div>
-                <div class="toast-message">
+                <div class="diplomas-toast-message">
                     Registro completado correctamente para <strong>{{ registration_result.nombre_participante }}</strong> en el curso <strong>{{ registration_result.curso.nombre }}</strong>.
                 </div>
             </div>
@@ -100,11 +102,11 @@
 
     <div class="container">
         {% if selected_course and not course_enrollment_open %}
-            <div class="toast error" style="position: static; margin-bottom: 16px;">
-                <div class="toast-header">
-                    <p class="toast-title">Inscripción no disponible</p>
+            <div class="diplomas-toast diplomas-toast-error" style="position: static; margin-bottom: 16px;">
+                <div class="diplomas-toast-header">
+                    <p class="diplomas-toast-title">Inscripción no disponible</p>
                 </div>
-                <div class="toast-message">{{ course_enrollment_message }}</div>
+                <div class="diplomas-toast-message">{{ course_enrollment_message }}</div>
             </div>
         {% endif %}
         <div class="form-shell">
@@ -231,14 +233,14 @@
         courseCodeInput?.addEventListener("blur", refreshCourse);
         dpiInput?.addEventListener("blur", refreshParticipant);
 
-        document.querySelectorAll('.toast').forEach(function (toast) {
+        document.querySelectorAll('.diplomas-toast').forEach(function (toast) {
             const removeToast = function () {
                 toast.style.transition = 'opacity .2s ease, transform .2s ease';
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateY(-8px)';
                 setTimeout(function () { toast.remove(); }, 220);
             };
-            toast.querySelector('.toast-close')?.addEventListener('click', removeToast);
+            toast.querySelector('.diplomas-toast-close')?.addEventListener('click', removeToast);
             if (toast.dataset.autoHide === 'true') {
                 setTimeout(removeToast, 4200);
             }

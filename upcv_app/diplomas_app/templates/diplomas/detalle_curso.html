@@ -10,6 +10,34 @@
 
 <div class="page-body">
   <div class="container-fluid">
+    <div class="card mt-3 border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+          <div>
+            <span class="badge bg-primary-subtle text-primary mb-2">Curso actual</span>
+            <h4 class="mb-1">{{ curso.nombre }}</h4>
+            <p class="text-muted mb-0">
+              Código <strong>{{ curso.codigo }}</strong>
+              · Ubicación <strong>{{ curso.ubicacion.nombre|default:"Sin ubicación asignada" }}</strong>
+            </p>
+          </div>
+          <div class="row g-2 text-start text-lg-end">
+            <div class="col-sm-6 col-lg-12">
+              <small class="text-muted d-block">Fecha de inicio</small>
+              <strong>{{ curso.fecha_inicio|date:"d/m/Y"|default:"No definida" }}</strong>
+            </div>
+            <div class="col-sm-6 col-lg-12">
+              <small class="text-muted d-block">Fecha de fin</small>
+              <strong>{{ curso.fecha_fin|date:"d/m/Y"|default:"No definida" }}</strong>
+            </div>
+          </div>
+        </div>
+        {% if curso.descripcion %}
+        <hr class="my-3">
+        <p class="mb-0 text-muted">{{ curso.descripcion }}</p>
+        {% endif %}
+      </div>
+    </div>
 
     <!-- ENCABEZADO -->
     <div class="page-title">
@@ -207,6 +235,14 @@
 
                 <td>
                   <ul class="action">
+                    <li class="edit me-2">
+                      <a href="#"
+                         data-bs-toggle="modal"
+                         data-bs-target="#modalEditarParticipante{{ p.id }}"
+                         title="Editar participante">
+                        <i class="fa fa-pencil"></i>
+                      </a>
+                    </li>
 
 <li class="view me-2">
   <a href="{% url 'diplomas:ver_diploma' curso.id p.id %}"
@@ -219,7 +255,7 @@
 
                     <li class="delete">
                       <a href="{% url 'diplomas:eliminar_participante' curso.id p.id %}"
-                         onclick="return confirm('¿Eliminar este participante del curso?');"
+                         data-confirm-href="{% url 'diplomas:eliminar_participante' curso.id p.id %}" data-confirm-message="¿Eliminar este participante del curso?" data-confirm-title="Eliminar participante" data-confirm-label="Eliminar" data-confirm-class="btn-danger"
                          class="text-danger"
                          title="Eliminar participante">
                         <i class="icon-trash"></i>
@@ -255,6 +291,52 @@
   </div><!-- container -->
 </div><!-- page-body -->
 
+
+{% for item in participants_for_edit %}
+<div class="modal fade" id="modalEditarParticipante{{ item.participant.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar participante</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="POST" action="{% url 'diplomas:editar_participante_detalle' curso.id item.participant.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-2">
+            <label for="{{ item.form.participante_dpi.id_for_label }}" class="form-label">{{ item.form.participante_dpi.label }}</label>
+            {{ item.form.participante_dpi }}
+          </div>
+          <div class="mb-2">
+            <label for="{{ item.form.participante_nombre.id_for_label }}" class="form-label">{{ item.form.participante_nombre.label }}</label>
+            {{ item.form.participante_nombre }}
+          </div>
+          <div class="mb-2">
+            <label for="{{ item.form.participante_correo.id_for_label }}" class="form-label">{{ item.form.participante_correo.label }}</label>
+            {{ item.form.participante_correo }}
+          </div>
+          <div class="mb-2">
+            <label for="{{ item.form.participante_telefono.id_for_label }}" class="form-label">{{ item.form.participante_telefono.label }}</label>
+            {{ item.form.participante_telefono }}
+          </div>
+          <div class="mb-2">
+            <label for="{{ item.form.observaciones.id_for_label }}" class="form-label">{{ item.form.observaciones.label }}</label>
+            {{ item.form.observaciones }}
+          </div>
+          <div class="mb-0">
+            <label for="{{ item.form.participante_foto.id_for_label }}" class="form-label">{{ item.form.participante_foto.label }}</label>
+            {{ item.form.participante_foto }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 
 
 <!-- ========================= -->

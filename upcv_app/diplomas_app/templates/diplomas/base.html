@@ -343,6 +343,24 @@
       </div>
     </div>
 
+    <div class="modal fade" id="diplomasConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title" id="diplomasConfirmTitle">Confirmar acción</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body pt-2">
+            <p class="mb-0 text-muted" id="diplomasConfirmMessage">¿Desea continuar con esta acción?</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal" id="diplomasConfirmCancel">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="diplomasConfirmAccept">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
@@ -431,6 +449,96 @@
           stack.appendChild(toast);
           bindToast(toast);
         };
+
+        const confirmModalElement = document.getElementById('diplomasConfirmModal');
+        const confirmTitleNode = document.getElementById('diplomasConfirmTitle');
+        const confirmMessageNode = document.getElementById('diplomasConfirmMessage');
+        const confirmAcceptButton = document.getElementById('diplomasConfirmAccept');
+        const confirmCancelButton = document.getElementById('diplomasConfirmCancel');
+        const confirmModal = confirmModalElement && window.bootstrap ? new bootstrap.Modal(confirmModalElement) : null;
+        let confirmResolver = null;
+
+        window.showDiplomaConfirm = function (options) {
+          const config = options || {};
+          const title = config.title || 'Confirmar acción';
+          const message = config.message || '¿Desea continuar con esta acción?';
+          const confirmLabel = config.confirmLabel || 'Confirmar';
+          const confirmClass = config.confirmClass || 'btn-danger';
+          const cancelLabel = config.cancelLabel || 'Cancelar';
+
+          if (!confirmModal) {
+            window.showDiplomaToast('No se pudo abrir la confirmación visual.', 'error');
+            return Promise.resolve(false);
+          }
+
+          confirmTitleNode.textContent = title;
+          confirmMessageNode.textContent = message;
+          confirmAcceptButton.textContent = confirmLabel;
+          confirmCancelButton.textContent = cancelLabel;
+          confirmAcceptButton.className = `btn ${confirmClass}`;
+
+          return new Promise(function (resolve) {
+            confirmResolver = resolve;
+            confirmModal.show();
+          });
+        };
+
+        if (confirmAcceptButton && confirmModalElement) {
+          confirmAcceptButton.addEventListener('click', function () {
+            if (confirmResolver) {
+              confirmResolver(true);
+            }
+            confirmResolver = null;
+            confirmModal?.hide();
+          });
+
+          confirmModalElement.addEventListener('hidden.bs.modal', function () {
+            if (confirmResolver) {
+              confirmResolver(false);
+              confirmResolver = null;
+            }
+          });
+        }
+
+        document.addEventListener('submit', function (event) {
+          const form = event.target.closest('form[data-confirm-message]');
+          if (!form || form.dataset.confirmed === 'true') {
+            return;
+          }
+          event.preventDefault();
+          window.showDiplomaConfirm({
+            title: form.dataset.confirmTitle || 'Confirmar acción',
+            message: form.dataset.confirmMessage || '¿Desea continuar?',
+            confirmLabel: form.dataset.confirmLabel || 'Confirmar',
+            cancelLabel: form.dataset.cancelLabel || 'Cancelar',
+            confirmClass: form.dataset.confirmClass || 'btn-danger',
+          }).then(function (accepted) {
+            if (!accepted) {
+              return;
+            }
+            form.dataset.confirmed = 'true';
+            form.submit();
+          });
+        });
+
+        document.addEventListener('click', function (event) {
+          const trigger = event.target.closest('[data-confirm-href]');
+          if (!trigger) {
+            return;
+          }
+          event.preventDefault();
+          window.showDiplomaConfirm({
+            title: trigger.dataset.confirmTitle || 'Confirmar acción',
+            message: trigger.dataset.confirmMessage || '¿Desea continuar?',
+            confirmLabel: trigger.dataset.confirmLabel || 'Confirmar',
+            cancelLabel: trigger.dataset.cancelLabel || 'Cancelar',
+            confirmClass: trigger.dataset.confirmClass || 'btn-danger',
+          }).then(function (accepted) {
+            if (accepted && trigger.dataset.confirmHref) {
+              window.location.href = trigger.dataset.confirmHref;
+            }
+          });
+        });
 
         document.querySelectorAll('.diplomas-toast').forEach(bindToast);
       })();
