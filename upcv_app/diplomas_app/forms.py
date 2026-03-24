@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db import models
+from django.db.models.functions import Replace
 
 from empleados_app.models import Empleado
 
@@ -18,6 +20,18 @@ User = get_user_model()
 
 def normalize_dpi_input(value):
     return "".join(char for char in str(value or "") if char.isdigit())
+
+
+def find_employee_by_dpi(value):
+    normalized_dpi = normalize_dpi_input(value)
+    if not normalized_dpi:
+        return None
+
+    employees = Empleado.objects.all()
+    normalized_field = Replace(models.F("dpi"), models.Value(" "), models.Value(""))
+    normalized_field = Replace(normalized_field, models.Value("-"), models.Value(""))
+    employees = employees.annotate(normalized_dpi=normalized_field)
+    return employees.filter(normalized_dpi=normalized_dpi).first()
 
 
 class ScopedModelFormMixin:
@@ -141,11 +155,11 @@ class AgregarEmpleadoCursoForm(forms.Form):
         dpi = cleaned_data.get("dpi")
 
         if dpi:
-            try:
-                empleado = Empleado.objects.get(dpi=dpi)
+            empleado = find_employee_by_dpi(dpi)
+            if empleado:
                 cleaned_data["empleado"] = empleado
-                cleaned_data["nombre_completo"] = f"{empleado.nombres} {empleado.apellidos}"
-            except Empleado.DoesNotExist:
+                cleaned_data["nombre_completo"] = f"{empleado.nombres} {empleado.apellidos}".strip()
+            else:
                 raise forms.ValidationError("No existe un empleado con ese DPI.")
 
         return cleaned_data
@@ -153,6 +167,7 @@ class AgregarEmpleadoCursoForm(forms.Form):
 
 class AgregarParticipanteRapidoForm(forms.Form):
     curso = forms.ModelChoiceField(queryset=Curso.objects.none(), widget=forms.HiddenInput(), required=True)
+    empleado_id = forms.IntegerField(required=False, widget=forms.HiddenInput())
     dpi = forms.CharField(
         label="DPI *",
         max_length=15,
@@ -185,7 +200,7 @@ class AgregarParticipanteRapidoForm(forms.Form):
             self.fields["curso"].initial = course
 
     def clean_dpi(self):
-        dpi = "".join(str(self.cleaned_data.get("dpi") or "").split())
+        dpi = normalize_dpi_input(self.cleaned_data.get("dpi"))
         if not dpi:
             raise forms.ValidationError("Debe ingresar un DPI.")
         return dpi
@@ -193,13 +208,21 @@ class AgregarParticipanteRapidoForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         dpi = cleaned_data.get("dpi")
-        if dpi:
-            try:
-                empleado = Empleado.objects.get(dpi=dpi)
-                cleaned_data["empleado"] = empleado
-                cleaned_data["nombre_completo"] = f"{empleado.nombres} {empleado.apellidos}".strip()
-            except Empleado.DoesNotExist:
-                raise forms.ValidationError("No existe un participante registrado con ese DPI. Use la matrícula manual.")
+        empleado = None
+
+        empleado_id = cleaned_data.get("empleado_id")
+        if empleado_id:
+            empleado = Empleado.objects.filter(id=empleado_id).first()
+
+        if not empleado and dpi:
+            empleado = find_employee_by_dpi(dpi)
+
+        if empleado:
+            cleaned_data["empleado"] = empleado
+            cleaned_data["nombre_completo"] = f"{empleado.nombres} {empleado.apellidos}".strip()
+            cleaned_data["empleado_id"] = empleado.id
+        else:
+            raise forms.ValidationError("No existe un participante registrado con ese DPI. Use la matrícula manual.")
         return cleaned_data
 
 

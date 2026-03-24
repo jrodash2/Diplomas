@@ -384,6 +384,7 @@
               {% csrf_token %}
               <input type="hidden" name="enrollment_mode" value="quick">
               {{ matricula_rapida_form.curso }}
+              {{ matricula_rapida_form.empleado_id }}
 
               <div class="mb-2">
                 <label for="{{ matricula_rapida_form.dpi.id_for_label }}" class="form-label">{{ matricula_rapida_form.dpi.label }}</label>
@@ -511,9 +512,11 @@ $(document).ready(function () {
     var dpi = $(this).val();
     var quickStatus = $("#quickLookupStatus");
     var quickButton = $("#quickAddButton");
+    var quickEmployeeId = $("#id_empleado_id");
 
     if (dpi.length < 5) {
       $("#id_nombre_completo").val("");
+      quickEmployeeId.val("");
       quickStatus.removeClass("text-success text-danger").addClass("text-muted").text("Ingrese un DPI válido para buscar.");
       quickButton.prop("disabled", enrollmentLocked);
       return;
@@ -525,16 +528,19 @@ $(document).ready(function () {
       success: function (data) {
         if (data.existe) {
           $("#id_nombre_completo").val(data.nombre_completo);
+          quickEmployeeId.val(data.empleado_id || "");
           quickStatus.removeClass("text-danger text-muted").addClass("text-success").text("Participante encontrado. Puede agregarlo al curso.");
           quickButton.prop("disabled", enrollmentLocked);
         } else {
           $("#id_nombre_completo").val("");
+          quickEmployeeId.val("");
           quickStatus.removeClass("text-success text-muted").addClass("text-danger").text("No se encontró un participante con ese DPI. Use la matrícula manual.");
           quickButton.prop("disabled", enrollmentLocked);
         }
       },
       error: function () {
         $("#id_nombre_completo").val("");
+        quickEmployeeId.val("");
         quickStatus.removeClass("text-success text-muted").addClass("text-danger").text("Ocurrió un error al buscar el DPI.");
       }
     });

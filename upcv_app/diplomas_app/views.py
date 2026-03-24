@@ -775,9 +775,11 @@ def buscar_empleado_por_dpi(request):
         return JsonResponse({"existe": False})
     return JsonResponse({
         "existe": True,
+        "empleado_id": empleado.id,
         "nombres": empleado.nombres,
         "apellidos": empleado.apellidos,
         "nombre_completo": f"{empleado.nombres} {empleado.apellidos}",
+        "dpi_normalizado": normalize_dpi_input(getattr(empleado, "dpi", "")),
         "foto_url": empleado.imagen.url if empleado.imagen else "",
     })
 
