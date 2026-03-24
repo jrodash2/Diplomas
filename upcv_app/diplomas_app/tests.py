@@ -574,6 +574,12 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'data-download-locked="true"')
 
+    def test_internal_course_detail_does_not_show_public_download_block_message(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_b.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
+
     def test_public_download_is_blocked_after_six_month_window(self):
         today = timezone.localdate()
         old_course = Curso.objects.create(

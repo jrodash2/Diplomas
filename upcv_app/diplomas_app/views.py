@@ -578,7 +578,7 @@ def detalle_curso(request, curso_id):
     total_participantes = participantes.count()
     public_links = build_public_course_links(request, curso)
     can_enroll, enrollment_message = get_course_enrollment_status(curso)
-    can_download, download_message = get_course_diploma_download_status(curso)
+    can_download, _download_message = get_course_diploma_download_status(curso)
 
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
@@ -599,7 +599,6 @@ def detalle_curso(request, curso_id):
         "can_enroll": can_enroll,
         "enrollment_message": enrollment_message,
         "can_download": can_download,
-        "download_message": download_message,
     })
 
 
