@@ -428,7 +428,8 @@ def editar_diseno(request, diseno_id):
     if request.method == "POST":
         form = DisenoDiplomaForm(request.POST, request.FILES, instance=diseno, scope=scope)
         if form.is_valid():
-            form.save()
+            diseno = form.save()
+            ensure_design_definition(diseno)
             messages.success(request, "Diseño actualizado correctamente.")
             return redirect("diplomas:disenos_lista")
     else:

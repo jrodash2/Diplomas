@@ -45,11 +45,27 @@ LEGACY_ELEMENT_TYPE_MAP = {
 }
 
 
-def media_url(file_field):
+def media_url(file_field, version=None):
     try:
-        return file_field.url if file_field else ""
+        if not file_field:
+            return ""
+        url = file_field.url
+        if version is None:
+            return url
+        separator = "&" if "?" in url else "?"
+        return f"{url}{separator}v={version}"
     except Exception:
         return ""
+
+
+def design_background_url(diseno):
+    if not diseno:
+        return ""
+    version = None
+    updated_at = getattr(diseno, "actualizado_en", None)
+    if updated_at is not None:
+        version = int(updated_at.timestamp())
+    return media_url(getattr(diseno, "imagen_fondo", None), version=version)
 
 
 def clamp_number(value, default, min_value=0, max_value=None):
@@ -314,7 +330,7 @@ def build_base_elements(diseno=None, firmas=None, signature_slots=2):
             height=CANVAS_HEIGHT,
             z_index=0,
             token="{{ fondo_diploma }}",
-            image_url=media_url(getattr(diseno, "imagen_fondo", None)),
+            image_url=design_background_url(diseno),
             visible=True,
         ),
         "logo_gobierno": _base_element(
@@ -536,6 +552,7 @@ def _normalize_elements_map(raw_map, base_elements):
     normalized["fondo_diploma"]["y"] = 0
     normalized["fondo_diploma"]["width"] = CANVAS_WIDTH
     normalized["fondo_diploma"]["height"] = CANVAS_HEIGHT
+    normalized["fondo_diploma"]["image_url"] = base_elements["fondo_diploma"]["image_url"]
     return normalized
 
 
