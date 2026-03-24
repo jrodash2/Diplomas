@@ -1,13 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 from django.test.utils import override_settings
 
-from empleados_app.models import DatosBasicosEmpleado, Empleado
+from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
 from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
@@ -50,17 +51,23 @@ class DiplomasScopeTests(TestCase):
 
         self.firma_a = Firma.objects.create(nombre="Firma A", rol="Director", firma="firmas/a.png", ubicacion=self.ubicacion_a)
         self.firma_b = Firma.objects.create(nombre="Firma B", rol="Director", firma="firmas/b.png", ubicacion=self.ubicacion_b)
+        self.configuracion = ConfiguracionGeneral.objects.create(
+            nombre_institucion="UPCV Inicial",
+            direccion="Ciudad",
+        )
 
         self.diseno_a = DisenoDiploma.objects.create(nombre="Diseño A", activo=True, ubicacion=self.ubicacion_a)
         self.diseno_b = DisenoDiploma.objects.create(nombre="Diseño B", activo=True, ubicacion=self.ubicacion_b)
+
+        today = timezone.localdate()
 
         self.curso_a = Curso.objects.create(
             ubicacion=self.ubicacion_a,
             codigo="10001",
             nombre="Curso A",
             descripcion="Desc A",
-            fecha_inicio=date(2026, 1, 1),
-            fecha_fin=date(2026, 1, 2),
+            fecha_inicio=today - timedelta(days=10),
+            fecha_fin=today - timedelta(days=1),
             diseno_diploma=self.diseno_a,
         )
         self.curso_a.firmas.add(self.firma_a)
@@ -70,8 +77,8 @@ class DiplomasScopeTests(TestCase):
             codigo="10002",
             nombre="Curso B",
             descripcion="Desc B",
-            fecha_inicio=date(2026, 2, 1),
-            fecha_fin=date(2026, 2, 2),
+            fecha_inicio=today - timedelta(days=2),
+            fecha_fin=today + timedelta(days=10),
             diseno_diploma=self.diseno_b,
         )
         self.curso_b.firmas.add(self.firma_b)
@@ -399,11 +406,18 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(diploma_b1.numero_diploma, "UPCV-SN-0001-2026")
 
     def test_public_diploma_download_shows_clear_message_when_employee_is_not_enrolled(self):
+        empleado_no_inscrito = Empleado.objects.create(
+            dpi="3216549870101",
+            nombres="No",
+            apellidos="Inscrito",
+            tipoc="029",
+            activo=True,
+        )
         response = self.client.post(
             reverse("diplomas:public_diploma_download"),
             {
-                "codigo_curso": self.curso_b.codigo,
-                "dpi": "1234 56789 0101",
+                "codigo_curso": self.curso_a.codigo,
+                "dpi": empleado_no_inscrito.dpi,
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -441,3 +455,100 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(lookup_response.status_code, 200)
         self.assertEqual(lookup_response.json()["ubicacion_abreviatura"], "SC")
+
+    def test_dynamic_institution_text_is_not_frozen_in_saved_design(self):
+        self.diseno_a.estilos = {
+            "version": 2,
+            "canvas": {"width": 3508, "height": 2480},
+            "elements": {
+                "titulo_institucional": {
+                    "key": "titulo_institucional",
+                    "type": "texto",
+                    "texto": "Texto congelado",
+                    "token": "",
+                    "x": 900,
+                    "y": 300,
+                    "width": 1908,
+                    "height": 120,
+                    "font_size": 54,
+                    "font_weight": "700",
+                    "z_index": 20,
+                    "visible": True,
+                },
+            },
+        }
+        self.diseno_a.save(update_fields=["estilos"])
+        self.configuracion.nombre_institucion = "UPCV Actualizada"
+        self.configuracion.save(update_fields=["nombre_institucion"])
+
+        render_context = build_diploma_render_context(self.participante)
+        render_map = {item["key"]: item for item in render_context["render_elements"]}
+        self.assertEqual(render_map["titulo_institucional"]["rendered_value"], "UPCV Actualizada")
+
+    def test_signature_updates_and_removed_slots_are_resolved_dynamically(self):
+        self.diseno_a.estilos = {
+            "version": 2,
+            "canvas": {"width": 3508, "height": 2480},
+            "elements": {
+                "firma_1_nombre": {"key": "firma_1_nombre", "type": "texto", "texto": "Nombre viejo", "token": "", "x": 700, "y": 1700, "width": 600, "height": 50, "z_index": 31},
+                "firma_1_cargo": {"key": "firma_1_cargo", "type": "texto", "texto": "Cargo viejo", "token": "", "x": 650, "y": 1760, "width": 700, "height": 50, "z_index": 32},
+                "firma_1_imagen": {"key": "firma_1_imagen", "type": "imagen", "image_url": "/media/firmas/vieja.png", "token": "", "x": 760, "y": 1550, "width": 420, "height": 150, "z_index": 30},
+                "firma_2_nombre": {"key": "firma_2_nombre", "type": "texto", "texto": "Firma eliminada", "token": "", "x": 2260, "y": 1700, "width": 600, "height": 50, "z_index": 34},
+            },
+        }
+        self.diseno_a.save(update_fields=["estilos"])
+
+        self.firma_a.nombre = "Directora Actualizada"
+        self.firma_a.rol = "Dirección General"
+        self.firma_a.save(update_fields=["nombre", "rol"])
+        self.curso_a.firmas.set([self.firma_a])
+
+        render_context = build_diploma_render_context(self.participante)
+        render_map = {item["key"]: item for item in render_context["render_elements"]}
+        self.assertEqual(render_map["firma_1_nombre"]["rendered_value"], "Directora Actualizada")
+        self.assertEqual(render_map["firma_1_cargo"]["rendered_value"], "Dirección General")
+        self.assertNotIn("firma_2_nombre", render_map)
+
+    def test_internal_enrollment_is_blocked_when_course_is_out_of_range(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_a.id]),
+            {
+                "enrollment_mode": "manual",
+                "curso": self.curso_a.id,
+                "participante_dpi": "9990001110101",
+                "participante_nombre": "Fuera de rango",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_a, participante_dpi="9990001110101").exists())
+        self.assertContains(response, "La inscripción a este curso ha finalizado.")
+
+    def test_public_registration_is_blocked_when_course_is_out_of_range(self):
+        response = self.client.post(
+            reverse("diplomas:public_course_registration"),
+            {
+                "codigo_curso": self.curso_a.codigo,
+                "dpi": "1231231230101",
+                "participante_nombre": "Intento Público",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "La inscripción a este curso ha finalizado.")
+        self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_a, participante_dpi="1231231230101").exists())
+
+    def test_public_download_is_blocked_until_course_has_finished(self):
+        participant_open_course = self.curso_b.participantes.create(
+            participante_dpi="7777777770101",
+            participante_nombre="Curso Abierto",
+        )
+        response = self.client.post(
+            reverse("diplomas:public_diploma_download"),
+            {
+                "codigo_curso": self.curso_b.codigo,
+                "dpi": participant_open_course.participante_dpi,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
