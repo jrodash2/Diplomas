@@ -297,6 +297,51 @@ class MatriculaManualParticipanteForm(forms.ModelForm):
         return cleaned_data
 
 
+class EditarParticipanteCursoForm(forms.ModelForm):
+    class Meta:
+        model = CursoEmpleado
+        fields = [
+            "participante_dpi",
+            "participante_nombre",
+            "participante_foto",
+            "participante_correo",
+            "participante_telefono",
+            "observaciones",
+        ]
+        widgets = {
+            "participante_dpi": forms.TextInput(attrs={"class": "form-control", "placeholder": "DPI"}),
+            "participante_nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre completo"}),
+            "participante_foto": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "participante_correo": forms.EmailInput(attrs={"class": "form-control", "placeholder": "correo@ejemplo.com"}),
+            "participante_telefono": forms.TextInput(attrs={"class": "form-control", "placeholder": "Teléfono"}),
+            "observaciones": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Observaciones"}),
+        }
+        labels = {
+            "participante_dpi": "DPI",
+            "participante_nombre": "Nombre del participante",
+            "participante_foto": "Fotografía",
+            "participante_correo": "Correo electrónico",
+            "participante_telefono": "Teléfono",
+            "observaciones": "Observaciones",
+        }
+
+    def clean_participante_dpi(self):
+        return normalize_dpi_input(self.cleaned_data.get("participante_dpi"))
+
+    def clean_participante_nombre(self):
+        return " ".join(str(self.cleaned_data.get("participante_nombre") or "").split())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        curso = getattr(self.instance, "curso", None)
+        dpi = cleaned_data.get("participante_dpi")
+        if curso and dpi:
+            duplicate = CursoEmpleado.objects.filter(curso=curso, participante_dpi=dpi).exclude(id=self.instance.id).exists()
+            if duplicate:
+                raise forms.ValidationError("Ya existe otro participante inscrito en este curso con ese DPI.")
+        return cleaned_data
+
+
 class PublicCourseRegistrationForm(forms.Form):
     codigo_curso = forms.CharField(
         label="Código del curso *",
