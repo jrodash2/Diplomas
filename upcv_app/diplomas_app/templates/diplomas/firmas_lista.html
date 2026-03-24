@@ -63,7 +63,7 @@
                       </a>
                     </li>
                     <li class="delete">
-                      <form method="post" action="{% url 'diplomas:eliminar_firma' f.id %}" onsubmit="return confirm('¿Eliminar firma?');">
+                      <form method="post" action="{% url 'diplomas:eliminar_firma' f.id %}" data-confirm-message="¿Eliminar firma?" data-confirm-title="Eliminar firma" data-confirm-label="Eliminar" data-confirm-class="btn-danger">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
                       </form>

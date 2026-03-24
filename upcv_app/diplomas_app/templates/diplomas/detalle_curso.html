@@ -255,7 +255,7 @@
 
                     <li class="delete">
                       <a href="{% url 'diplomas:eliminar_participante' curso.id p.id %}"
-                         onclick="return confirm('¿Eliminar este participante del curso?');"
+                         data-confirm-href="{% url 'diplomas:eliminar_participante' curso.id p.id %}" data-confirm-message="¿Eliminar este participante del curso?" data-confirm-title="Eliminar participante" data-confirm-label="Eliminar" data-confirm-class="btn-danger"
                          class="text-danger"
                          title="Eliminar participante">
                         <i class="icon-trash"></i>

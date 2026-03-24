@@ -124,7 +124,8 @@
       window.showDiplomaToast(message, normalizedTone);
       return;
     }
-    window.alert(message);
+    setFeedback(message, normalizedTone === "error" ? "error" : "neutral");
+    console.warn(message);
   }
 
   function setActiveSidebarTab(tabName) {
