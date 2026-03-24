@@ -83,6 +83,17 @@
     </section>
 
     <div class="container">
+        <div class="support-card" style="margin-bottom: 16px; background: #fff7ed; border-color: #fdba74;">
+            <strong>Importante:</strong> el diploma puede descargarse desde este enlace únicamente hasta 6 meses después de finalizado el curso.
+        </div>
+        {% if selected_course and not course_download_allowed %}
+            <div class="toast error" style="position: static; margin-bottom: 16px;">
+                <div class="toast-header">
+                    <p class="toast-title">Descarga no disponible</p>
+                </div>
+                <div class="toast-message">{{ course_download_message }}</div>
+            </div>
+        {% endif %}
         <div class="layout">
             <div>
                 <form method="post">
@@ -102,7 +113,7 @@
                         {% if form.dpi.help_text %}<small>{{ form.dpi.help_text }}</small>{% endif %}
                     </div>
                     <div class="actions">
-                        <button type="submit" class="btn">Buscar diploma</button>
+                        <button type="submit" class="btn" {% if selected_course and not course_download_allowed %}disabled{% endif %}>Buscar diploma</button>
                         <a href="{% url 'diplomas:public_course_registration' %}" class="btn btn-secondary">Ir a registro público</a>
                     </div>
                 </form>
