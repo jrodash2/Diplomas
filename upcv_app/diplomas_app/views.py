@@ -1,5 +1,6 @@
 import json
 import os
+import calendar
 from uuid import uuid4
 
 from django.contrib import messages
@@ -137,11 +138,77 @@ def get_public_branding_context(course=None):
     config = ConfiguracionGeneral.objects.first()
     selected_course = course
     selected_location = getattr(selected_course, "ubicacion", None) if selected_course else None
+    enrollment_open, enrollment_message = get_course_enrollment_status(selected_course)
+    download_allowed, download_message = get_public_course_diploma_download_status(selected_course)
     return {
         "configuracion": config,
         "selected_course": selected_course,
         "selected_location": selected_location,
+        "course_enrollment_open": enrollment_open,
+        "course_enrollment_message": enrollment_message,
+        "course_download_allowed": download_allowed,
+        "course_download_message": download_message,
     }
+
+
+def get_course_enrollment_status(curso):
+    if not curso:
+        return False, "Debe seleccionar un curso válido."
+
+    start_date = getattr(curso, "fecha_inicio", None)
+    end_date = getattr(curso, "fecha_fin", None)
+    if not start_date or not end_date:
+        return False, "No se puede inscribir porque el curso no tiene fechas definidas."
+
+    today = timezone.localdate()
+    if today < start_date:
+        return False, "La inscripción a este curso aún no está disponible."
+    if today > end_date:
+        return False, "La inscripción a este curso ha finalizado."
+    return True, ""
+
+
+def get_diploma_download_status(curso, mode="public"):
+    if not curso:
+        return False, "Debe seleccionar un curso válido."
+
+    if mode == "internal":
+        return True, ""
+
+    if mode != "public":
+        raise ValueError("mode must be 'public' or 'internal'")
+
+    end_date = getattr(curso, "fecha_fin", None)
+    if not end_date:
+        return False, "No se puede descargar el diploma porque el curso no tiene fecha de finalización definida."
+
+    today = timezone.localdate()
+    if today < end_date:
+        return False, "No se puede descargar el diploma porque el curso aún no ha finalizado."
+    deadline = add_months_to_date(end_date, months=6)
+    if today > deadline:
+        return False, "El plazo disponible para descargar este diploma desde este enlace ya ha vencido."
+    return True, ""
+
+
+def get_public_course_diploma_download_status(curso):
+    return get_diploma_download_status(curso, mode="public")
+
+
+def get_course_diploma_download_status(curso):
+    """
+    Compatibilidad retroactiva.
+    Algunas rutas/vistas antiguas aún pueden invocar este nombre histórico.
+    """
+    return get_diploma_download_status(curso, mode="internal")
+
+
+def add_months_to_date(source_date, months):
+    total_month = (source_date.month - 1) + months
+    year = source_date.year + (total_month // 12)
+    month = (total_month % 12) + 1
+    day = min(source_date.day, calendar.monthrange(year, month)[1])
+    return source_date.replace(year=year, month=month, day=day)
 
 
 # Dashboard
@@ -528,6 +595,8 @@ def detalle_curso(request, curso_id):
     participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
     total_participantes = participantes.count()
     public_links = build_public_course_links(request, curso)
+    can_enroll, enrollment_message = get_course_enrollment_status(curso)
+    can_download, _download_message = get_public_course_diploma_download_status(curso)
 
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
@@ -545,6 +614,9 @@ def detalle_curso(request, curso_id):
             course=curso,
             initial={"curso": curso},
         ),
+        "can_enroll": can_enroll,
+        "enrollment_message": enrollment_message,
+        "can_download": can_download,
     })
 
 
@@ -565,6 +637,10 @@ def agregar_empleado_a_curso(request):
         if form.is_valid():
             curso = form.cleaned_data["curso"]
             enforce_scope_for_object(curso, scope)
+            can_enroll, enrollment_message = get_course_enrollment_status(curso)
+            if not can_enroll:
+                messages.error(request, enrollment_message)
+                return redirect("diplomas:agregar_empleado_curso")
             empleado = form.cleaned_data["empleado"]
 
             if CursoEmpleado.objects.filter(curso=curso, empleado=empleado).exists():
@@ -583,6 +659,10 @@ def agregar_empleado_a_curso(request):
 @diplomas_access_required
 def agregar_empleado_detalle(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
+    can_enroll, enrollment_message = get_course_enrollment_status(curso)
+    if not can_enroll:
+        messages.error(request, enrollment_message)
+        return redirect("diplomas:detalle_curso", curso_id=curso.id)
     mode = request.POST.get("enrollment_mode", "manual")
 
     if mode == "quick":
@@ -736,9 +816,20 @@ def public_course_registration(request):
 
         if not curso:
             form.add_error("codigo_curso", "No existe un curso con ese código.")
-        elif get_participant_by_course_and_dpi_or_none(curso, dpi):
-            form.add_error("dpi", "Este participante ya está inscrito en el curso.")
         else:
+            can_enroll, enrollment_message = get_course_enrollment_status(curso)
+            if not can_enroll:
+                form.add_error(None, enrollment_message)
+                context = {
+                    "form": form,
+                    "registration_result": registration_result,
+                }
+                context.update(get_public_branding_context(active_course or getattr(registration_result, "curso", None)))
+                return render(request, "diplomas/public_course_registration.html", context)
+
+        if curso and get_participant_by_course_and_dpi_or_none(curso, dpi):
+            form.add_error("dpi", "Este participante ya está inscrito en el curso.")
+        elif curso:
             empleado = get_employee_by_dpi_or_none(dpi)
             nombre = form.cleaned_data.get("participante_nombre") or ""
             if empleado:
@@ -801,6 +892,16 @@ def public_diploma_download(request):
         if not curso:
             form.add_error("codigo_curso", "No existe un curso con ese código.")
         else:
+            can_download, download_message = get_public_course_diploma_download_status(curso)
+            if not can_download:
+                form.add_error(None, download_message)
+                context = {
+                    "form": form,
+                    "participant": participant,
+                }
+                context.update(get_public_branding_context(active_course or getattr(participant, "curso", None)))
+                return render(request, "diplomas/public_diploma_download.html", context)
+
             participant = get_participant_by_course_and_dpi_or_none(curso, dpi)
             if not participant:
                 employee = get_employee_by_dpi_or_none(dpi)
