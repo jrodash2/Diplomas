@@ -912,6 +912,10 @@ def public_diploma_download(request):
 def ver_diploma(request, curso_id, participante_id):
     curso_empleado = get_object_or_404(CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "empleado"), id=participante_id, curso_id=curso_id)
     enforce_scope_for_object(curso_empleado.curso, get_scope(request))
+    can_download, download_message = get_course_diploma_download_status(curso_empleado.curso)
+    if not can_download:
+        messages.error(request, download_message)
+        return redirect("diplomas:detalle_curso", curso_id=curso_empleado.curso_id)
     context = build_diploma_render_context(curso_empleado)
     context["allow_download"] = True
     context["download_block_message"] = ""
