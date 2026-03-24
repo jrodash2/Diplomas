@@ -581,6 +581,17 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
 
+    def test_eye_action_points_to_internal_preview_and_allows_download_controls(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        detail_response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_b.id]))
+        self.assertEqual(detail_response.status_code, 200)
+        preview_url = reverse("diplomas:ver_diploma", args=[self.curso_b.id, self.participante_curso_abierto.id])
+        self.assertContains(detail_response, preview_url)
+
+        preview_response = self.client.get(preview_url)
+        self.assertEqual(preview_response.status_code, 200)
+        self.assertContains(preview_response, "Descargar JPG")
+
     def test_public_download_is_blocked_after_six_month_window(self):
         today = timezone.localdate()
         old_course = Curso.objects.create(

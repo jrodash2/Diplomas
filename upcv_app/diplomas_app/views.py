@@ -139,7 +139,7 @@ def get_public_branding_context(course=None):
     selected_course = course
     selected_location = getattr(selected_course, "ubicacion", None) if selected_course else None
     enrollment_open, enrollment_message = get_course_enrollment_status(selected_course)
-    download_allowed, download_message = get_course_diploma_download_status(selected_course)
+    download_allowed, download_message = get_public_course_diploma_download_status(selected_course)
     return {
         "configuracion": config,
         "selected_course": selected_course,
@@ -168,7 +168,7 @@ def get_course_enrollment_status(curso):
     return True, ""
 
 
-def get_course_diploma_download_status(curso):
+def get_public_course_diploma_download_status(curso):
     if not curso:
         return False, "Debe seleccionar un curso válido."
 
@@ -578,7 +578,7 @@ def detalle_curso(request, curso_id):
     total_participantes = participantes.count()
     public_links = build_public_course_links(request, curso)
     can_enroll, enrollment_message = get_course_enrollment_status(curso)
-    can_download, _download_message = get_course_diploma_download_status(curso)
+    can_download, _download_message = get_public_course_diploma_download_status(curso)
 
     return render_diplomas(request, "diplomas/detalle_curso.html", {
         "curso": curso,
@@ -874,7 +874,7 @@ def public_diploma_download(request):
         if not curso:
             form.add_error("codigo_curso", "No existe un curso con ese código.")
         else:
-            can_download, download_message = get_course_diploma_download_status(curso)
+            can_download, download_message = get_public_course_diploma_download_status(curso)
             if not can_download:
                 form.add_error(None, download_message)
                 context = {
