@@ -143,6 +143,22 @@ def build_custom_element_fallback(key, raw_element):
 
 SIGNATURE_KEY_PATTERN = re.compile(r"^firma_(\d+)_(imagen|nombre|cargo)$")
 BOLD_MARKUP_PATTERN = re.compile(r"(\*\*|__)(.+?)\1")
+UNRESOLVED_TOKEN_PATTERN = re.compile(r"\{\{\s*[^{}]+\s*\}\}")
+
+DYNAMIC_TEXT_KEYS = {
+    "titulo_institucional",
+    "participante_nombre",
+    "codigo",
+    "nombre_curso",
+    "descripcion_curso",
+    "fecha_texto",
+}
+
+DYNAMIC_IMAGE_KEYS = {
+    "logo_gobierno",
+    "logo_upcv",
+    "foto_participante",
+}
 
 
 def _signature_indexes_from_elements(raw_map):
@@ -157,9 +173,20 @@ def _signature_indexes_from_elements(raw_map):
     return indexes
 
 
-def _signature_slot_count(raw_map=None, firmas=None, minimum=2):
-    existing_slots = _signature_indexes_from_elements(raw_map)
-    return max(len(firmas or []), max(existing_slots, default=0), minimum)
+def _signature_slot_count(firmas=None, minimum=0):
+    return max(len(firmas or []), minimum)
+
+
+def is_signature_key(key):
+    return bool(SIGNATURE_KEY_PATTERN.match(str(key)))
+
+
+def is_dynamic_text_key(key):
+    return key in DYNAMIC_TEXT_KEYS or bool(re.match(r"^firma_\d+_(nombre|cargo)$", str(key)))
+
+
+def is_dynamic_image_key(key):
+    return key in DYNAMIC_IMAGE_KEYS or bool(re.match(r"^firma_\d+_imagen$", str(key)))
 
 
 def get_course_signatures(curso=None):
@@ -483,6 +510,12 @@ def normalize_element(key, raw_element, fallback_element):
         "image_url": raw.get("image_url") or fallback["image_url"],
         "shape": raw.get("shape") or fallback.get("shape", "rect"),
     }
+    if is_dynamic_text_key(key):
+        normalized["texto"] = fallback["texto"]
+        normalized["token"] = fallback["token"]
+    if is_dynamic_image_key(key):
+        normalized["image_url"] = fallback["image_url"]
+        normalized["token"] = fallback["token"]
     return normalized
 
 
@@ -493,6 +526,8 @@ def _normalize_elements_map(raw_map, base_elements):
 
     for raw_key, raw_value in raw_map.items():
         key = LEGACY_ELEMENT_KEY_MAP.get(raw_key, raw_key)
+        if is_signature_key(key) and key not in base_elements:
+            continue
         if key not in normalized:
             normalized[key] = build_custom_element_fallback(key, raw_value)
         normalized[key] = normalize_element(key, raw_value, normalized[key])
@@ -517,7 +552,7 @@ def build_design_definition(diseno, legacy_positions=None, firmas=None):
         raw_elements = {**legacy_positions, **raw_elements}
 
     firmas = firmas if firmas is not None else get_design_signatures(diseno)
-    signature_slots = _signature_slot_count(raw_elements, firmas)
+    signature_slots = _signature_slot_count(firmas)
     base_elements = build_base_elements(diseno, firmas=firmas, signature_slots=signature_slots)
 
     return {
@@ -529,7 +564,7 @@ def build_design_definition(diseno, legacy_positions=None, firmas=None):
 
 def normalize_definition_from_elements(diseno, raw_elements, firmas=None):
     firmas = firmas if firmas is not None else get_design_signatures(diseno)
-    signature_slots = _signature_slot_count(raw_elements, firmas)
+    signature_slots = _signature_slot_count(firmas)
     definition = build_design_definition(diseno, None, firmas=firmas)
     definition["elements"] = _normalize_elements_map(
         raw_elements,
@@ -558,6 +593,10 @@ def resolve_image_url(image_value, context_map):
     for token, replacement in context_map.items():
         resolved = resolved.replace(token, replacement)
     return resolved
+
+
+def is_unresolved_token(value):
+    return bool(UNRESOLVED_TOKEN_PATTERN.fullmatch(str(value or "").strip()))
 
 
 def render_safe_inline_bold(text_value):
@@ -647,7 +686,7 @@ def build_course_design_definition(curso, firmas=None):
     firmas = firmas if firmas is not None else get_course_signatures(curso)
     if curso.diseno_diploma_id:
         return build_design_definition(curso.diseno_diploma, None, firmas=firmas)
-    signature_slots = _signature_slot_count(curso.posiciones or {}, firmas)
+    signature_slots = _signature_slot_count(firmas)
     return {
         "version": DESIGN_VERSION,
         "canvas": {"width": CANVAS_WIDTH, "height": CANVAS_HEIGHT},
@@ -674,9 +713,13 @@ def build_render_elements(definition, context_map):
             item["render_as_html"] = False
             item["image_url"] = resolve_image_url(item.get("image_url"), context_map)
         if SIGNATURE_KEY_PATTERN.match(item["key"]):
-            if item["type"] == "imagen" and not item.get("image_url"):
+            if item["type"] == "imagen" and (
+                not item.get("image_url") or is_unresolved_token(item.get("image_url"))
+            ):
                 item["visible"] = False
-            elif item["type"] != "imagen" and not item["rendered_value"].strip():
+            elif item["type"] != "imagen" and (
+                not item["rendered_value"].strip() or is_unresolved_token(item["rendered_value"])
+            ):
                 item["visible"] = False
         if item["key"] == "foto_participante" and not item.get("image_url"):
             item["visible"] = False
