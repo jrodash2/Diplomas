@@ -7,7 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.test.utils import override_settings
 
-from empleados_app.models import DatosBasicosEmpleado, Empleado
+from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
 from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
@@ -50,6 +50,10 @@ class DiplomasScopeTests(TestCase):
 
         self.firma_a = Firma.objects.create(nombre="Firma A", rol="Director", firma="firmas/a.png", ubicacion=self.ubicacion_a)
         self.firma_b = Firma.objects.create(nombre="Firma B", rol="Director", firma="firmas/b.png", ubicacion=self.ubicacion_b)
+        self.configuracion = ConfiguracionGeneral.objects.create(
+            nombre_institucion="UPCV Inicial",
+            direccion="Ciudad",
+        )
 
         self.diseno_a = DisenoDiploma.objects.create(nombre="Diseño A", activo=True, ubicacion=self.ubicacion_a)
         self.diseno_b = DisenoDiploma.objects.create(nombre="Diseño B", activo=True, ubicacion=self.ubicacion_b)
@@ -441,3 +445,56 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(lookup_response.status_code, 200)
         self.assertEqual(lookup_response.json()["ubicacion_abreviatura"], "SC")
+
+    def test_dynamic_institution_text_is_not_frozen_in_saved_design(self):
+        self.diseno_a.estilos = {
+            "version": 2,
+            "canvas": {"width": 3508, "height": 2480},
+            "elements": {
+                "titulo_institucional": {
+                    "key": "titulo_institucional",
+                    "type": "texto",
+                    "texto": "Texto congelado",
+                    "token": "",
+                    "x": 900,
+                    "y": 300,
+                    "width": 1908,
+                    "height": 120,
+                    "font_size": 54,
+                    "font_weight": "700",
+                    "z_index": 20,
+                    "visible": True,
+                },
+            },
+        }
+        self.diseno_a.save(update_fields=["estilos"])
+        self.configuracion.nombre_institucion = "UPCV Actualizada"
+        self.configuracion.save(update_fields=["nombre_institucion"])
+
+        render_context = build_diploma_render_context(self.participante)
+        render_map = {item["key"]: item for item in render_context["render_elements"]}
+        self.assertEqual(render_map["titulo_institucional"]["rendered_value"], "UPCV Actualizada")
+
+    def test_signature_updates_and_removed_slots_are_resolved_dynamically(self):
+        self.diseno_a.estilos = {
+            "version": 2,
+            "canvas": {"width": 3508, "height": 2480},
+            "elements": {
+                "firma_1_nombre": {"key": "firma_1_nombre", "type": "texto", "texto": "Nombre viejo", "token": "", "x": 700, "y": 1700, "width": 600, "height": 50, "z_index": 31},
+                "firma_1_cargo": {"key": "firma_1_cargo", "type": "texto", "texto": "Cargo viejo", "token": "", "x": 650, "y": 1760, "width": 700, "height": 50, "z_index": 32},
+                "firma_1_imagen": {"key": "firma_1_imagen", "type": "imagen", "image_url": "/media/firmas/vieja.png", "token": "", "x": 760, "y": 1550, "width": 420, "height": 150, "z_index": 30},
+                "firma_2_nombre": {"key": "firma_2_nombre", "type": "texto", "texto": "Firma eliminada", "token": "", "x": 2260, "y": 1700, "width": 600, "height": 50, "z_index": 34},
+            },
+        }
+        self.diseno_a.save(update_fields=["estilos"])
+
+        self.firma_a.nombre = "Directora Actualizada"
+        self.firma_a.rol = "Dirección General"
+        self.firma_a.save(update_fields=["nombre", "rol"])
+        self.curso_a.firmas.set([self.firma_a])
+
+        render_context = build_diploma_render_context(self.participante)
+        render_map = {item["key"]: item for item in render_context["render_elements"]}
+        self.assertEqual(render_map["firma_1_nombre"]["rendered_value"], "Directora Actualizada")
+        self.assertEqual(render_map["firma_1_cargo"]["rendered_value"], "Dirección General")
+        self.assertNotIn("firma_2_nombre", render_map)
