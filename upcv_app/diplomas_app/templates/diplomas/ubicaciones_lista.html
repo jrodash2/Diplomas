@@ -49,7 +49,7 @@
                       <a href="{% url 'diplomas:editar_ubicacion' ubicacion.id %}"><i class="icon-pencil-alt"></i></a>
                     </li>
                     <li class="delete">
-                      <form method="post" action="{% url 'diplomas:eliminar_ubicacion' ubicacion.id %}" onsubmit="return confirm('¿Eliminar ubicación?');">
+                      <form method="post" action="{% url 'diplomas:eliminar_ubicacion' ubicacion.id %}" data-confirm-message="¿Eliminar ubicación?" data-confirm-title="Eliminar ubicación" data-confirm-label="Eliminar" data-confirm-class="btn-danger">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
                       </form>

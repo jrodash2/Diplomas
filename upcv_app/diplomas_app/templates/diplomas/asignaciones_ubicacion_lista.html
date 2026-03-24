@@ -47,7 +47,7 @@
                       <a href="{% url 'diplomas:editar_asignacion_ubicacion' asignacion.id %}"><i class="icon-pencil-alt"></i></a>
                     </li>
                     <li class="delete">
-                      <form method="post" action="{% url 'diplomas:eliminar_asignacion_ubicacion' asignacion.id %}" onsubmit="return confirm('¿Eliminar asignación?');">
+                      <form method="post" action="{% url 'diplomas:eliminar_asignacion_ubicacion' asignacion.id %}" data-confirm-message="¿Eliminar asignación?" data-confirm-title="Eliminar asignación" data-confirm-label="Eliminar" data-confirm-class="btn-danger">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link p-0 text-danger"><i class="icon-trash"></i></button>
                       </form>
