@@ -127,6 +127,62 @@
               max-width: none;
             }
           }
+          .diplomas-confirm-modal .modal-content {
+            border: 0;
+            border-radius: 22px;
+            box-shadow: 0 22px 55px rgba(15, 23, 42, 0.24);
+            overflow: hidden;
+          }
+          .diplomas-confirm-modal .modal-header {
+            border: 0;
+            padding: 24px 24px 0;
+          }
+          .diplomas-confirm-modal .modal-body {
+            padding: 14px 24px 4px;
+          }
+          .diplomas-confirm-modal .modal-footer {
+            border: 0;
+            padding: 0 24px 24px;
+            gap: 10px;
+          }
+          .diplomas-confirm-hero {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+          }
+          .diplomas-confirm-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+          }
+          .diplomas-confirm-icon.is-danger {
+            background: rgba(220, 38, 38, .12);
+            color: #dc2626;
+          }
+          .diplomas-confirm-icon.is-warning {
+            background: rgba(245, 158, 11, .16);
+            color: #b45309;
+          }
+          .diplomas-confirm-icon.is-info {
+            background: rgba(37, 99, 235, .14);
+            color: #1d4ed8;
+          }
+          .diplomas-confirm-title {
+            margin: 2px 0 6px;
+            font-size: 19px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .diplomas-confirm-message {
+            margin: 0;
+            color: #475569;
+            line-height: 1.5;
+          }
         </style>
     </head>
   <body> 
@@ -343,17 +399,24 @@
       </div>
     </div>
 
-    <div class="modal fade" id="diplomasConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade diplomas-confirm-modal" id="diplomasConfirmModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-          <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title" id="diplomasConfirmTitle">Confirmar acción</h5>
+          <div class="modal-header">
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
           </div>
-          <div class="modal-body pt-2">
-            <p class="mb-0 text-muted" id="diplomasConfirmMessage">¿Desea continuar con esta acción?</p>
+          <div class="modal-body">
+            <div class="diplomas-confirm-hero">
+              <span class="diplomas-confirm-icon is-danger" id="diplomasConfirmIconWrap">
+                <i class="fa fa-exclamation-triangle" id="diplomasConfirmIcon"></i>
+              </span>
+              <div>
+                <h5 class="diplomas-confirm-title" id="diplomasConfirmTitle">Confirmar acción</h5>
+                <p class="diplomas-confirm-message" id="diplomasConfirmMessage">¿Desea continuar con esta acción?</p>
+              </div>
+            </div>
           </div>
-          <div class="modal-footer border-0 pt-0">
+          <div class="modal-footer">
             <button type="button" class="btn btn-light" data-bs-dismiss="modal" id="diplomasConfirmCancel">Cancelar</button>
             <button type="button" class="btn btn-danger" id="diplomasConfirmAccept">Confirmar</button>
           </div>
@@ -453,6 +516,8 @@
         const confirmModalElement = document.getElementById('diplomasConfirmModal');
         const confirmTitleNode = document.getElementById('diplomasConfirmTitle');
         const confirmMessageNode = document.getElementById('diplomasConfirmMessage');
+        const confirmIconWrap = document.getElementById('diplomasConfirmIconWrap');
+        const confirmIcon = document.getElementById('diplomasConfirmIcon');
         const confirmAcceptButton = document.getElementById('diplomasConfirmAccept');
         const confirmCancelButton = document.getElementById('diplomasConfirmCancel');
         const confirmModal = confirmModalElement && window.bootstrap ? new bootstrap.Modal(confirmModalElement) : null;
@@ -465,6 +530,8 @@
           const confirmLabel = config.confirmLabel || 'Confirmar';
           const confirmClass = config.confirmClass || 'btn-danger';
           const cancelLabel = config.cancelLabel || 'Cancelar';
+          const tone = config.tone || 'danger';
+          const iconClass = config.iconClass || (tone === 'warning' ? 'fa fa-exclamation-circle' : tone === 'info' ? 'fa fa-info-circle' : 'fa fa-exclamation-triangle');
 
           if (!confirmModal) {
             window.showDiplomaToast('No se pudo abrir la confirmación visual.', 'error');
@@ -476,6 +543,8 @@
           confirmAcceptButton.textContent = confirmLabel;
           confirmCancelButton.textContent = cancelLabel;
           confirmAcceptButton.className = `btn ${confirmClass}`;
+          confirmIcon.className = iconClass;
+          confirmIconWrap.className = `diplomas-confirm-icon ${tone === 'warning' ? 'is-warning' : tone === 'info' ? 'is-info' : 'is-danger'}`;
 
           return new Promise(function (resolve) {
             confirmResolver = resolve;
@@ -512,6 +581,8 @@
             confirmLabel: form.dataset.confirmLabel || 'Confirmar',
             cancelLabel: form.dataset.cancelLabel || 'Cancelar',
             confirmClass: form.dataset.confirmClass || 'btn-danger',
+            tone: form.dataset.confirmTone || 'danger',
+            iconClass: form.dataset.confirmIcon || '',
           }).then(function (accepted) {
             if (!accepted) {
               return;
@@ -533,6 +604,8 @@
             confirmLabel: trigger.dataset.confirmLabel || 'Confirmar',
             cancelLabel: trigger.dataset.cancelLabel || 'Cancelar',
             confirmClass: trigger.dataset.confirmClass || 'btn-danger',
+            tone: trigger.dataset.confirmTone || 'danger',
+            iconClass: trigger.dataset.confirmIcon || '',
           }).then(function (accepted) {
             if (accepted && trigger.dataset.confirmHref) {
               window.location.href = trigger.dataset.confirmHref;

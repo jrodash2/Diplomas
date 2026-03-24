@@ -813,8 +813,6 @@
       renderCanvas();
       renderLayerPanel();
       syncSidebar();
-      setFeedback(payload.message || "Diseño guardado correctamente.", "success");
-      notify(payload.message || "Diseño guardado correctamente.", "success");
     } catch (error) {
       notify("Ocurrió un error al guardar el diseño.", "error");
       setFeedback("Ocurrió un error al guardar el diseño.", "error");
