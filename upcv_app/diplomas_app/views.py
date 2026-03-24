@@ -185,6 +185,14 @@ def get_public_course_diploma_download_status(curso):
     return True, ""
 
 
+def get_course_diploma_download_status(curso):
+    """
+    Compatibilidad retroactiva.
+    Algunas rutas/vistas antiguas aún pueden invocar este nombre histórico.
+    """
+    return get_public_course_diploma_download_status(curso)
+
+
 def add_months_to_date(source_date, months):
     total_month = (source_date.month - 1) + months
     year = source_date.year + (total_month // 12)
