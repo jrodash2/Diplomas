@@ -882,6 +882,8 @@ def public_diploma_download(request):
                     form.add_error("dpi", "No existe un participante con el DPI indicado.")
             else:
                 context = build_diploma_render_context(participant)
+                context["allow_download"] = True
+                context["download_block_message"] = ""
                 return render(request, "diplomas/ver_diploma.html", context)
 
     context = {
@@ -903,6 +905,9 @@ def ver_diploma(request, curso_id, participante_id):
         messages.error(request, download_message)
         return redirect("diplomas:detalle_curso", curso_id=curso_empleado.curso_id)
     context = build_diploma_render_context(curso_empleado)
+    can_download, download_message = get_course_diploma_download_status(curso_empleado.curso)
+    context["allow_download"] = can_download
+    context["download_block_message"] = "" if can_download else download_message
     return render_diplomas(request, "diplomas/ver_diploma.html", context)
 
 

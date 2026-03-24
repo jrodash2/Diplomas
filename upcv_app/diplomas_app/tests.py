@@ -96,6 +96,10 @@ class DiplomasScopeTests(TestCase):
             correo_institucional="ana@example.com",
         )
         self.participante = self.curso_a.participantes.create(empleado=self.empleado)
+        self.participante_curso_abierto = self.curso_b.participantes.create(
+            participante_dpi="5554443330101",
+            participante_nombre="Participante Abierto",
+        )
 
         self.client = Client()
 
@@ -552,3 +556,20 @@ class DiplomasScopeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
+
+    def test_internal_preview_is_available_before_course_end_but_download_button_is_locked(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.get(
+            reverse("diplomas:ver_diploma", args=[self.curso_b.id, self.participante_curso_abierto.id]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
+        self.assertContains(response, 'data-download-locked="true"')
+
+    def test_internal_download_button_is_enabled_when_course_is_finished(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.get(
+            reverse("diplomas:ver_diploma", args=[self.curso_a.id, self.participante.id]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'data-download-locked="true"')

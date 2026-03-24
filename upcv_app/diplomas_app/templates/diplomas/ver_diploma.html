@@ -51,8 +51,13 @@ body { margin:0; padding:0; background:#f1f5f9; font-family:Arial, Helvetica, sa
     <button class="btn" id="zoomIn">+</button>
     <button class="btn" id="fitScreen">Ajustar</button>
     <button class="btn" id="fullscreenBtn">Pantalla Completa</button>
-    <button class="btn" id="btnDescargarJPG">Descargar JPG</button>
+    <button class="btn" id="btnDescargarJPG" {% if allow_download is not False %}{% else %}disabled data-download-locked="true"{% endif %}>Descargar JPG</button>
 </div>
+{% if allow_download is False %}
+<div style="padding:10px 16px;background:#fff4e5;color:#92400e;border-bottom:1px solid #f59e0b;">
+  {{ download_block_message|default:"No se puede descargar el diploma porque el curso aún no ha finalizado." }}
+</div>
+{% endif %}
 
 <div class="canvas-area" id="canvasArea">
   <div class="canvas-content" id="canvasContent">
@@ -84,6 +89,11 @@ document.getElementById('fullscreenBtn').onclick = () => {
 };
 
 document.getElementById('btnDescargarJPG').onclick = async () => {
+  const downloadAllowed = {% if allow_download is False %}false{% else %}true{% endif %};
+  if (!downloadAllowed) {
+    window.alert("{{ download_block_message|default:'No se puede descargar el diploma porque el curso aún no ha finalizado.'|escapejs }}");
+    return;
+  }
   const exportCanvasNode = document.getElementById('diplomaExportCanvas');
 
   const cloneImgs = Array.from(exportCanvasNode.querySelectorAll('img'));
