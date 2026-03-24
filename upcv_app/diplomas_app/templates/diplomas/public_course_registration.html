@@ -99,6 +99,14 @@
     </section>
 
     <div class="container">
+        {% if selected_course and not course_enrollment_open %}
+            <div class="toast error" style="position: static; margin-bottom: 16px;">
+                <div class="toast-header">
+                    <p class="toast-title">Inscripción no disponible</p>
+                </div>
+                <div class="toast-message">{{ course_enrollment_message }}</div>
+            </div>
+        {% endif %}
         <div class="form-shell">
             <div>
                 <p class="section-title">Formulario de inscripción</p>
@@ -155,7 +163,7 @@
                     </div>
 
                     <div class="actions">
-                        <button type="submit" class="btn">Registrar participante</button>
+                        <button type="submit" class="btn" {% if selected_course and not course_enrollment_open %}disabled{% endif %}>Registrar participante</button>
                         <a href="{% url 'diplomas:public_diploma_download' %}" class="btn btn-secondary">Ir a descarga de diploma</a>
                     </div>
                 </form>

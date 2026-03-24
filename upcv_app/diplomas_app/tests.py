@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 from django.test.utils import override_settings
 
 from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Empleado
@@ -58,13 +59,15 @@ class DiplomasScopeTests(TestCase):
         self.diseno_a = DisenoDiploma.objects.create(nombre="Diseño A", activo=True, ubicacion=self.ubicacion_a)
         self.diseno_b = DisenoDiploma.objects.create(nombre="Diseño B", activo=True, ubicacion=self.ubicacion_b)
 
+        today = timezone.localdate()
+
         self.curso_a = Curso.objects.create(
             ubicacion=self.ubicacion_a,
             codigo="10001",
             nombre="Curso A",
             descripcion="Desc A",
-            fecha_inicio=date(2026, 1, 1),
-            fecha_fin=date(2026, 1, 2),
+            fecha_inicio=today - timedelta(days=10),
+            fecha_fin=today - timedelta(days=1),
             diseno_diploma=self.diseno_a,
         )
         self.curso_a.firmas.add(self.firma_a)
@@ -74,8 +77,8 @@ class DiplomasScopeTests(TestCase):
             codigo="10002",
             nombre="Curso B",
             descripcion="Desc B",
-            fecha_inicio=date(2026, 2, 1),
-            fecha_fin=date(2026, 2, 2),
+            fecha_inicio=today - timedelta(days=2),
+            fecha_fin=today + timedelta(days=10),
             diseno_diploma=self.diseno_b,
         )
         self.curso_b.firmas.add(self.firma_b)
@@ -403,11 +406,18 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(diploma_b1.numero_diploma, "UPCV-SN-0001-2026")
 
     def test_public_diploma_download_shows_clear_message_when_employee_is_not_enrolled(self):
+        empleado_no_inscrito = Empleado.objects.create(
+            dpi="3216549870101",
+            nombres="No",
+            apellidos="Inscrito",
+            tipoc="029",
+            activo=True,
+        )
         response = self.client.post(
             reverse("diplomas:public_diploma_download"),
             {
-                "codigo_curso": self.curso_b.codigo,
-                "dpi": "1234 56789 0101",
+                "codigo_curso": self.curso_a.codigo,
+                "dpi": empleado_no_inscrito.dpi,
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -498,3 +508,47 @@ class DiplomasScopeTests(TestCase):
         self.assertEqual(render_map["firma_1_nombre"]["rendered_value"], "Directora Actualizada")
         self.assertEqual(render_map["firma_1_cargo"]["rendered_value"], "Dirección General")
         self.assertNotIn("firma_2_nombre", render_map)
+
+    def test_internal_enrollment_is_blocked_when_course_is_out_of_range(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_a.id]),
+            {
+                "enrollment_mode": "manual",
+                "curso": self.curso_a.id,
+                "participante_dpi": "9990001110101",
+                "participante_nombre": "Fuera de rango",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_a, participante_dpi="9990001110101").exists())
+        self.assertContains(response, "La inscripción a este curso ha finalizado.")
+
+    def test_public_registration_is_blocked_when_course_is_out_of_range(self):
+        response = self.client.post(
+            reverse("diplomas:public_course_registration"),
+            {
+                "codigo_curso": self.curso_a.codigo,
+                "dpi": "1231231230101",
+                "participante_nombre": "Intento Público",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "La inscripción a este curso ha finalizado.")
+        self.assertFalse(CursoEmpleado.objects.filter(curso=self.curso_a, participante_dpi="1231231230101").exists())
+
+    def test_public_download_is_blocked_until_course_has_finished(self):
+        participant_open_course = self.curso_b.participantes.create(
+            participante_dpi="7777777770101",
+            participante_nombre="Curso Abierto",
+        )
+        response = self.client.post(
+            reverse("diplomas:public_diploma_download"),
+            {
+                "codigo_curso": self.curso_b.codigo,
+                "dpi": participant_open_course.participante_dpi,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No se puede descargar el diploma porque el curso aún no ha finalizado.")
