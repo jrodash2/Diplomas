@@ -1,8 +1,11 @@
 import logging
+import ssl
 from urllib.parse import urlencode
 
+import certifi
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail import get_connection
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
@@ -45,6 +48,8 @@ def _build_course_context(participante, request=None):
 
 
 def _send_notification_email(*, to_email, subject, text_template, html_template, context):
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    connection = get_connection(ssl_context=ssl_context)
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@localhost")
     text_body = render_to_string(text_template, context)
     html_body = render_to_string(html_template, context)
@@ -53,6 +58,7 @@ def _send_notification_email(*, to_email, subject, text_template, html_template,
         body=text_body,
         from_email=from_email,
         to=[to_email],
+        connection=connection,
     )
     message.attach_alternative(html_body, "text/html")
     message.send(fail_silently=False)
@@ -61,18 +67,24 @@ def _send_notification_email(*, to_email, subject, text_template, html_template,
 def _resolve_valid_recipient(raw_email):
     email = (raw_email or "").strip()
     if not email:
-        return None
+        return None, "missing_email"
     try:
         validate_email(email)
     except ValidationError:
-        return None
-    return email
+        return None, "invalid_email"
+    return email, ""
 
 
 def send_enrollment_notification(participante, request=None):
-    email = _resolve_valid_recipient(participante.correo_participante)
+    email, reason = _resolve_valid_recipient(participante.correo_participante)
     if not email:
-        return {"status": "skipped", "reason": "missing_email"}
+        if reason == "invalid_email":
+            logger.warning(
+                "Correo inválido para inscripción participante_id=%s curso_id=%s",
+                participante.id,
+                participante.curso_id,
+            )
+        return {"status": "skipped", "reason": reason}
 
     if participante.correo_inscripcion_enviado_en:
         return {"status": "skipped", "reason": "already_sent"}
@@ -128,9 +140,14 @@ def send_completion_notifications_for_finished_courses(request=None, course=None
                 summary["skipped"] += 1
                 continue
 
-            email = (locked.correo_participante or "").strip()
-            email = _resolve_valid_recipient(email)
+            email, reason = _resolve_valid_recipient(locked.correo_participante)
             if not email:
+                if reason == "invalid_email":
+                    logger.warning(
+                        "Correo inválido para finalización participante_id=%s curso_id=%s",
+                        locked.id,
+                        locked.curso_id,
+                    )
                 summary["skipped"] += 1
                 continue
 
