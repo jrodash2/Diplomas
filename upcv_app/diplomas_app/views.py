@@ -216,12 +216,12 @@ def add_months_to_date(source_date, months):
     return source_date.replace(year=year, month=month, day=day)
 
 
-def trigger_course_completion_notifications(request, curso=None):
-    try:
-        return send_completion_notifications_for_finished_courses(request=request, course=curso)
-    except Exception:
-        logger.exception("Falló el proceso de correos de finalización de Diplomas.")
-        return {"sent": 0, "skipped": 0, "errors": 1}
+def trigger_course_completion_notifications(*_args, **_kwargs):
+    """
+    Compatibilidad defensiva:
+    el dashboard ya no debe disparar correos de finalización en requests GET.
+    """
+    return {"sent": 0, "skipped": 0, "errors": 0}
 
 
 # Dashboard
