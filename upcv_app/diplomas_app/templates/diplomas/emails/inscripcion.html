@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es">
+  <body style="font-family: Arial, sans-serif; color: #1f2937;">
+    <p>Estimado(a) <strong>{{ participante.nombre_participante }}</strong>:</p>
+    <p>Le confirmamos su inscripción al curso <strong>{{ curso.nombre }}</strong>.</p>
+    <table cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+      <tr><td><strong>Código</strong></td><td>{{ curso.codigo }}</td></tr>
+      <tr><td><strong>Ubicación</strong></td><td>{{ ubicacion }}</td></tr>
+      <tr><td><strong>Fecha de inicio</strong></td><td>{{ curso.fecha_inicio|date:"d/m/Y" }}</td></tr>
+      <tr><td><strong>Fecha de finalización</strong></td><td>{{ curso.fecha_fin|date:"d/m/Y" }}</td></tr>
+    </table>
+    <p>Le damos la bienvenida y le deseamos éxitos en su proceso formativo.</p>
+    <p>Atentamente,<br><strong>{{ institucion }}</strong></p>
+  </body>
+</html>
