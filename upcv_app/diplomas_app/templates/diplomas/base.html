@@ -40,7 +40,6 @@
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/vendors/echart.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/vendors/date-picker.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/vendors/datatables.css' %}">
-        <link rel="stylesheet" href="{% static 'assets/css/datatable/datatables.min.css' %}" />
         <!-- Plugins css Ends-->
         
         <!-- Bootstrap css-->
@@ -54,6 +53,16 @@
         <!-- Responsive css-->
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/responsive.css' %}">
         <style>
+          .page-wrapper {
+            min-height: 100vh;
+            background-image:
+              linear-gradient(rgba(248, 250, 252, 0.92), rgba(248, 250, 252, 0.92)),
+              url("{% static 'assets/images/dashboard-3/profile-bg.png' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+          }
           .diplomas-toast-stack {
             position: fixed;
             top: 88px;
@@ -126,6 +135,32 @@
               top: 78px;
               max-width: none;
             }
+          }
+          .modal-backdrop.show {
+            opacity: .35;
+          }
+          .diplomas-clean-modal {
+            border: 0;
+            border-radius: 16px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+          }
+          .diplomas-clean-modal .modal-header {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 1.25rem;
+          }
+          .diplomas-clean-modal .modal-title {
+            font-weight: 700;
+          }
+          .diplomas-clean-modal .modal-body.social-profile {
+            background-position: center;
+            background-size: cover;
+          }
+          .diplomas-modal-panel {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 14px;
+            padding: 1rem;
+            backdrop-filter: blur(1px);
           }
           .diplomas-confirm-modal .modal-content {
             border: 0;
@@ -254,7 +289,7 @@
                 <div class="form search-form mb-0">
                   <div class="input-group"> <span class="input-show"> 
                       <svg id="searchIcon">
-                        <use href="../assets/svg/icon-sprite.svg#search-header"></use>
+                          <use href="{% static 'assets/svg/icon-sprite.svg' %}#search-header"></use>
                       </svg>
                       <div id="searchInput">
                         <input type="search" placeholder="Search">
@@ -324,12 +359,12 @@
             <div class="back-btn"><i class="fa fa-angle-left"> </i></div>
             <div class="toggle-sidebar"><i class="status_toggle middle sidebar-toggle" data-feather="grid"> </i></div>
           </div>
-          <div class="logo-icon-wrapper"><a href="index.html"><img class="img-fluid" src="../assets/images/logo/logo-icon.png" alt=""></a></div>
+          <div class="logo-icon-wrapper"><a href="index.html"><img class="img-fluid" src="{% static 'assets/images/logo/logo-icon.png' %}" alt=""></a></div>
           <nav class="sidebar-main">
             <div class="left-arrow" id="left-arrow"><i data-feather="arrow-left"></i></div>
             <div id="sidebar-menu">
               <ul class="sidebar-links" id="simple-bar">
-                <li class="back-btn"><a href="index.html"><img class="img-fluid" src="../assets/images/logo/logo-icon.png" alt=""></a>
+                <li class="back-btn"><a href="index.html"><img class="img-fluid" src="{% static 'assets/images/logo/logo-icon.png' %}" alt=""></a>
                   <div class="mobile-back text-end"> <span>Back </span><i class="fa fa-angle-right ps-2" aria-hidden="true"></i></div>
                 </li>
                 <li class="pin-title sidebar-main-title">
@@ -345,7 +380,7 @@
                 {% if user.is_authenticated %}
                               <li class="sidebar-list"><i class="fa fa-thumb-tack"> </i><a class="sidebar-link " href="{% url 'diplomas:diplomas_dahsboard' %}">
                 <svg class="stroke-icon">
-                  <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                  <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use>
                 </svg>
                 <svg class="fill-icon">
                   <use href=""></use>
@@ -354,10 +389,10 @@
             </li>
                 <li class="sidebar-list"><i class="fa fa-thumb-tack"> </i><a class="sidebar-link sidebar-title" href="#">
                     <svg class="stroke-icon">
-                      <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                      <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use>
                     </svg>
                     <svg class="fill-icon">
-                      <use href="../assets/svg/icon-sprite.svg#fill-home"></use>
+                      <use href="{% static 'assets/svg/icon-sprite.svg' %}#fill-home"></use>
                     </svg><span>{{ diplomas_menu_label }}</span></a>
                   <ul class="sidebar-submenu">
                     <li><a href="{% url 'diplomas:diplomas_dahsboard' %}">Dashboard</a></li>
@@ -453,13 +488,6 @@
      <script src="{% static 'assets/js/chart/apex-chart/apex-chart.js' %}"></script>
      <script src="{% static 'assets/js/chart/apex-chart/stock-prices.js' %}"></script>
      <script src="{% static 'assets/js/chart/apex-chart/moment.min.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/esl.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/config.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/pie-chart/facePrint.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/pie-chart/testHelper.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/pie-chart/custom-transition-texture.js' %}"></script>
-     <script src="{% static 'assets/js/chart/echart/data/symbols.js' %}"></script>
-     
     {% comment %} <script src="{% static 'assets/js/theme-customizer/customizer.js' %}"></script> {% endcomment %}
      <!-- calendar js -->
      <script src="{% static 'assets/js/datepicker/date-picker/datepicker.js' %}"></script>
@@ -612,6 +640,28 @@
             }
           });
         });
+
+        function cleanupModalArtifacts() {
+          const openModals = document.querySelectorAll('.modal.show');
+          if (openModals.length > 0) {
+            const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+            backdrops.slice(0, -1).forEach(function (backdrop) {
+              backdrop.remove();
+            });
+            return;
+          }
+          document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+            backdrop.remove();
+          });
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('overflow');
+          document.body.style.removeProperty('padding-right');
+        }
+
+        document.addEventListener('hidden.bs.modal', function () {
+          window.requestAnimationFrame(cleanupModalArtifacts);
+        });
+        document.addEventListener('shown.bs.modal', cleanupModalArtifacts);
 
         document.querySelectorAll('.diplomas-toast').forEach(bindToast);
       })();

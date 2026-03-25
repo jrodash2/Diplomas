@@ -183,13 +183,18 @@
 
 
     <!-- BOTÓN AGREGAR PARTICIPANTE -->
-    <div class="col-4 text-align-left">
-      <button class="btn btn-primary mt-3"
-              data-bs-toggle="modal"
-              data-bs-target="#modalAgregarEmpleado"
-              {% if not can_enroll %}disabled{% endif %}>
-        + Agregar Participante
-      </button>
+    <div class="col-12">
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#modalAgregarEmpleado"
+                {% if not can_enroll %}disabled{% endif %}>
+          + Agregar Participante
+        </button>
+        <a class="btn btn-outline-success" href="{% url 'diplomas:exportar_participantes_excel' curso.id %}">
+          <i class="fa fa-file-excel-o me-2"></i>Descargar participantes
+        </a>
+      </div>
     </div>
 
 
