@@ -721,3 +721,13 @@ class DiplomaNotificationsTests(DiplomasScopeTests):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(reverse("diplomas:public_diploma_download"), mail.outbox[0].body)
         self.assertIn(self.curso_a.codigo, mail.outbox[0].body)
+
+    def test_dashboard_does_not_break_if_completion_notification_crashes(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        with patch(
+            "diplomas_app.views.send_completion_notifications_for_finished_courses",
+            side_effect=RuntimeError("Error interno de notificaciones"),
+        ):
+            response = self.client.get(reverse("diplomas:diplomas_dahsboard"), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No fue posible procesar los correos de finalización")

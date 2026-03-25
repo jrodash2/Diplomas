@@ -1,6 +1,7 @@
 import json
 import os
 import calendar
+import logging
 from uuid import uuid4
 
 from django.contrib import messages
@@ -53,6 +54,8 @@ from .models import (
 )
 from .notifications import send_completion_notifications_for_finished_courses, send_enrollment_notification
 from .utils import attach_diplomas_context, diplomas_access_required, enforce_scope_for_object, scope_queryset
+
+logger = logging.getLogger(__name__)
 
 
 # Helpers
@@ -214,7 +217,15 @@ def add_months_to_date(source_date, months):
 
 
 def trigger_course_completion_notifications(request, curso=None):
-    summary = send_completion_notifications_for_finished_courses(request=request, course=curso)
+    try:
+        summary = send_completion_notifications_for_finished_courses(request=request, course=curso)
+    except Exception:
+        logger.exception("Falló el proceso de correos de finalización de Diplomas.")
+        messages.warning(
+            request,
+            "No fue posible procesar los correos de finalización en este momento. El resto del sistema sigue operativo.",
+        )
+        return {"sent": 0, "skipped": 0, "errors": 1}
     if summary.get("errors"):
         messages.warning(
             request,

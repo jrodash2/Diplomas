@@ -96,19 +96,21 @@ def send_enrollment_notification(participante, request=None):
 
 def send_completion_notifications_for_finished_courses(request=None, course=None):
     today = timezone.localdate()
-    queryset = CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "empleado", "empleado__datos_basicos")
-    queryset = queryset.filter(curso__fecha_fin__lte=today, correo_finalizacion_enviado_en__isnull=True)
+    queryset = CursoEmpleado.objects.filter(curso__fecha_fin__lte=today, correo_finalizacion_enviado_en__isnull=True)
     if course is not None:
         queryset = queryset.filter(curso=course)
 
     summary = {"sent": 0, "skipped": 0, "errors": 0}
-    for participante in queryset.iterator():
+    for participante_id in queryset.values_list("id", flat=True).iterator():
         with transaction.atomic():
             locked = (
-                CursoEmpleado.objects.select_related("curso", "curso__ubicacion", "empleado", "empleado__datos_basicos")
-                .select_for_update()
-                .get(pk=participante.pk)
+                CursoEmpleado.objects.select_for_update()
+                .filter(pk=participante_id, correo_finalizacion_enviado_en__isnull=True)
+                .first()
             )
+            if not locked:
+                summary["skipped"] += 1
+                continue
             if locked.correo_finalizacion_enviado_en:
                 summary["skipped"] += 1
                 continue
