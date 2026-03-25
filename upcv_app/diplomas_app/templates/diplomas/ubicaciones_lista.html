@@ -78,16 +78,22 @@
 
 <div class="modal fade" id="modalCrearUbicacion" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-body p-4">
-        <h5 class="mb-3">Nueva ubicación</h5>
+    <div class="modal-content diplomas-clean-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva ubicación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-4 pt-2">
         <form method="post" action="{% url 'diplomas:crear_ubicacion' %}">
           {% csrf_token %}
           <div class="mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
           <div class="mb-3">{{ form.abreviatura.label_tag }}{{ form.abreviatura }}</div>
           <div class="mb-3">{{ form.descripcion.label_tag }}{{ form.descripcion }}</div>
           <div class="mb-3 form-check">{{ form.activa }} <label class="form-check-label" for="id_activa">Activa</label></div>
-          <div class="text-end"><button type="submit" class="btn btn-primary">Guardar</button></div>
+          <div class="text-end d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
         </form>
       </div>
     </div>
