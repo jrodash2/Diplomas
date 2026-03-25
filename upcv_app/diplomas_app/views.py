@@ -228,6 +228,7 @@ def trigger_course_completion_notifications(request, curso=None):
 
 @diplomas_access_required
 def diplomas_dahsboard(request):
+    trigger_course_completion_notifications(request)
     scope = get_scope(request)
     cursos = scope_queryset(Curso.objects.select_related("ubicacion"), scope).order_by("-creado_en")
     firmas = scope_queryset(Firma.objects.select_related("ubicacion"), scope).order_by("-creado_en")
@@ -567,6 +568,7 @@ def eliminar_diseno(request, diseno_id):
 
 @diplomas_access_required
 def cursos_lista(request):
+    trigger_course_completion_notifications(request)
     scope = get_scope(request)
     cursos = scope_queryset(Curso.objects.select_related("ubicacion", "diseno_diploma"), scope).order_by("-creado_en")
     form = CursoForm(scope=scope)
@@ -606,6 +608,7 @@ def editar_curso(request, curso_id):
 @diplomas_access_required
 def detalle_curso(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
+    trigger_course_completion_notifications(request, curso=curso)
     participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
     total_participantes = participantes.count()
     public_links = build_public_course_links(request, curso)
