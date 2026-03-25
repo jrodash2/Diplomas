@@ -83,8 +83,8 @@
         <h5 class="modal-title">Nueva ubicación</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <div class="modal-body p-4 pt-2">
-        <form method="post" action="{% url 'diplomas:crear_ubicacion' %}">
+      <div class="modal-body social-profile p-4 pt-2">
+        <form method="post" action="{% url 'diplomas:crear_ubicacion' %}" class="diplomas-modal-panel">
           {% csrf_token %}
           <div class="mb-3">{{ form.nombre.label_tag }}{{ form.nombre }}</div>
           <div class="mb-3">{{ form.abreviatura.label_tag }}{{ form.abreviatura }}</div>
