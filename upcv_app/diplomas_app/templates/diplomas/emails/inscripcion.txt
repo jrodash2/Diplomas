@@ -1,0 +1,14 @@
+Estimado(a) {{ participante.nombre_participante }}:
+
+Le confirmamos su inscripción al curso "{{ curso.nombre }}".
+
+Detalles del curso:
+- Código: {{ curso.codigo }}
+- Ubicación: {{ ubicacion }}
+- Fecha de inicio: {{ curso.fecha_inicio|date:"d/m/Y" }}
+- Fecha de finalización: {{ curso.fecha_fin|date:"d/m/Y" }}
+
+Le damos la bienvenida y le deseamos éxitos en su proceso formativo.
+
+Atentamente,
+{{ institucion }}
