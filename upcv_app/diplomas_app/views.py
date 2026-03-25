@@ -218,20 +218,10 @@ def add_months_to_date(source_date, months):
 
 def trigger_course_completion_notifications(request, curso=None):
     try:
-        summary = send_completion_notifications_for_finished_courses(request=request, course=curso)
+        return send_completion_notifications_for_finished_courses(request=request, course=curso)
     except Exception:
         logger.exception("Falló el proceso de correos de finalización de Diplomas.")
-        messages.warning(
-            request,
-            "No fue posible procesar los correos de finalización en este momento. El resto del sistema sigue operativo.",
-        )
         return {"sent": 0, "skipped": 0, "errors": 1}
-    if summary.get("errors"):
-        messages.warning(
-            request,
-            "Se detectaron errores al enviar algunos correos de finalización. Revise los logs del servidor.",
-        )
-    return summary
 
 
 # Dashboard

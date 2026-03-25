@@ -722,6 +722,14 @@ class DiplomaNotificationsTests(DiplomasScopeTests):
         self.assertIn(reverse("diplomas:public_diploma_download"), mail.outbox[0].body)
         self.assertIn(self.curso_a.codigo, mail.outbox[0].body)
 
+    def test_completion_notification_skips_invalid_email_without_error(self):
+        self.participante.participante_correo = "correo-invalido"
+        self.participante.save(update_fields=["participante_correo"])
+        summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(summary["errors"], 0)
+        self.assertEqual(summary["skipped"], 1)
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_dashboard_does_not_break_if_completion_notification_crashes(self):
         self.client.login(username="admin_diplomas", password="test12345")
         with patch(
@@ -730,4 +738,4 @@ class DiplomaNotificationsTests(DiplomasScopeTests):
         ):
             response = self.client.get(reverse("diplomas:diplomas_dahsboard"), follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No fue posible procesar los correos de finalización")
+        self.assertNotContains(response, "No fue posible procesar los correos de finalización")

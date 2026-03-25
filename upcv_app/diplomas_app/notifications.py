@@ -3,6 +3,8 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -56,8 +58,19 @@ def _send_notification_email(*, to_email, subject, text_template, html_template,
     message.send(fail_silently=False)
 
 
+def _resolve_valid_recipient(raw_email):
+    email = (raw_email or "").strip()
+    if not email:
+        return None
+    try:
+        validate_email(email)
+    except ValidationError:
+        return None
+    return email
+
+
 def send_enrollment_notification(participante, request=None):
-    email = (participante.correo_participante or "").strip()
+    email = _resolve_valid_recipient(participante.correo_participante)
     if not email:
         return {"status": "skipped", "reason": "missing_email"}
 
@@ -116,6 +129,7 @@ def send_completion_notifications_for_finished_courses(request=None, course=None
                 continue
 
             email = (locked.correo_participante or "").strip()
+            email = _resolve_valid_recipient(email)
             if not email:
                 summary["skipped"] += 1
                 continue
