@@ -630,6 +630,28 @@
           });
         });
 
+        function cleanupModalArtifacts() {
+          const openModals = document.querySelectorAll('.modal.show');
+          if (openModals.length > 0) {
+            const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+            backdrops.slice(0, -1).forEach(function (backdrop) {
+              backdrop.remove();
+            });
+            return;
+          }
+          document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+            backdrop.remove();
+          });
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('overflow');
+          document.body.style.removeProperty('padding-right');
+        }
+
+        document.addEventListener('hidden.bs.modal', function () {
+          window.requestAnimationFrame(cleanupModalArtifacts);
+        });
+        document.addEventListener('shown.bs.modal', cleanupModalArtifacts);
+
         document.querySelectorAll('.diplomas-toast').forEach(bindToast);
       })();
      </script>
