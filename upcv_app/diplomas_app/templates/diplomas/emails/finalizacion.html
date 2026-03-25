@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es">
+  <body style="font-family: Arial, sans-serif; color: #1f2937;">
+    <p>Estimado(a) <strong>{{ participante.nombre_participante }}</strong>:</p>
+    <p>Le informamos que el curso <strong>{{ curso.nombre }}</strong> ha finalizado.</p>
+    <table cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+      <tr><td><strong>Código</strong></td><td>{{ curso.codigo }}</td></tr>
+      <tr><td><strong>Ubicación</strong></td><td>{{ ubicacion }}</td></tr>
+      <tr><td><strong>Fecha de finalización</strong></td><td>{{ curso.fecha_fin|date:"d/m/Y" }}</td></tr>
+    </table>
+    <p>Ya puede consultar y descargar su diploma en el siguiente enlace:</p>
+    <p><a href="{{ diploma_url }}">Descargar diploma</a></p>
+    <p>Atentamente,<br><strong>{{ institucion }}</strong></p>
+  </body>
+</html>
