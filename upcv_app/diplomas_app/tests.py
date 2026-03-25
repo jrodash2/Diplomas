@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from io import BytesIO
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
@@ -8,6 +9,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from django.test.utils import override_settings
+from openpyxl import load_workbook
 from unittest.mock import patch
 
 from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Empleado
@@ -139,6 +141,41 @@ class DiplomasScopeTests(TestCase):
         self.client.login(username="gestor_diplomas", password="test12345")
         response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_b.id]))
         self.assertEqual(response.status_code, 403)
+
+    def test_export_participants_excel_downloads_only_current_course_participants(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.get(reverse("diplomas:exportar_participantes_excel", args=[self.curso_a.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("participantes_", response["Content-Disposition"])
+        self.assertIn(self.curso_a.codigo, response["Content-Disposition"])
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+
+        self.assertEqual(
+            rows[0],
+            (
+                "No.",
+                "DPI",
+                "Nombre",
+                "Correo",
+                "Teléfono",
+                "Observaciones",
+                "Fecha de asignación",
+                "Tipo de registro",
+                "ID Empleado",
+                "Foto",
+            ),
+        )
+        self.assertEqual(len(rows), 2)  # header + 1 participante del curso_a
+        self.assertEqual(rows[1][1], self.participante.dpi_participante)
+        self.assertEqual(rows[1][2], self.participante.nombre_participante)
 
     def test_manager_creation_is_forced_to_assigned_location(self):
         self.client.login(username="gestor_diplomas", password="test12345")

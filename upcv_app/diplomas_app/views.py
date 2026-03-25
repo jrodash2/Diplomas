@@ -11,6 +11,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import ProtectedError
 from django.db.models.functions import Replace
+from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,6 +19,9 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from PIL import Image, UnidentifiedImageError
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 
 from empleados_app.models import ConfiguracionGeneral, Empleado
 
@@ -643,6 +647,68 @@ def detalle_curso(request, curso_id):
         "enrollment_message": enrollment_message,
         "can_download": can_download,
     })
+
+
+@diplomas_access_required
+def exportar_participantes_excel(request, curso_id):
+    curso = get_course_or_404(request, id=curso_id)
+    participantes = (
+        CursoEmpleado.objects.filter(curso=curso)
+        .select_related("empleado", "empleado__datos_basicos")
+        .order_by("fecha_asignacion", "id")
+    )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Participantes"
+
+    headers = [
+        "No.",
+        "DPI",
+        "Nombre",
+        "Correo",
+        "Teléfono",
+        "Observaciones",
+        "Fecha de asignación",
+        "Tipo de registro",
+        "ID Empleado",
+        "Foto",
+    ]
+    sheet.append(headers)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+
+    for index, participante in enumerate(participantes, start=1):
+        sheet.append(
+            [
+                index,
+                participante.dpi_participante,
+                participante.nombre_participante,
+                participante.correo_participante,
+                participante.telefono_participante,
+                participante.observaciones_participante,
+                timezone.localtime(participante.fecha_asignacion).strftime("%Y-%m-%d %H:%M"),
+                "Empleado" if participante.empleado_id else "Manual",
+                participante.empleado_id or "",
+                participante.foto_participante_url,
+            ]
+        )
+
+    for column_cells in sheet.columns:
+        max_length = 0
+        column = get_column_letter(column_cells[0].column)
+        for cell in column_cells:
+            max_length = max(max_length, len(str(cell.value or "")))
+        sheet.column_dimensions[column].width = min(max_length + 2, 60)
+
+    safe_name = slugify(curso.nombre) or "curso"
+    filename = f"participantes_{curso.codigo}_{safe_name}.xlsx"
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    workbook.save(response)
+    return response
 
 
 @diplomas_access_required
