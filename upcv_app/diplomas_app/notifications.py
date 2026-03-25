@@ -1,4 +1,5 @@
 import logging
+import smtplib
 import ssl
 from urllib.parse import urlencode
 
@@ -170,6 +171,9 @@ def send_completion_notifications_for_finished_courses(request=None, course=None
                 locked.ultimo_error_correo_finalizacion = str(exc)[:1000]
                 locked.save(update_fields=["ultimo_error_correo_finalizacion"])
                 summary["errors"] += 1
+                if isinstance(exc, smtplib.SMTPAuthenticationError):
+                    summary["fatal_error"] = "smtp_auth"
+                    return summary
                 continue
 
             locked.correo_finalizacion_enviado_en = timezone.now()

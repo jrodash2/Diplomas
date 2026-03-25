@@ -679,19 +679,18 @@ class DiplomaNotificationsTests(DiplomasScopeTests):
         self.assertTrue(CursoEmpleado.objects.filter(curso=self.curso_b, participante_dpi="4000111122224").exists())
 
     def test_completion_email_is_sent_once_for_finished_course(self):
-        self.client.login(username="admin_diplomas", password="test12345")
         self.assertIsNone(self.participante.correo_finalizacion_enviado_en)
 
-        first_response = self.client.get(reverse("diplomas:diplomas_dahsboard"))
-        self.assertEqual(first_response.status_code, 200)
+        first_summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(first_summary["sent"], 1)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("diploma", mail.outbox[0].body.lower())
 
         self.participante.refresh_from_db()
         self.assertIsNotNone(self.participante.correo_finalizacion_enviado_en)
 
-        second_response = self.client.get(reverse("diplomas:diplomas_dahsboard"))
-        self.assertEqual(second_response.status_code, 200)
+        second_summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(second_summary["sent"], 0)
         self.assertEqual(len(mail.outbox), 1)
 
     def test_email_send_failure_does_not_break_flow_and_is_logged(self):
