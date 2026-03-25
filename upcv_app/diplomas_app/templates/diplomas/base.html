@@ -53,6 +53,27 @@
         <!-- Responsive css-->
         <link rel="stylesheet" type="text/css" href="{% static 'assets/css/responsive.css' %}">
         <style>
+          .page-wrapper {
+            position: relative;
+            min-height: 100vh;
+            background-color: #f8fafc;
+          }
+          .page-wrapper::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url("{% static 'assets/images/dashboard-3/profile-bg.png' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+          }
+          .page-wrapper .page-body-wrapper {
+            position: relative;
+            z-index: 1;
+          }
           .diplomas-toast-stack {
             position: fixed;
             top: 88px;
