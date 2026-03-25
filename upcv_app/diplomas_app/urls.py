@@ -27,6 +27,7 @@ urlpatterns = [
     path("agregar-empleado/", views.agregar_empleado_a_curso, name="agregar_empleado_curso"),
     path("ajax/buscar-empleado/", views.buscar_empleado_por_dpi, name="buscar_empleado_por_dpi"),
     path("curso/<int:curso_id>/", views.detalle_curso, name="detalle_curso"),
+    path("curso/<int:curso_id>/exportar-participantes/", views.exportar_participantes_excel, name="exportar_participantes_excel"),
     path("curso/<int:curso_id>/agregar/", views.agregar_empleado_detalle, name="agregar_empleado_detalle"),
     path("curso/<int:curso_id>/participante/<int:participante_id>/editar/", views.editar_participante_detalle, name="editar_participante_detalle"),
     path("curso/<int:curso_id>/editar/", views.editar_curso, name="editar_curso"),

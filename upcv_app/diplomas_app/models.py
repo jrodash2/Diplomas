@@ -145,6 +145,10 @@ class CursoEmpleado(models.Model):
     participante_telefono = models.CharField(max_length=30, blank=True, default="")
     observaciones = models.TextField(blank=True, default="")
     fecha_asignacion = models.DateTimeField(default=timezone.now)
+    correo_inscripcion_enviado_en = models.DateTimeField(blank=True, null=True)
+    correo_finalizacion_enviado_en = models.DateTimeField(blank=True, null=True)
+    ultimo_error_correo_inscripcion = models.TextField(blank=True, default="")
+    ultimo_error_correo_finalizacion = models.TextField(blank=True, default="")
 
     class Meta:
         unique_together = ('curso', 'empleado')
