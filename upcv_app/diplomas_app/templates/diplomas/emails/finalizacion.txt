@@ -1,0 +1,14 @@
+Estimado(a) {{ participante.nombre_participante }}:
+
+Le informamos que el curso "{{ curso.nombre }}" ha finalizado.
+
+Resumen del curso:
+- Código: {{ curso.codigo }}
+- Ubicación: {{ ubicacion }}
+- Fecha de finalización: {{ curso.fecha_fin|date:"d/m/Y" }}
+
+Puede consultar y descargar su diploma en el siguiente enlace:
+{{ diploma_url }}
+
+Atentamente,
+{{ institucion }}
