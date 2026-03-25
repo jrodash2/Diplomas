@@ -1,6 +1,7 @@
 import json
 import os
 import calendar
+import logging
 from uuid import uuid4
 
 from django.contrib import messages
@@ -53,6 +54,8 @@ from .models import (
 )
 from .notifications import send_enrollment_notification
 from .utils import attach_diplomas_context, diplomas_access_required, enforce_scope_for_object, scope_queryset
+
+logger = logging.getLogger(__name__)
 
 
 # Helpers
@@ -213,10 +216,19 @@ def add_months_to_date(source_date, months):
     return source_date.replace(year=year, month=month, day=day)
 
 
+def trigger_course_completion_notifications(request, curso=None):
+    try:
+        return send_completion_notifications_for_finished_courses(request=request, course=curso)
+    except Exception:
+        logger.exception("Falló el proceso de correos de finalización de Diplomas.")
+        return {"sent": 0, "skipped": 0, "errors": 1}
+
+
 # Dashboard
 
 @diplomas_access_required
 def diplomas_dahsboard(request):
+    trigger_course_completion_notifications(request)
     scope = get_scope(request)
     cursos = scope_queryset(Curso.objects.select_related("ubicacion"), scope).order_by("-creado_en")
     firmas = scope_queryset(Firma.objects.select_related("ubicacion"), scope).order_by("-creado_en")
@@ -556,6 +568,7 @@ def eliminar_diseno(request, diseno_id):
 
 @diplomas_access_required
 def cursos_lista(request):
+    trigger_course_completion_notifications(request)
     scope = get_scope(request)
     cursos = scope_queryset(Curso.objects.select_related("ubicacion", "diseno_diploma"), scope).order_by("-creado_en")
     form = CursoForm(scope=scope)
@@ -595,6 +608,7 @@ def editar_curso(request, curso_id):
 @diplomas_access_required
 def detalle_curso(request, curso_id):
     curso = get_course_or_404(request, id=curso_id)
+    trigger_course_completion_notifications(request, curso=curso)
     participantes = CursoEmpleado.objects.filter(curso=curso).select_related("empleado", "empleado__datos_basicos")
     total_participantes = participantes.count()
     public_links = build_public_course_links(request, curso)
