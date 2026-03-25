@@ -1,17 +1,22 @@
 from datetime import date, timedelta
+from io import BytesIO
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
+from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from django.test.utils import override_settings
+from openpyxl import load_workbook
+from unittest.mock import patch
 
 from empleados_app.models import ConfiguracionGeneral, DatosBasicosEmpleado, Empleado
 
 from .design_engine import build_diploma_render_context
 from .models import Curso, CursoEmpleado, Diploma, DisenoDiploma, Firma, UbicacionDiploma, UsuarioUbicacionDiploma
+from .notifications import send_completion_notifications_for_finished_courses
 from .views import get_course_diploma_download_status
 
 
@@ -136,6 +141,41 @@ class DiplomasScopeTests(TestCase):
         self.client.login(username="gestor_diplomas", password="test12345")
         response = self.client.get(reverse("diplomas:detalle_curso", args=[self.curso_b.id]))
         self.assertEqual(response.status_code, 403)
+
+    def test_export_participants_excel_downloads_only_current_course_participants(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.get(reverse("diplomas:exportar_participantes_excel", args=[self.curso_a.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("participantes_", response["Content-Disposition"])
+        self.assertIn(self.curso_a.codigo, response["Content-Disposition"])
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+
+        self.assertEqual(
+            rows[0],
+            (
+                "No.",
+                "DPI",
+                "Nombre",
+                "Correo",
+                "Teléfono",
+                "Observaciones",
+                "Fecha de asignación",
+                "Tipo de registro",
+                "ID Empleado",
+                "Foto",
+            ),
+        )
+        self.assertEqual(len(rows), 2)  # header + 1 participante del curso_a
+        self.assertEqual(rows[1][1], self.participante.dpi_participante)
+        self.assertEqual(rows[1][2], self.participante.nombre_participante)
 
     def test_manager_creation_is_forced_to_assigned_location(self):
         self.client.login(username="gestor_diplomas", password="test12345")
@@ -632,3 +672,107 @@ class DiplomasScopeTests(TestCase):
             response,
             "el diploma puede descargarse desde este enlace únicamente hasta 6 meses después de finalizado el curso",
         )
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class DiplomaNotificationsTests(DiplomasScopeTests):
+    def test_enrollment_email_is_sent_on_internal_manual_enrollment(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
+            {
+                "enrollment_mode": "manual",
+                "curso": self.curso_b.id,
+                "participante_dpi": "4000111122223",
+                "participante_nombre": "Correo Manual",
+                "participante_correo": "manual@example.com",
+                "participante_telefono": "55550000",
+                "observaciones": "Prueba",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Confirmación de inscripción", mail.outbox[0].subject)
+        self.assertIn(self.curso_b.nombre, mail.outbox[0].body)
+
+        participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi="4000111122223")
+        self.assertIsNotNone(participante.correo_inscripcion_enviado_en)
+
+    def test_enrollment_without_email_does_not_fail_or_send(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        response = self.client.post(
+            reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
+            {
+                "enrollment_mode": "manual",
+                "curso": self.curso_b.id,
+                "participante_dpi": "4000111122224",
+                "participante_nombre": "Sin Correo",
+                "participante_correo": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertTrue(CursoEmpleado.objects.filter(curso=self.curso_b, participante_dpi="4000111122224").exists())
+
+    def test_completion_email_is_sent_once_for_finished_course(self):
+        self.assertIsNone(self.participante.correo_finalizacion_enviado_en)
+
+        first_summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(first_summary["sent"], 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("diploma", mail.outbox[0].body.lower())
+
+        self.participante.refresh_from_db()
+        self.assertIsNotNone(self.participante.correo_finalizacion_enviado_en)
+
+        second_summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(second_summary["sent"], 0)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_email_send_failure_does_not_break_flow_and_is_logged(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+
+        with patch("diplomas_app.notifications._send_notification_email", side_effect=RuntimeError("SMTP caído")):
+            response = self.client.post(
+                reverse("diplomas:agregar_empleado_detalle", args=[self.curso_b.id]),
+                {
+                    "enrollment_mode": "manual",
+                    "curso": self.curso_b.id,
+                    "participante_dpi": "4000111122225",
+                    "participante_nombre": "Error SMTP",
+                    "participante_correo": "smtp-fail@example.com",
+                },
+                follow=True,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        participante = CursoEmpleado.objects.get(curso=self.curso_b, participante_dpi="4000111122225")
+        self.assertIsNone(participante.correo_inscripcion_enviado_en)
+        self.assertIn("SMTP caído", participante.ultimo_error_correo_inscripcion)
+
+    def test_completion_notification_includes_public_download_link(self):
+        summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(summary["sent"], 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(reverse("diplomas:public_diploma_download"), mail.outbox[0].body)
+        self.assertIn(self.curso_a.codigo, mail.outbox[0].body)
+
+    def test_completion_notification_skips_invalid_email_without_error(self):
+        self.participante.participante_correo = "correo-invalido"
+        self.participante.save(update_fields=["participante_correo"])
+        summary = send_completion_notifications_for_finished_courses()
+        self.assertEqual(summary["errors"], 0)
+        self.assertEqual(summary["skipped"], 1)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_dashboard_does_not_break_if_completion_notification_crashes(self):
+        self.client.login(username="admin_diplomas", password="test12345")
+        with patch(
+            "diplomas_app.notifications.send_completion_notifications_for_finished_courses",
+            side_effect=RuntimeError("Error interno de notificaciones"),
+        ) as mocked_completion_sender:
+            response = self.client.get(reverse("diplomas:diplomas_dahsboard"), follow=True)
+        self.assertEqual(response.status_code, 200)
+        mocked_completion_sender.assert_not_called()
+        self.assertNotContains(response, "No fue posible procesar los correos de finalización")

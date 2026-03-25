@@ -75,14 +75,19 @@
 
 <div class="modal fade" id="modalCrearAsignacion" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-body p-4">
-        <h5 class="mb-3">Nueva asignación</h5>
+    <div class="modal-content dark-sign-up diplomas-clean-modal">
+      <div class="modal-body social-profile text-start p-4">
+        <div class="title-wrapper pb-3 modal-heading text-center">
+          <h5 class="theme-name mb-0"><span>Crear - </span>Nueva Asignación</h5>
+        </div>
         <form method="post" action="{% url 'diplomas:crear_asignacion_ubicacion' %}">
           {% csrf_token %}
           <div class="mb-3">{{ form.usuario.label_tag }}{{ form.usuario }}</div>
           <div class="mb-3">{{ form.ubicacion.label_tag }}{{ form.ubicacion }}</div>
-          <div class="text-end"><button type="submit" class="btn btn-primary">Guardar</button></div>
+          <div class="modal-footer justify-content-center border-top-0 px-0 pb-0">
+            <button type="submit" class="btn btn-primary">Guardar Asignación</button>
+            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancelar</button>
+          </div>
         </form>
       </div>
     </div>
