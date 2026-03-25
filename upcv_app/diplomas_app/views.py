@@ -52,7 +52,7 @@ from .models import (
     UbicacionDiploma,
     UsuarioUbicacionDiploma,
 )
-from .notifications import send_completion_notifications_for_finished_courses, send_enrollment_notification
+from .notifications import send_enrollment_notification
 from .utils import attach_diplomas_context, diplomas_access_required, enforce_scope_for_object, scope_queryset
 
 logger = logging.getLogger(__name__)
