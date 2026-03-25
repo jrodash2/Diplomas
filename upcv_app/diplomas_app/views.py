@@ -1,6 +1,7 @@
 import json
 import os
 import calendar
+import logging
 from uuid import uuid4
 
 from django.contrib import messages
@@ -51,7 +52,10 @@ from .models import (
     UbicacionDiploma,
     UsuarioUbicacionDiploma,
 )
+from .notifications import send_completion_notifications_for_finished_courses, send_enrollment_notification
 from .utils import attach_diplomas_context, diplomas_access_required, enforce_scope_for_object, scope_queryset
+
+logger = logging.getLogger(__name__)
 
 
 # Helpers
@@ -210,6 +214,14 @@ def add_months_to_date(source_date, months):
     month = (total_month % 12) + 1
     day = min(source_date.day, calendar.monthrange(year, month)[1])
     return source_date.replace(year=year, month=month, day=day)
+
+
+def trigger_course_completion_notifications(request, curso=None):
+    try:
+        return send_completion_notifications_for_finished_courses(request=request, course=curso)
+    except Exception:
+        logger.exception("Falló el proceso de correos de finalización de Diplomas.")
+        return {"sent": 0, "skipped": 0, "errors": 1}
 
 
 # Dashboard
@@ -688,7 +700,8 @@ def agregar_empleado_a_curso(request):
                 messages.warning(request, "Este empleado ya está asignado a este curso.")
                 return redirect("diplomas:agregar_empleado_curso")
 
-            CursoEmpleado.objects.create(curso=curso, empleado=empleado)
+            participante = CursoEmpleado.objects.create(curso=curso, empleado=empleado)
+            send_enrollment_notification(participante, request=request)
             messages.success(request, "Empleado agregado correctamente al curso.")
             return redirect("diplomas:agregar_empleado_curso")
     else:
@@ -719,13 +732,14 @@ def agregar_empleado_detalle(request, curso_id):
             messages.warning(request, "El participante ya está inscrito en este curso.")
             return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
-        CursoEmpleado.objects.create(
+        participante = CursoEmpleado.objects.create(
             curso=curso,
             empleado=empleado,
             participante_dpi=empleado.dpi,
             participante_nombre=f"{empleado.nombres} {empleado.apellidos}".strip(),
             fecha_asignacion=timezone.now(),
         )
+        send_enrollment_notification(participante, request=request)
         messages.success(request, "Participante existente agregado correctamente al curso.")
         return redirect("diplomas:detalle_curso", curso_id=curso.id)
 
@@ -755,6 +769,7 @@ def agregar_empleado_detalle(request, curso_id):
     participante.empleado = empleado
 
     participante.save()
+    send_enrollment_notification(participante, request=request)
     messages.success(
         request,
         "Participante agregado correctamente al curso."
@@ -894,6 +909,7 @@ def public_course_registration(request):
                 if foto:
                     participante.participante_foto = foto
                 participante.save()
+                send_enrollment_notification(participante, request=request)
                 registration_result = participante
                 form = PublicCourseRegistrationForm(
                     initial={
@@ -914,6 +930,7 @@ def public_course_registration(request):
 
 def public_diploma_download(request):
     initial_course_code = "".join(str(request.GET.get("codigo_curso") or request.GET.get("codigo") or "").split())
+    initial_dpi = normalize_dpi_input(request.GET.get("dpi"))
     initial_course = get_course_by_code_or_none(initial_course_code) if initial_course_code else None
     active_course = initial_course
     initial_data = {}
@@ -922,6 +939,8 @@ def public_diploma_download(request):
             "codigo_curso": initial_course.codigo,
             "nombre_curso": initial_course.nombre,
         }
+    if initial_dpi:
+        initial_data["dpi"] = initial_dpi
 
     form = PublicDiplomaDownloadForm(request.POST or None, initial=initial_data or None)
     participant = None
