@@ -187,6 +187,9 @@
     <script>
         async function fetchJson(url) {
             const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            if (!response.ok) {
+                throw new Error(`Solicitud fallida (${response.status})`);
+            }
             return response.json();
         }
 
@@ -205,28 +208,38 @@
         }
 
         async function refreshCourse() {
+            if (!courseCodeInput || !courseNameInput) return;
             const code = (courseCodeInput.value || "").replace(/\s+/g, "");
             courseNameInput.value = "";
             updateLocation("");
             if (!code) return;
-            const data = await fetchJson(`{% url 'diplomas:public_buscar_curso_por_codigo' %}?codigo_curso=${encodeURIComponent(code)}`);
-            if (data.existe) {
-                courseNameInput.value = data.nombre || "";
-                updateLocation(data.ubicacion || "");
+            try {
+                const data = await fetchJson(`{% url 'diplomas:public_buscar_curso_por_codigo' %}?codigo_curso=${encodeURIComponent(code)}`);
+                if (data.existe) {
+                    courseNameInput.value = data.nombre || "";
+                    updateLocation(data.ubicacion || "");
+                }
+            } catch (error) {
+                console.error("No fue posible validar el curso.", error);
             }
         }
 
         async function refreshParticipant() {
+            if (!courseCodeInput || !dpiInput || !existingNameInput) return;
             const code = (courseCodeInput.value || "").replace(/\s+/g, "");
             const dpi = (dpiInput.value || "").replace(/\s+/g, "");
             existingNameInput.value = "";
             if (!code || !dpi) return;
-            const data = await fetchJson(`{% url 'diplomas:public_buscar_participante_por_dpi' %}?codigo_curso=${encodeURIComponent(code)}&dpi=${encodeURIComponent(dpi)}`);
-            if (data.existe) {
-                existingNameInput.value = data.nombre_completo || "";
-                if (data.nombre_completo && !data.inscrito_en_curso) {
-                    participantNameInput.value = data.nombre_completo;
+            try {
+                const data = await fetchJson(`{% url 'diplomas:public_buscar_participante_por_dpi' %}?codigo_curso=${encodeURIComponent(code)}&dpi=${encodeURIComponent(dpi)}`);
+                if (data.existe) {
+                    existingNameInput.value = data.nombre_completo || "";
+                    if (data.nombre_completo && !data.inscrito_en_curso && participantNameInput) {
+                        participantNameInput.value = data.nombre_completo;
+                    }
                 }
+            } catch (error) {
+                console.error("No fue posible validar el participante.", error);
             }
         }
 
